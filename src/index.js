@@ -151,6 +151,4 @@ Monologue.mixin( Broker );
 
 var broker = new Broker();
 
-module.exports = function() {
-	return broker;
-};
+module.exports = broker;
