@@ -1,6 +1,6 @@
 require( 'should' );
 
-var rabbit = require( '../src/index.js' )(),
+var rabbit = require( '../src/index.js' ),
 	_ = require( 'lodash' ),
 	exec = require( 'child_process' ).exec,
 	fs = require( 'fs' ),
