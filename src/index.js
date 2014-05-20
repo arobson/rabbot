@@ -34,6 +34,7 @@ var Broker = function() {
 	_.bindAll( this );
 	this.ackChannels = [];
 	this.ackIntervalId = undefined;
+	this.setAckInterval( 500 );
 };
 
 Broker.prototype.addConnection = function( connection ) {

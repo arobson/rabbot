@@ -116,7 +116,9 @@ module.exports = function( Broker, log ) {
 	};
 
 	Broker.prototype.setAckInterval = function( interval ) {
+		if( this.ackIntervalId ) {
+			this.clearAckInterval();
+		}
 		this.ackIntervalId = setInterval( this.batchAck, interval );
 	};
-
 };
