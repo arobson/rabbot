@@ -16,25 +16,28 @@ module.exports = function( Broker, log ) {
 		return when.promise( function( resolve, reject ) {
 			this.getChannel( 'control', connectionName )
 				.then( null, function( err ) {
-					log.error( {
+					this.log.error( {
 						error: err,
 						reason: 'Could not get the control channel to bind queue "' + target + '" to exchange "' + source + '" with keys "' + JSON.stringify( keys ) + '"'
 					} );
 					reject( err );
-				} )
+				}.bind( this ) )
 				.then( function( channel ) {
-					var actualKeys = _.isArray( keys ) ? keys : [ keys ];
-					bindings = _.map( actualKeys, function( key ) {
+					var actualKeys = [ '' ];
+					if( keys && keys.length > 0 ) {
+						actualKeys = _.isArray( keys ) ? keys : [ keys ];
+					}
+					var bindings = _.map( actualKeys, function( key ) {
 						return channel.model.bindQueue( target, source, key );
 					} );
 					when.all( bindings )
 						.then( null, function( err ) {
-							log.error( {
+							this.log.error( {
 								error: err,
 								reason: 'Binding exchange "' + target + '" to exchange ""' + source + ' with keys "' + JSON.stringify( keys ) + '" failed.'
 							} );
 							reject( err );
-						} )
+						}.bind( this ) )
 						.done( resolve );
 				}.bind( this ) );
 		}.bind( this ) );
@@ -95,12 +98,12 @@ module.exports = function( Broker, log ) {
 					}
 					result
 						.then( null, function( err ) {
-							log.error( {
+							this.log.error( {
 								error: err,
 								reason: 'Could not create queue "' + JSON.stringify( queueDef ) + '" on connection "' + connectionName + '".'
 							} );
 							reject( err );
-						} )
+						}.bind( this ) )
 						.then( function() {
 							resolve();
 						} );

@@ -108,7 +108,7 @@ module.exports = function( Broker, log ) {
 					}.bind( this ),
 				channelFailed = function( err ) {
 						this.emit( 'errorLogged' );
-						log.error( {
+						this.log.error( {
 							error: err,
 							reason: 'Could not create channel "' + name + '" on connection "' + connectionName + '"'
 						} );
@@ -116,7 +116,7 @@ module.exports = function( Broker, log ) {
 					}.bind( this ),
 				connectionFailed = function( err ) {
 						this.emit( 'errorLogged' );
-						log.error( {
+						this.log.error( {
 							error: err,
 							reason: 'Could acquire connection "' + connectionName + '" trying to create channel "' + name + '"'
 						} );

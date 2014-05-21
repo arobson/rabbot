@@ -17,25 +17,28 @@ module.exports = function( Broker, log ) {
 		return when.promise( function( resolve, reject ) {
 			this.getChannel( 'control', connectionName ) //Hey Alex, why are we always only binding to the control channel?
 				.then( null, function( err ) {
-					log.error( {
+					this.log.error( {
 						error: err,
 						reason: 'Could not get the control channel to bind exchange "' + target + '" to exchange ""' + source + ' with keys "' + JSON.stringify( keys ) + '"'
 					} );
 					reject( err );
-				} )
+				}.bind( this ) )
 				.then( function( channel ) {
-					var actualKeys = _.isArray( keys ) ? keys : [ keys ],
-						bindings = _.map( actualKeys, function( key ) {
-							return channel.model.bindExchange( source, target, key );
-						} );
+					var actualKeys = [ '' ];
+					if( keys && keys.length > 0 ) {
+						actualKeys = _.isArray( keys ) ? keys : [ keys ];
+					}
+					var bindings = _.map( actualKeys, function( key ) {
+						return channel.model.bindExchange( source, target, key );
+					} );
 					when.all( bindings )
 						.then( null, function( err ) {
-							log.error( {
+							this.log.error( {
 								error: err,
 								reason: 'Binding exchange "' + target + '" to exchange ""' + source + ' with keys "' + JSON.stringify( keys ) + '" failed.'
 							} );
 							reject( err );
-						} )
+						}.bind( this ) )
 						.done( resolve );
 				}.bind( this ) );
 		}.bind( this ) );
@@ -90,12 +93,12 @@ module.exports = function( Broker, log ) {
 					}, 'persistent' );
 					var result = channel.model.assertExchange( exchangeDef.name, exchangeDef.type, valid )
 						.then( null, function( err ) {
-							log.error( {
+							this.log.error( {
 								error: err,
 								reason: 'Could not create exchange "' + JSON.stringify( exchangeDef ) + '" on connection "' + connectionName + '".'
 							} );
 							reject( err );
-						} )
+						}.bind( this ) )
 						.then( function() {
 							resolve();
 						} );

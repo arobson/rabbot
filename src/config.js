@@ -20,7 +20,7 @@ module.exports = function( Broker, log ) {
 		config.connection.name = config.connection.name || 'default';
 		var connection,
 			configExchanges = _.bind( this._configureExchanges, this ),
-			configQueues = _.bind( this._configureQueues ),
+			configQueues = _.bind( this._configureQueues, this ),
 			configBindings = _.bind( this._configureBindings, this ),
 			emit = this.emit;
 		return when.promise( function( resolve, reject ) {
@@ -28,48 +28,48 @@ module.exports = function( Broker, log ) {
 				connection = conn;
 				configExchanges( config.exchanges, connection.name )
 					.then( null, function( err ) {
-						log.error( {
+						this.log.error( {
 							error: err,
 							reason: 'Could not configure exchanges as specified'
 						} );
 						reject( err );
-					} )
+					}.bind( this ) )
 					.then( createQueues );
-			},
+				}.bind( this ),
 				createQueues = function() {
 					configQueues( config.queues, connection.name )
 						.then( null, function( err ) {
-							log.error( {
+							this.log.error( {
 								error: err,
 								reason: 'Could not configure queues as specified'
 							} );
 							reject( err );
-						} )
+						}.bind( this ) )
 						.done( createBindings );
-				},
+				}.bind( this ),
 				createBindings = function() {
 					configBindings( config.bindings, connection.name )
 						.then( null, function( err ) {
-							log.error( {
+							this.log.error( {
 								error: err,
 								reason: 'Could not configure bindings as specified'
 							} );
 							reject( err );
-						} )
+						}.bind( this ) )
 						.done( finish );
-				},
+				}.bind( this ),
 				finish = function() {
 					emit( connection.name + '.connection.configured', connection );
 					resolve();
 				};
 			this.addConnection( config.connection )
 				.then( null, function( err ) {
-					log.error( {
+					this.log.error( {
 						error: err,
 						reason: 'Could not establish the connection specified'
 					} );
 					reject( err );
-				} )
+				}.bind( this ) )
 				.then( function( c ) {
 					createExchanges( c );
 				} );

@@ -21,7 +21,7 @@ var _ = require( 'lodash' ),
 	};
 
 	Connection.prototype.getUri = function() {
-		return 'amqp://' +
+		return ( this.RABBIT_PROTOCOL || 'amqp://' ) +
 			( this.user || this.RABBIT_USER || 'guest' ) +
 			':' +
 			( this.pass || this.RABBIT_PASSWORD || 'guest' ) +
@@ -71,7 +71,7 @@ var _ = require( 'lodash' ),
 					} );
 					this.broker.emit( 'errorLogged' );
 					this.handle = undefined;
-					log.error( {
+					this.log.error( {
 						error: err,
 						reason: 'Attempt to connect with uri "' + uri + '" failed'
 					} );
