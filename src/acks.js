@@ -18,7 +18,7 @@ module.exports = function( Broker, log ) {
 					var err = '0-index pendingMessage is pending, nothing to be done';
 					this.log.debug( err );
 					reject( err );
-					return;
+					break;
 				case 'ack':
 				case 'nack':
 					for ( var i = 1; i < _.size( channel.pendingMessages ) - 1; i++ ) {
@@ -32,7 +32,7 @@ module.exports = function( Broker, log ) {
 					var err = 'invalid result: ' + firstResult;
 					this.log.error( err );
 					reject( err );
-					return;
+					break;
 			}
 
 			switch ( firstResult ) {
@@ -99,7 +99,13 @@ module.exports = function( Broker, log ) {
 							channel.acking = false;
 						}
 						when.all( promise )
-							.done( function() {
+							.catch( function() {
+								channel.acking = false;
+							} )
+							.then( null, function( err ) {
+								channel.acking = false;
+							} );
+							.then( function() {
 								this.emit( 'backAckDone' );
 								channel.acking = false;
 							}.bind( this ) );
