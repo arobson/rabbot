@@ -54,7 +54,7 @@ module.exports = function( Broker, log ) {
 
 	Broker.prototype.batchAck = function() {
 		if ( _.size( this.ackChannels ) < 1 ) {
-			this.log.error( 'No ackChannels' );
+			// this.log.error( 'No ackChannels' );
 		} else {
 			_.forEach( this.ackChannels, function( channel ) {
 				try {
