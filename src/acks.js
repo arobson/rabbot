@@ -16,9 +16,9 @@ module.exports = function( Broker, log ) {
 			switch ( firstResult ) {
 				case 'pending':
 					var err = '0-index pendingMessage is pending, nothing to be done';
-					log.debug( err );
+					this.log.debug( err );
 					reject( err );
-					return;
+					break;
 				case 'ack':
 				case 'nack':
 					for ( var i = 1; i < _.size( channel.pendingMessages ) - 1; i++ ) {
@@ -30,9 +30,9 @@ module.exports = function( Broker, log ) {
 					break;
 				default:
 					var err = 'invalid result: ' + firstResult;
-					log.error( err );
+					this.log.error( err );
 					reject( err );
-					return;
+					break;
 			}
 
 			switch ( firstResult ) {
@@ -49,12 +49,12 @@ module.exports = function( Broker, log ) {
 						} );
 					break;
 			}
-		} );
+		}.bind( this ) );
 	};
 
 	Broker.prototype.batchAck = function() {
 		if ( _.size( this.ackChannels ) < 1 ) {
-			log.error( 'No ackChannels' );
+			// this.log.error( 'No ackChannels' );
 		} else {
 			_.forEach( this.ackChannels, function( channel ) {
 				try {
@@ -95,11 +95,17 @@ module.exports = function( Broker, log ) {
 						}
 						//???
 						else {
-							log.error( 'Edge case\n', channel.pendingMessages );
+							this.log.error( 'Edge case\n', channel.pendingMessages );
 							channel.acking = false;
 						}
 						when.all( promise )
-							.done( function() {
+							.catch( function() {
+								channel.acking = false;
+							} )
+							.then( null, function( err ) {
+								channel.acking = false;
+							} )
+							.then( function() {
 								this.emit( 'backAckDone' );
 								channel.acking = false;
 							}.bind( this ) );

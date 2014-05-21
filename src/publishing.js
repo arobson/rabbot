@@ -61,7 +61,7 @@ module.exports = function( Broker, log ) {
 								}.bind( this ) );
 						} catch ( err ) {
 							this.emit( 'errorLogged' );
-							log.error( {
+							this.log.error( {
 								error: err.stack,
 								reason: 'Error publishing message; sequenceNo=' + seqNo
 							} );
@@ -70,7 +70,7 @@ module.exports = function( Broker, log ) {
 					} else {
 						this.emit( 'errorLogged' );
 						var err = 'Cannot publish message ' + seqNo + ' to missing exchange ' + exchangeName;
-						log.error( err );
+						this.log.error( err );
 						reject( err );
 					}
 				}.bind( this ) );
@@ -87,7 +87,7 @@ module.exports = function( Broker, log ) {
 				return true;
 			} catch ( err ) {
 				this.emit( 'errorLogged' );
-				log.error( {
+				this.log.error( {
 					error: err,
 					reason: 'Failed to re-send message "' + JSON.stringify( message ) + '"'
 				} );

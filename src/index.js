@@ -11,7 +11,7 @@ var defaultTo = function( x, y ) {
 	x = x || y;
 };
 
-var logPath = __dirname.replace( 'src', 'log' );
+var logPath = './log';
 var dirExists = fs.existsSync( logPath );
 if ( !dirExists ) {
 	fs.mkdirSync( logPath );
@@ -20,10 +20,10 @@ var log = bunyan.createLogger( {
 	name: 'rabbitBroker',
 	streams: [ {
 		level: 'error',
-		path: logPath + '/error.log'
+		path: logPath + '/wascally-error.log'
 	}, {
 		level: 'debug',
-		path: logPath + '/debug.log'
+		path: logPath + '/wascally-debug.log'
 	} ]
 } );
 
@@ -35,6 +35,7 @@ var Broker = function() {
 	this.ackChannels = [];
 	this.ackIntervalId = undefined;
 	this.setAckInterval( 500 );
+	this.log = log;
 };
 
 Broker.prototype.addConnection = function( connection ) {

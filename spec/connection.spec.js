@@ -367,14 +367,14 @@ describe( 'with logging', function() {
 			resolve();
 		} )
 	}
-	var logPath = __dirname.replace( 'spec', 'log' );
+	var logPath = './log';
 	before( function( done ) {
 		open( done );
 	} );
 
 	after( function( done ) {
-		del( logPath + '/debug.log' ).done( function() {
-			del( logPath + '/error.log' ).done( function() {
+		del( logPath + '/wascally-debug.log' ).done( function() {
+			del( logPath + '/wascally-error.log' ).done( function() {
 				fs.rmdirSync( logPath );
 				done();
 			} );
@@ -385,7 +385,7 @@ describe( 'with logging', function() {
 		rabbit.publish( 'fail', 'fail', {
 			message: 'fail'
 		}, 'fail', 'fail', 'fail' );
-		fs.exists( logPath + '/error.log', function( exists ) {
+		fs.exists( logPath + '/wascally-error.log', function( exists ) {
 			exists.should.be.true;
 			done();
 		} );
