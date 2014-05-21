@@ -104,7 +104,7 @@ module.exports = function( Broker, log ) {
 							} )
 							.then( null, function( err ) {
 								channel.acking = false;
-							} );
+							} )
 							.then( function() {
 								this.emit( 'backAckDone' );
 								channel.acking = false;
