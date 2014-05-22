@@ -54,15 +54,14 @@ module.exports = function( Broker, log ) {
 			channel.pendingMessages.push( pendingJSON );
 
 			raw.setResult = function( tag, result ) {
-				var i = _.findIndex( channel.pendingMessages, {
-					'tag': tag
-				} );
-				channel.pendingMessages[ i ].result = result;
+				pendingJSON.result = result;
 			}
 			raw.ack = function() {
+				channel.firstAck = channel.firstAck || raw.fields.deliveryTag;
 				raw.setResult( raw.fields.deliveryTag, 'ack' );
 			};
 			raw.nack = function() {
+				channel.firstNack = channel.firstNack || raw.fields.deliveryTag;
 				raw.setResult( raw.fields.deliveryTag, 'nack' );
 			};
 

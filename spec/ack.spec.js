@@ -127,16 +127,13 @@ describe( 'with a mixture of acks and nacks', function() {
 				logPending();
 				messages.length.should.equal( 10 );
 				checkPendingAcksNacks( 10, 0, 0 );
-				promises = [
-					messages[ 0 ].ack(),
-					messages[ 1 ].ack(),
-					messages[ 5 ].nack(),
-					messages[ 7 ].nack(),
-					messages[ 8 ].ack(),
-					messages[ 9 ].ack()
-				];
-				when.all( promises )
-					.done( step2 );
+				messages[ 0 ].ack();
+				messages[ 1 ].ack();
+				messages[ 5 ].nack();
+				messages[ 7 ].nack();
+				messages[ 8 ].ack();
+				messages[ 9 ].ack();					
+				step2();
 			},
 			step2 = function() {
 				setTimeout( step3, 1 );
@@ -148,14 +145,11 @@ describe( 'with a mixture of acks and nacks', function() {
 				setTimeout( step4, 100 );
 			},
 			step4 = function() {
-				promises = [
-					messages[ 2 ].nack(),
-					messages[ 3 ].nack(),
-					messages[ 4 ].nack(),
-					messages[ 6 ].ack()
-				];
-				when.all( promises )
-					.done( step5 );
+				messages[ 2 ].nack();
+				messages[ 3 ].nack();
+				messages[ 4 ].nack();
+				messages[ 6 ].ack();
+				step5();
 			},
 			step5 = function() {
 				checkPendingAcksNacks( 0, 3, 5 );
@@ -165,14 +159,11 @@ describe( 'with a mixture of acks and nacks', function() {
 			},
 			step6 = function() {
 				checkPendingAcksNacks( 4, 3, 1 );
-				promises = [
-					messages[ 10 ].ack(),
-					messages[ 11 ].ack(),
-					messages[ 12 ].ack(),
-					messages[ 13 ].ack()
-				];
-				when.all( promises )
-					.done( step7 );
+				messages[ 10 ].ack();
+				messages[ 11 ].ack();
+				messages[ 12 ].ack();
+				messages[ 13 ].ack();
+				step7();
 			},
 			step7 = function() {
 				checkPendingAcksNacks( 0, 7, 1 );
@@ -188,11 +179,8 @@ describe( 'with a mixture of acks and nacks', function() {
 			},
 			step9 = function() {
 				checkPendingAcksNacks( 1, 6, 0 );
-				promises = [
-					messages[ 14 ].ack()
-				];
-				when.all( promises )
-					.done( step10 );
+				messages[ 14 ].ack();
+				step10();
 			},
 			step10 = function() {
 				checkPendingAcksNacks( 0, 7, 0 );

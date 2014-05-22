@@ -10,60 +10,58 @@ module.exports = function( Broker, log ) {
 		this.debuffering = false;
 		this.lastAck = -1;
 		this.lastNack = -1;
+		this.firstAck = undefined;
+		this.firstNack = undefined;
 
 		_.bindAll( this );
 	};
 
 	Channel.prototype.betterAck = function( tag, inclusive ) {
-		return when.promise( function( resolve, reject ) {
-			this.lastAck = tag;
-			this.setResult( tag, 'ack', inclusive );
-			resolve();
-		}.bind( this ) );
+		this.lastAck = tag;
+		this.setResult( tag, 'ack', inclusive );
+		resolve();
 	};
 
 	Channel.prototype.betterNack = function( tag, inclusive ) {
-		return when.promise( function( resolve, reject ) {
-			this.lastNack = tag;
-			this.setResult( tag, 'nack', inclusive );
-			resolve();
-		}.bind( this ) );
+		this.lastNack = tag;
+		this.setResult( tag, 'nack', inclusive );
+		resolve();
 	};
 
 	Channel.prototype.betterAckAll = function() {
-		return when.promise( function( resolve, reject ) {
-			this.lastAck = _.findLast( this.pendingMessages, function( message ) {
-				return message.result === 'ack';
-			} ).tag;
-			_.remove( this.pendingMessages, function( message ) {
-				return message.result === 'ack';
-			} );
-			this.model.ackAll();
-			resolve();
-		}.bind( this ) );
+		this.lastAck = _.findLast( this.pendingMessages, function( message ) {
+			return message.result === 'ack';
+		} ).tag;
+		_.remove( this.pendingMessages, function( message ) {
+			return message.result === 'ack';
+		} );
+		this.firstAck = undefined;
+		this.model.ackAll();
 	};
 
 	Channel.prototype.betterNackAll = function() {
-		return when.promise( function( resolve, reject ) {
-			this.lastNack = _.findLast( this.pendingMessages, function( message ) {
-				return message.result === 'nack';
-			} ).tag;
-			_.remove( this.pendingMessages, function( message ) {
-				return message.result === 'nack';
-			} );
-			this.model.nackAll();
-			resolve();
+		this.lastNack = _.findLast( this.pendingMessages, function( message ) {
+			return message.result === 'nack';
+		} ).tag;
+		_.remove( this.pendingMessages, function( message ) {
+			return message.result === 'nack';
 		} );
+		this.firstNack = undefined;
+		this.model.nackAll();
 	};
 
 	Channel.prototype.setResult = function( tag, result, inclusive ) {
-		var i = _.findIndex( this.pendingMessages, {
-			'tag': tag
-		} );
-
 		_.remove( this.pendingMessages, function( message ) {
 			return message.tag <= tag;
 		} );
+		var nextAck = _.find( this.pendingMessages, {
+			'result': 'ack'
+		} ),
+			nextNack = _.find( this.pendingMessages, {
+			'result': 'nack'
+		} );
+		this.firstAck = nextAck ? nextAck.tag : undefined;
+		this.firstNack = nextNack ? nextNack.tag : undefined;
 
 		switch ( result ) {
 			case 'ack':
