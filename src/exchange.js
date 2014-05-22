@@ -29,7 +29,7 @@ module.exports = function( Broker, log ) {
 						actualKeys = _.isArray( keys ) ? keys : [ keys ];
 					}
 					var bindings = _.map( actualKeys, function( key ) {
-						return channel.model.bindExchange( source, target, key );
+						return channel.model.bindExchange( target, source, key );
 					} );
 					when.all( bindings )
 						.then( null, function( err ) {
