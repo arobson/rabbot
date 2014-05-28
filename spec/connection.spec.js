@@ -86,7 +86,7 @@ describe( 'with valid user-specified connection criteria', function() {
 			name: 'test',
 			user: 'guest',
 			pass: 'guest',
-			server: '127.0.0.1',
+			server: '127.0.0.1, ubuntu',
 			port: 5672,
 			vhost: '%2f'
 		};
