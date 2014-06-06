@@ -1,10 +1,13 @@
 var _ = require( 'lodash' ),
 	postal = require( 'postal' ),
-	when = require( 'when' );
+	when = require( 'when' ),
+	uuid = require( 'node-uuid' );
 
 module.exports = function( Broker, log ) {
 
-	var dispatch = postal.channel( 'rabbit.dispatch' );
+	var dispatch = postal.channel( 'rabbit.dispatch' ),
+		responses = postal.channel( 'rabbit.responses' ),
+		responseSubscriptions = {};
 
 	Broker.prototype.handle = function( messageType, handler, context ) {
 		var subscription = dispatch.subscribe( messageType, handler.bind( context ) );
@@ -12,60 +15,41 @@ module.exports = function( Broker, log ) {
 		return subscription;
 	};
 
+	Broker.prototype.request = function( exchangeName, options, connectionName ) {
+		var requestId = uuid.v1();
+		options.messageId = requestId;
+		options.connectionName = connectionName;
+		options.replyTo = this.replyTo;
+		return when.promise( function( resolve, reject, notify ) {
+			var subscription = responses.subscribe( requestId, function( message ) {
+				if( message.properties.headers[ 'sequence_end' ] ) {
+					resolve( message );
+					subscription.unsubscribe();
+				} else {
+					notify( message );
+				}
+			} );
+			this.publish( exchangeName, options );
+		}.bind( this ) );
+	};
+
 	Broker.prototype.startSubscription = function( queue, connectionName ) {
 		connectionName = connectionName || 'default';
-		var channelName = 'queue-' + queue,
-			list = this.connections[ connectionName ].consuming;
-		if ( !_.contains( list, queue ) ) {
-			list.push( channelName );
-		}
-
 		return when.promise( function( resolve, reject ) {
-			this.getChannel( channelName, connectionName )
-				.then( null, function( err ) {
-					reject( err );
-				} )
+			this.getQueue( queue, connectionName )
+				.then( null, reject )
 				.then( function( channel ) {
 					try {
-						var consumerTag = this.subscribe( channel, queue );
+						var consumerTag = channel.subscribe( queue );
 						if ( !consumerTag ) {
 							reject( 'Could not subscribe to queue "' + queue + '"' );
 						} else {
-							resolve( consumerTag );
+							resolve( channel );
 						}
 					} catch ( err ) {
 						reject( err );
 					}
 				}.bind( this ) );
-		}.bind( this ) );
-	};
-
-	Broker.prototype.subscribe = function( channel, queueName ) {
-		if ( this.ackChannels.indexOf( channel ) === -1 ) {
-			this.ackChannels.push( channel );
-		}
-		return channel.model.consume( queueName, function( raw ) {
-			raw.body = JSON.parse( raw.content.toString( 'utf8' ) );
-
-			var pendingJSON = {
-				'tag': raw.fields.deliveryTag,
-				'result': 'pending'
-			};
-			channel.pendingMessages.push( pendingJSON );
-
-			raw.setResult = function( tag, result ) {
-				pendingJSON.result = result;
-			}
-			raw.ack = function() {
-				channel.firstAck = channel.firstAck || raw.fields.deliveryTag;
-				raw.setResult( raw.fields.deliveryTag, 'ack' );
-			};
-			raw.nack = function() {
-				channel.firstNack = channel.firstNack || raw.fields.deliveryTag;
-				raw.setResult( raw.fields.deliveryTag, 'nack' );
-			};
-
-			dispatch.publish( raw.properties.type, raw );
 		}.bind( this ) );
 	};
 };

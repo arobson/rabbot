@@ -27,39 +27,7 @@ var close = function( done, reset, connectionName ) {
 	}
 };
 
-describe( 'when aliasing options', function() {
-	var options = {
-		a: 1,
-		bee: 2,
-		cee: 3,
-		dee: 4,
-		e: 5,
-		eff: 6,
-		gee: 7
-	};
-	var expected = {
-		a: 1,
-		b: 2,
-		c: 3,
-		d: 4,
-		e: 5
-	};
-	var aliased = {};
-	before( function() {
-		aliased = rabbit.aliasOptions( options, {
-			bee: 'b',
-			cee: 'c',
-			dee: 'd'
-		}, 'gee', 'eff' );
-	} );
-
-	it( 'should filter out invalid options', function() {
-		aliased.should.eql( expected );
-	} );
-} );
-
 describe( 'when configuring with valid settings', function() {
-	// this.timeout(99999);
 	var testConnection = undefined;
 	var promise = undefined;
 
@@ -119,7 +87,6 @@ describe( 'when configuring with valid settings', function() {
 				target: 'config-ex.4',
 				keys: 'bob'
 			} ]
-
 		};
 
 		promise = rabbit.configure( config );
@@ -135,18 +102,6 @@ describe( 'when configuring with valid settings', function() {
 			.done( function() {
 				done();
 			}.bind( this ) );
-	} );
-
-	it( 'adds or verifies the requested exchanges', function( done ) {
-		testConnection.exchanges[ 'config-ex.1' ].should.be.ok;
-		testConnection.exchanges[ 'config-ex.2' ].should.be.ok;
-		done();
-	} );
-
-	it( 'adds or verifies the requested queues', function( done ) {
-		testConnection.queues[ 'config-q.1' ].should.be.ok;
-		testConnection.queues[ 'config-q.2' ].should.be.ok;
-		done();
 	} );
 
 	it( 'binds exchanges to queues', function( done ) {

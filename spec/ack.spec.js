@@ -56,18 +56,20 @@ describe( 'with a mixture of acks and nacks', function() {
 		} ]
 	};
 
+	var ch;
+
 	before( function( done ) {
 		rabbit.configure( config )
 			.done( function() {
-				done();
+				rabbit.getQueue( 'q.1' )
+					.then( function( queue ) {
+						ch = queue;
+						done();
+					} );
 			} );
 	} );
 
 	it( 'should enqueue acks/nacks for rabbit', function( done ) {
-
-		var ch = rabbit.connections[ 'default' ].channels[ 'queue-q.1' ];
-		ch.should.be.ok;
-
 		//Our batchAck is called last in our test, when we have
 		//7 acks to do, no nacks, nothing pending
 		rabbit.on( 'batchAckAll', function() {
@@ -100,8 +102,8 @@ describe( 'with a mixture of acks and nacks', function() {
 			var foundPending = 0,
 				foundAck = 0,
 				foundNack = 0;
-			for ( var i = 0; i < _.size( ch.pendingMessages ); i++ ) {
-				switch ( ch.pendingMessages[ i ].result ) {
+			for ( var i = 0; i < _.size( ch.receivedMessages ); i++ ) {
+				switch ( ch.receivedMessages[ i ].result ) {
 					case 'pending':
 						foundPending++;
 						break;

@@ -33,6 +33,11 @@ describe( 'when creating channel, exchange, or queue', function() {
 		close( done );
 	} );
 
+	before( function( done ) {
+		rabbit.addConnection()
+			.then( function() { done(); });
+	} );
+
 	it( 'should acquire channel successfully', function( done ) {
 		rabbit.getChannel( 'one' )
 			.then( function( channel ) {
@@ -46,7 +51,7 @@ describe( 'when creating channel, exchange, or queue', function() {
 			autoDelete: true
 		} )
 		.then( function( ex ) {
-			rabbit.connections[ 'default' ].exchanges[ 'ex.1' ].should.be.ok;
+			ex.name.should.equal( 'ex.1' );
 			done();
 		} );
 	} );
@@ -56,7 +61,7 @@ describe( 'when creating channel, exchange, or queue', function() {
 			autoDelete: true
 		} )
 		.then( function( q ) {
-			rabbit.connections[ 'default' ].queues[ 'q.1' ].should.be.ok;
+			q.name.should.equal( 'q.1' );
 			done();
 		} );
 	} );
@@ -151,20 +156,15 @@ describe( 'with a valid topic exchange and queue', function() {
 	} );
 
 	it( 'should publish and handle messages correctly according to type', function( done ) {
-		var sequence = rabbit._sequenceNo + 1,
-			testHandler = rabbit.handle( 'this.is.a.test', function( message ) {
+		var testHandler = rabbit.handle( 'this.is.a.test', function( message ) {
 				message.body.message.should.eql( 'topic exchange message' );
 				message.properties.deliveryMode.should.equal( 2 );
 				testHandler.remove();
 			} );
-		rabbit.on( 'messageConfirmed', function( seqNo ) {
-			if ( seqNo == sequence ) {
-				done();
-			}
-		} );
 		rabbit.publish( 'topic.ex.1', 'this.is.a.test', {
-			message: 'topic exchange message'
-		} );
+				message: 'topic exchange message'
+			} )
+			.then( function() { done(); } );
 	} );
 
 	after( function( done ) {
@@ -172,52 +172,55 @@ describe( 'with a valid topic exchange and queue', function() {
 	} );
 } );
 
-describe( 'when adding or binding a valid exchange or queue', function() {
+describe( 'when testing reconnection', function() {
 	before( function( done ) {
-		rabbit.getConnection( 'fred' )
-			.then( function() {
-				done();
+		var config = {
+			connection: {
+				name: 'reconnectionTest',
+				user: 'guest',
+				pass: 'guest',
+				server: '127.0.0.1',
+				port: 5672,
+				vhost: '%2f',
+			},
+
+			exchanges: [ {
+				name: 'recon-ex.1',
+				type: 'fanout',
+				autoDelete: true
+			} ],
+
+			queues: [ {
+				name: 'recon-q.1',
+				autoDelete: true,
+				subscribe: true
+			} ],
+
+			bindings: [ {
+				exchange: 'recon-ex.1',
+				target: 'recon-q.1',
+				keys: []
+			} ]
+		};
+
+		rabbit.configure( config )
+			.done( function() { 
+				rabbit.close( 'reconnectionTest' )
+					.then( function() { 
+						done(); 
+					} );
 			} );
 	} );
 
-	it( 'should save the addExchange declaration', function() {
-		rabbit.addExchange( 'ex.101', 'fanout', {
-			autoDelete: true
-		}, 'fred' );
-		var func = rabbit.connections[ 'fred' ].reconnectTasks[ 0 ];
-		rabbit.connections[ 'fred' ].reconnectTasks.length.should.equal( 1 );
-		func.should.be.type( 'function' );
-	} );
-
-	it( 'should save the addQueue declaration', function() {
-		rabbit.addQueue( 'q.101', {
-			autoDelete: true,
-			subscribe: true
-		}, 'fred' );
-		var func = rabbit.connections[ 'fred' ].reconnectTasks[ 1 ];
-		rabbit.connections[ 'fred' ].reconnectTasks.length.should.equal( 2 );
-		func.should.be.type( 'function' );
-	} );
-
-	it( 'should save the bindQueue declaration', function() {
-		rabbit.bindQueue( 'ex.101', 'q.101', '', 'fred' );
-		var func = rabbit.connections[ 'fred' ].reconnectTasks[ 2 ];
-		rabbit.connections[ 'fred' ].reconnectTasks.length.should.equal( 3 );
-		func.should.be.type( 'function' );
-	} );
-
-	it( 'should save the bindExchange declaration', function() {
-		rabbit.addExchange( 'ex.102', 'fanout', {
-			autoDelete: true
-		}, 'fred' );
-		rabbit.bindExchange( 'ex.101', 'ex.102', '', 'fred' );
-		var func = rabbit.connections[ 'fred' ].reconnectTasks[ 4 ];
-		rabbit.connections[ 'fred' ].reconnectTasks.length.should.equal( 5 );
-		func.should.be.type( 'function' );
+	it( 'should restablish topology and receive messages', function( done ) {
+		rabbit.handle( 'recon.test', function( message ) {
+			done();
+		} );
+		rabbit.publish( 'recon-ex.1', { body: 'hello', type: 'recon.test' }, 'reconnectionTest' );
 	} );
 
 	after( function( done ) {
-		rabbit.close( 'fred' ).done( function() {
+		rabbit.close( 'reconnectionTest' ).done( function() {
 			done();
 		} );
 	} );

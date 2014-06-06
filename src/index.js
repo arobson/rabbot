@@ -28,18 +28,24 @@ var log = bunyan.createLogger( {
 } );
 
 var Broker = function() {
-	this._sequenceNo = 0;
 	this.connections = {};
-	this.pendingMessages = this.pendingMessages || {};
-	_.bindAll( this );
-	this.ackChannels = [];
-	this.ackIntervalId = undefined;
 	this.setAckInterval( 500 );
 	this.log = log;
+	_.bindAll( this );
 };
 
-Broker.prototype.addConnection = function( connection ) {
-	connection = new Connection( connection, this );
+Broker.prototype.addConnection = function( options ) {
+	var connection = Connection( options, this );
+	connection.on( 'connected', function() {
+		this.emit( 'connected', connection );
+		this.emit( connection.name + '.connection.opened', connection );
+	}.bind( this) );
+	connection.on( 'closed', function() {
+		this.emit( connection.name + '.connection.closed', connection );
+	}.bind( this ) );
+	connection.on( 'connection.failed', function( err ) {
+		this.emit( connection.name + '.connection.failed', err );
+	}.bind( this ) );
 	if ( this.connections[ connection.name ] ) {
 		return this.getConnection( connection.name );
 	}
@@ -47,44 +53,32 @@ Broker.prototype.addConnection = function( connection ) {
 	return connection.connect();
 };
 
-Broker.prototype.closeAll = function( clearReconnectTasks ) {
+Broker.prototype.closeAll = function( reset ) {
 	// COFFEE IS FOR CLOSERS
 	var closers = _.map( this.connections, function( connection ) {
-		return this.close( connection.name, clearReconnectTasks );
+		return this.close( connection.name, reset );
 	}, this );
 	return when.all( closers );
 };
 
-Broker.prototype.close = function( connectionName, clearReconnectTasks ) {
+Broker.prototype.close = function( connectionName, reset ) {
 	connectionName = connectionName || 'default';
 	var connection = this.connections[ connectionName ];
-	if ( clearReconnectTasks ) {
-		connection.reconnectTasks = [];
+	if ( reset ) {
+		if( connection ) {
+			connection.reset();
+		}
 	}
 
 	return when.promise( function( resolve, reject ) {
 		if ( _.isUndefined( connection ) ) {
 			resolve();
 		}
-		else if ( !connection.isOpen ) {
+		else if ( !connection.isAvailable() ) {
 			resolve();
 		} else {
-			if ( _.size( this.ackChannels ) > 0 ) {
-				_.each( connection.channels, function( channel ) {
-					var i = this.ackChannels.indexOf( channel );
-					if ( i !== -1 ) {
-						this.ackChannels.splice( i, 1 );
-					}
-				}.bind( this ) );
-			}
-
-			connection.handle.close()
+			connection.close()
 				.then( function() {
-					connection.isOpen = false;
-					connection.handle = undefined;
-					connection.channels = {};
-					connection.exchanges = {};
-					connection.queues = {};
 					resolve();
 				} );
 		}
@@ -97,19 +91,7 @@ Broker.prototype.getConnection = function( connectionName ) {
 
 	return when.promise( function( resolve, reject ) {
 		if ( !connection ) {
-			this.addConnection( {
-				name: connectionName
-			} )
-				.then( null, function( err ) {
-					log.error( {
-						error: err,
-						reason: 'Could not add create a default connection for "' + connectionName + '"'
-					} );
-					reject( err );
-				} )
-				.then( resolve );
-		} else if ( connection.isOpen ) {
-			resolve( connection );
+			reject( 'No connection named ' + connectionName + ' has been defined' );	
 		} else {
 			connection
 				.connect()
@@ -125,24 +107,40 @@ Broker.prototype.getConnection = function( connectionName ) {
 	}.bind( this ) );
 };
 
-Broker.prototype.getHandle = function( connectionName ) {
-	var connection = this.getConnection( connectionName );
-	return connection ? connection.handle : undefined;
-};
+Broker.prototype.getChannel = function( name, connectionName, confirm ) {
+	connectionName = connectionName || 'default';
+	return when.promise( function( resolve, reject ) {
+		var connection,
+			onConnection = function( instance ) {
+					connection = instance;
+					connection.getChannel( name, confirm )
+						.then( resolve )
+						.then( null, channelFailed );
+				}.bind( this ),
+			channelFailed = function( err ) {
+					this.emit( 'errorLogged' );
+					this.log.error( {
+						error: err,
+						reason: 'Could not create channel "' + name + '" on connection "' + connectionName + '"'
+					} );
+					reject( err );
+				}.bind( this ),
+			connectionFailed = function( err ) {
+					this.emit( 'errorLogged' );
+					this.log.error( {
+						error: err,
+						reason: 'Could not acquire connection "' + connectionName + '" trying to create channel "' + name + '"'
+					} );
+					reject( err );
+				}.bind( this );
 
-Broker.prototype.onReconnect = function( connectionName, call, args, take, suppress ) {
-	if ( !suppress ) {
-		var argList = Array.prototype.slice.call( args, 0, take );
-		this.connections[ connectionName ]
-			.reconnectTasks
-			.push( function() {
-				return Broker.prototype[ call ].apply( this, argList.concat( connectionName, true ) );
-			}.bind( this ) );
-	}
+		this.getConnection( connectionName )
+			.then( onConnection )
+			.then( null, connectionFailed );
+	}.bind( this ) );
 };
 
 require( './acks.js' )( Broker, log );
-require( './channel.js' )( Broker, log );
 require( './config.js' )( Broker, log );
 require( './exchange.js' )( Broker, log );
 require( './publishing.js' )( Broker, log );

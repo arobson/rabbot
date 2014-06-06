@@ -1,80 +1,42 @@
 var _ = require( 'lodash' ),
-	when = require( 'when' );
+	when = require( 'when' ),
+	uuid = require( 'node-uuid' );
 
 module.exports = function( Broker, log ) {
 
-	Broker.prototype.addPendingMessage = function( exchangeName, type, message, routingKey, correlationId, connectionName ) {
-		var seqNo = ++this._sequenceNo,
-			msgDetails = {
-				exchangeName: exchangeName,
-				type: type,
-				message: message,
-				routingKey: routingKey || type,
-				correlationId: correlationId,
-				connectionName: connectionName || 'default',
-				sequenceNo: seqNo
-			};
-		this.pendingMessages[ seqNo ] = msgDetails;
-		return message;
-	};
-
 	Broker.prototype.publish = function( exchangeName, type, message, routingKey, correlationId, connectionName, sequenceNo ) {
+		var replyTo = undefined,
+			messageId = undefined,
+			appId = this.appId,
+			headers = {},
+			timestamp = Date.now(),
+			options;
+		if( _.isObject( type ) ) {
+			options = type;
+			connectionName = message;
+		} else {
+			options = {
+				appId: this.appId,
+				type: type,
+				body: message,
+				routingKey: routingKey,
+				correlationId: correlationId,
+				replyTo: replyTo,
+				sequenceNo: sequenceNo,
+				timestamp: timestamp,
+				headers: {}
+			}
+		}
 		connectionName = connectionName || 'default';
 		return when.promise( function( resolve, reject ) {
-			this.getConnection( connectionName )
-				.done( function() {
-					var exchange = this.getExchange( exchangeName, connectionName ),
-						payload = new Buffer( JSON.stringify( message ) ),
-						options = {
-							type: type,
-							contentType: 'application/json',
-							contentEncoding: 'utf8',
-							correlationId: correlationId,
-							headers: {
-								'CorrelationId': correlationId
-							}
-						},
-						seqNo;
-					if ( exchange ) {
-						try {
-							if ( !sequenceNo ) {
-								message = this.addPendingMessage( exchangeName, type, message, routingKey, correlationId, connectionName );
-							}
-							seqNo = sequenceNo || this._sequenceNo; // create a closure around sequence
-							if ( exchange.persistent ) {
-								options.persistent = true;
-							}
-							exchange.model.publish(
-								exchangeName,
-								routingKey || type,
-								payload,
-								options,
-								function( err ) {
-									if ( err === null ) {
-										delete this.pendingMessages[ seqNo ];
-										this.emit( 'messageConfirmed', seqNo );
-										resolve();
-									} else {
-										this.emit( 'messageNotConfirmed', seqNo );
-										reject( err );
-									}
-								}.bind( this ) );
-						} catch ( err ) {
-							this.emit( 'errorLogged' );
-							this.log.error( {
-								error: err.stack,
-								reason: 'Error publishing message; sequenceNo=' + seqNo
-							} );
-							reject( err );
-						}
-					} else {
-						this.emit( 'errorLogged' );
-						var err = 'Cannot publish message ' + seqNo + ' to missing exchange ' + exchangeName;
-						this.log.error( err );
-						reject( err );
-					}
-				}.bind( this ) );
-		}.bind( this ) );
+			this.getExchange( exchangeName, connectionName )
+				.then( function( exchange ) {
+					exchange.publish( options )
+						.then( resolve );
+				}.bind( this ) )
+				.then( null, reject )
+				.catch( reject );
+			}.bind( this ) );
 	};
 
 	Broker.prototype.sendPendingMessages = function() {
