@@ -6,35 +6,14 @@ var rabbit = require( '../src/index.js' ),
 	fs = require( 'fs' ),
 	when = require( 'when' );
 
-var open = function( done, connectionName ) {
-	rabbit.getConnection( connectionName )
-		.then( function() {
-			done();
-		} );
-};
-
-var close = function( done, reset, connectionName ) {
-	if ( connectionName ) {
-		rabbit.close( connectionName, reset )
-			.then( function() {
-				done();
-			} );
-	} else {
-		rabbit.closeAll( reset )
-			.then( function() {
-				done();
-			} );
-	}
-};
-
 describe( 'when configuring with valid settings', function() {
-	var testConnection = undefined;
+	// var testConnection = undefined;
 	var promise = undefined;
 
 	before( function( done ) {
 		rabbit.on( 'configTest.connection.configured', function( conn ) {
-			testConnection = conn;
-			testConnection.should.have.property( 'name', 'configTest' );
+			// testConnection = conn;
+			// testConnection.should.have.property( 'name', 'configTest' );
 			done();
 		} ).disposeAfter( 1 );
 
@@ -56,14 +35,6 @@ describe( 'when configuring with valid settings', function() {
 				name: 'config-ex.2',
 				type: 'topic',
 				autoDelete: true
-			}, {
-				name: 'config-ex.3',
-				type: 'direct',
-				autoDelete: true
-			}, {
-				name: 'config-ex.4',
-				type: 'direct',
-				autoDelete: true
 			} ],
 
 			queues: [ {
@@ -82,19 +53,19 @@ describe( 'when configuring with valid settings', function() {
 				exchange: 'config-ex.2',
 				target: 'config-q.2',
 				keys: 'test1'
-			}, {
-				exchange: 'config-ex.3',
-				target: 'config-ex.4',
-				keys: 'bob'
 			} ]
 		};
 
 		promise = rabbit.configure( config );
 		promise.should.be.ok;
+		promise.then( function() { done(); } );
 	} );
 
 	after( function( done ) {
-		close( done, true, 'configTest' );
+		rabbit.close( 'configTest', true )
+			.then( function() {
+				done();
+			} );
 	} );
 
 	it( 'returns and resolves a promise', function( done ) {
@@ -111,12 +82,9 @@ describe( 'when configuring with valid settings', function() {
 			msg.body.should.have.property( 'greeting', 'hello world' );
 			done();
 		}, this );
-
-		rabbit.startSubscription( 'config-q.1', 'configTest' )
-			.done( function() {
-				rabbit.publish( 'config-ex.1', 'config.test.message', {
-					greeting: 'hello world'
-				}, '', '', 'configTest' );
-			} );
+		rabbit.startSubscription( 'config-q.1', 'configTest' );
+		rabbit.publish( 'config-ex.1', 'config.test.message', {
+			greeting: 'hello world'
+		}, '', '', 'configTest' );
 	} );
 } );

@@ -5,37 +5,30 @@ var _ = require( 'lodash' ),
 	pipeline = require( 'when/pipeline' ),
 	bunyan = require( 'bunyan' ),
 	fs = require( 'fs' ),
-	Connection = require( './connection.js');
+	Connection = require( './connection.js'),
+	Topology = require( './topology.js' ),
+	postal = require( 'postal' ),
+	uuid = require( 'node-uuid' ),
+	log = require( './log.js' );
 
 var defaultTo = function( x, y ) {
 	x = x || y;
 };
 
-var logPath = './log';
-var dirExists = fs.existsSync( logPath );
-if ( !dirExists ) {
-	fs.mkdirSync( logPath );
-}
-var log = bunyan.createLogger( {
-	name: 'rabbitBroker',
-	streams: [ {
-		level: 'error',
-		path: logPath + '/wascally-error.log'
-	}, {
-		level: 'debug',
-		path: logPath + '/wascally-debug.log'
-	} ]
-} );
+var dispatch = postal.channel( 'rabbit.dispatch' ),
+	responses = postal.channel( 'rabbit.responses' ),
+	signal = postal.channel( 'rabbit.ack' ),
+	responseSubscriptions = {};
 
 var Broker = function() {
 	this.connections = {};
 	this.setAckInterval( 500 );
-	this.log = log;
 	_.bindAll( this );
 };
 
 Broker.prototype.addConnection = function( options ) {
-	var connection = Connection( options, this );
+	var connection = Connection( options || {} ),
+		topology = Topology( connection );
 	connection.on( 'connected', function() {
 		this.emit( 'connected', connection );
 		this.emit( connection.name + '.connection.opened', connection );
@@ -43,14 +36,50 @@ Broker.prototype.addConnection = function( options ) {
 	connection.on( 'closed', function() {
 		this.emit( connection.name + '.connection.closed', connection );
 	}.bind( this ) );
-	connection.on( 'connection.failed', function( err ) {
+	connection.on( 'failed', function( err ) {
 		this.emit( connection.name + '.connection.failed', err );
 	}.bind( this ) );
-	if ( this.connections[ connection.name ] ) {
-		return this.getConnection( connection.name );
+	this.connections[ connection.name ] = topology;
+	return topology;
+};
+
+Broker.prototype.addExchange = function( name, type, options, connectionName ) {
+	connectionName = connectionName || 'default';
+	if( _.isObject( name ) ) {
+		options = name;
+		connectionName = type;
+	} else {
+		options.name = name;
+		options.type = type;
 	}
-	this.connections[ connection.name ] = connection;
-	return connection.connect();
+	return this.connections[ connectionName ].createExchange( options );
+};
+
+Broker.prototype.addQueue = function( name, options, connectionName ) {
+	connectionName = connectionName || 'default';
+	options.name = name;
+	return this.connections[ connectionName ].createQueue( options, connectionName );
+};
+
+Broker.prototype.batchAck = function() {
+	signal.publish( 'ack', {} );
+};
+
+Broker.prototype.bindExchange = function( source, target, keys, connectionName ) {
+	connectionName = connectionName || 'default';
+	return this[ connectionName ].createBinding( { source: source, target: target, keys: keys } );
+};
+
+Broker.prototype.bindQueue = function( source, target, keys, connectionName ) {
+	connectionName = connectionName || 'default';
+	return this.connections[ connectionName ].createBinding( 
+		{ source: source, target: target, keys: keys, queue: true }
+		, connectionName 
+	);
+};
+
+Broker.prototype.clearAckInterval = function() {
+	clearInterval( this.ackIntervalId );
 };
 
 Broker.prototype.closeAll = function( reset ) {
@@ -63,89 +92,100 @@ Broker.prototype.closeAll = function( reset ) {
 
 Broker.prototype.close = function( connectionName, reset ) {
 	connectionName = connectionName || 'default';
-	var connection = this.connections[ connectionName ];
-	if ( reset ) {
-		if( connection ) {
-			connection.reset();
+	var connection = this.connections[ connectionName ].connection;
+	if ( !_.isUndefined( connection ) ) {
+		if ( reset ) {
+			this.connections[ connectionName ].reset();
+		}
+		return connection.close();
+	} else {
+		return when( true );
+	}
+};
+
+Broker.prototype.getExchange = function( name, connectionName ) {
+	connectionName = connectionName || 'default';
+	return this.connections[ connectionName ].channels[ 'exchange:' + name ];
+};
+
+Broker.prototype.getQueue = function( name, connectionName ) {
+	connectionName = connectionName || 'default';
+	return this.connections[ connectionName ].channels[ 'queue:' + name ];
+};
+
+Broker.prototype.handle = function( messageType, handler, context ) {
+	var subscription = dispatch.subscribe( messageType, handler.bind( context ) );
+	subscription.remove = subscription.unsubscribe;
+	return subscription;
+};
+
+Broker.prototype.publish = function( exchangeName, type, message, routingKey, correlationId, connectionName, sequenceNo ) {
+	var replyTo = undefined,
+		messageId = undefined,
+		appId = this.appId,
+		headers = {},
+		timestamp = Date.now(),
+		options;
+	if( _.isObject( type ) ) {
+		options = type;
+		connectionName = message || options.connectionName;
+	} else {
+		options = {
+			appId: this.appId,
+			type: type,
+			body: message,
+			routingKey: routingKey,
+			correlationId: correlationId,
+			replyTo: replyTo,
+			sequenceNo: sequenceNo,
+			timestamp: timestamp,
+			headers: {},
+			connectionName: connectionName || 'default'
 		}
 	}
-
-	return when.promise( function( resolve, reject ) {
-		if ( _.isUndefined( connection ) ) {
-			resolve();
-		}
-		else if ( !connection.isAvailable() ) {
-			resolve();
-		} else {
-			connection.close()
-				.then( function() {
-					resolve();
-				} );
-		}
-	}.bind( this ) );
-};
-
-Broker.prototype.getConnection = function( connectionName ) {
 	connectionName = connectionName || 'default';
-	var connection = this.connections[ connectionName ];
-
-	return when.promise( function( resolve, reject ) {
-		if ( !connection ) {
-			reject( 'No connection named ' + connectionName + ' has been defined' );	
-		} else {
-			connection
-				.connect()
-				.then( null, function( err ) {
-					log.error( {
-						error: err,
-						reason: 'Could not reconnect connection "' + connectionName + '"'
-					} );
-					reject( err );
-				} )
-				.then( resolve );
-		}
-	}.bind( this ) );
+	return this.getExchange( exchangeName, connectionName )
+				.publish( options );
 };
 
-Broker.prototype.getChannel = function( name, connectionName, confirm ) {
+Broker.prototype.request = function( exchangeName, options, connectionName ) {
 	connectionName = connectionName || 'default';
-	return when.promise( function( resolve, reject ) {
-		var connection,
-			onConnection = function( instance ) {
-					connection = instance;
-					connection.getChannel( name, confirm )
-						.then( resolve )
-						.then( null, channelFailed );
-				}.bind( this ),
-			channelFailed = function( err ) {
-					this.emit( 'errorLogged' );
-					this.log.error( {
-						error: err,
-						reason: 'Could not create channel "' + name + '" on connection "' + connectionName + '"'
-					} );
-					reject( err );
-				}.bind( this ),
-			connectionFailed = function( err ) {
-					this.emit( 'errorLogged' );
-					this.log.error( {
-						error: err,
-						reason: 'Could not acquire connection "' + connectionName + '" trying to create channel "' + name + '"'
-					} );
-					reject( err );
-				}.bind( this );
-
-		this.getConnection( connectionName )
-			.then( onConnection )
-			.then( null, connectionFailed );
+	var requestId = uuid.v1();
+	options.messageId = requestId;
+	options.connectionName = connectionName;
+	options.replyTo = this.replyTo;
+	return when.promise( function( resolve, reject, notify ) {
+		var subscription = responses.subscribe( requestId, function( message ) {
+			if( message.properties.headers[ 'sequence_end' ] ) {
+				resolve( message );
+				subscription.unsubscribe();
+			} else {
+				notify( message );
+			}
+		} );
+		this.publish( exchangeName, options );
 	}.bind( this ) );
 };
 
-require( './acks.js' )( Broker, log );
-require( './config.js' )( Broker, log );
-require( './exchange.js' )( Broker, log );
-require( './publishing.js' )( Broker, log );
-require( './queue.js' )( Broker, log );
-require( './subscribing.js' )( Broker, log );
+Broker.prototype.setAckInterval = function( interval ) {
+	if( this.ackIntervalId ) {
+		this.clearAckInterval();
+	}
+	this.ackIntervalId = setInterval( this.batchAck, interval );
+};
+
+Broker.prototype.startSubscription = function( queue, connectionName ) {
+	connectionName = connectionName || 'default';
+	var queue = this.getQueue( queue, connectionName );
+	if( queue ) {
+		var consumerTag = queue.subscribe( queue );
+		return queue;
+	} else {
+		throw new Error( 'No queue named "' + queue + '" for connection "' + connectionName + '". Subscription failed.' );
+	}
+};
+
+require( './config.js' )( Broker );
 
 Monologue.mixin( Broker );
 

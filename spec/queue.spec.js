@@ -6,24 +6,9 @@ var rabbit = require( '../src/index.js' ),
 	fs = require( 'fs' ),
 	when = require( 'when' );
 
-var close = function( reset, connectionName, done ) {
-	if ( connectionName ) {
-		rabbit.close( connectionName, reset )
-			.then( function() {
-				done();
-			} );
-	} else {
-		rabbit.closeAll( reset )
-			.then( function() {
-				done();
-			} );
-	}
-};
-
 describe( 'with default connection', function() {
-	before( function( done ) {
-		rabbit.addConnection()
-			.then( function() { done() } );
+	before( function() {
+		rabbit.addConnection();
 	} );
 
 	describe( 'with a consumer limit', function() {
@@ -48,13 +33,11 @@ describe( 'with default connection', function() {
 		} );
 
 		it( 'should publish and handle messages correctly according to type', function( done ) {
-			this.timeout( 1000 );
 			var messages = [],
 				testHandler = rabbit.handle( 'test.5', function( message ) {
 					messages.push( message );
 					message.body.message.should.eql( 'hello, world!' );
 				} );
-
 			for ( i = 0; i <= 5; i++ ) {
 				rabbit.publish( 'ex.5', 'test.5', {
 					message: 'hello, world!'
@@ -96,7 +79,10 @@ describe( 'with default connection', function() {
 		} );
 
 		after( function( done ) {
-			close( true, 'default', done );
+			rabbit.close( 'default', true )
+				.then( function() {
+					done();
+				} );
 		} );
 	} );
 
@@ -126,14 +112,18 @@ describe( 'with default connection', function() {
 			var messagesOver5 = false;
 
 			var messages = [],
+				confirmedCount = 0,
 				testHandler = rabbit.handle( 'test.6', function( message ) {
 					messages.push( message );
 					message.body.message.should.eql( 'hello, world!' );
 					message.ack();
 					rabbit.batchAck();
-				} );
-
-			var confirmedCount = 0;
+				} ),
+				queue = rabbit.connections[ 'default' ].getChannel( 'q.6' ),
+				batchAck = function() { 
+					queue.receivedMessages._processBatch(); 
+				};
+				
 			
 			for ( i = 0; i <= 10; i++ ) {
 				rabbit.publish( 'ex.6', 'test.6', {
@@ -154,7 +144,10 @@ describe( 'with default connection', function() {
 		} );
 
 		after( function( done ) {
-			close( true, 'default', done );
+			rabbit.close( 'default', true )
+				.then( function() {
+					done();
+				} );
 		} );
 	} );
 } );

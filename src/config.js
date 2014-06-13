@@ -1,8 +1,9 @@
 var _ = require( 'lodash' ),
 	when = require( 'when' ),
-	pipeline = require( 'when/pipeline' );
+	pipeline = require( 'when/pipeline' ),
+	log = require( './log' );
 
-module.exports = function( Broker, log ) {
+module.exports = function( Broker ) {
 
 	Broker.prototype.configure = function( config ) {
 		// convenience method to add connection and build up using specified configuration
@@ -15,18 +16,18 @@ module.exports = function( Broker, log ) {
 			var createExchanges = function() {
 				connection.configureExchanges( config.exchanges )
 					.then( null, function( err ) {
-						this.log.error( {
+						log.error( {
 							error: err,
 							reason: 'Could not configure exchanges as specified'
 						} );
 						reject( err );
 					}.bind( this ) )
-					.then( createQueues );
+					.then( createQueues )
 				}.bind( this ),
 				createQueues = function() {
 					connection.configureQueues( config.queues )
 						.then( null, function( err ) {
-							this.log.error( {
+							log.error( {
 								error: err,
 								reason: 'Could not configure queues as specified'
 							} );
@@ -37,7 +38,7 @@ module.exports = function( Broker, log ) {
 				createBindings = function() {
 					connection.configureBindings( config.bindings, connection.name )
 						.then( null, function( err ) {
-							this.log.error( {
+							log.error( {
 								error: err,
 								reason: 'Could not configure bindings as specified'
 							} );
@@ -49,18 +50,9 @@ module.exports = function( Broker, log ) {
 					emit( connection.name + '.connection.configured', connection );
 					resolve();
 				};
-			this.addConnection( config.connection )
-				.then( null, function( err ) {
-					this.log.error( {
-						error: err,
-						reason: 'Could not establish the connection specified'
-					} );
-					reject( err );
-				}.bind( this ) )
-				.then( function( c ) {
-					connection = c;
-					createExchanges();
-				} );
+			connection = this.addConnection( config.connection );
+
+			createExchanges();
 		}.bind( this ) );
 	};
 };

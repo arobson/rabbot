@@ -7,51 +7,23 @@ var rabbit = require( '../src/index.js' ),
 	when = require( 'when' ),
 	pipeline = require( 'when/pipeline' );
 
-var open = function( done, connectionName ) {
-	rabbit.getConnection( connectionName )
-		.then( function() {
-			done();
-		} );
-};
-
-var close = function( done, reset, connectionName ) {
-	if ( connectionName ) {
-		rabbit.close( connectionName, reset )
-			.then( function() {
-				done();
-			} );
-	} else {
-		rabbit.closeAll( reset )
-			.then( function() {
-				done();
-			} );
-	}
-};
-
 describe( 'when creating channel, exchange, or queue', function() {
 	after( function( done ) {
-		close( done );
-	} );
-
-	before( function( done ) {
-		rabbit.addConnection()
-			.then( function() { done(); });
-	} );
-
-	it( 'should acquire channel successfully', function( done ) {
-		rabbit.getChannel( 'one' )
-			.then( function( channel ) {
-				channel.should.not.be.undefined;
-				done();
+		rabbit.close( 'default', true )
+			.then( function() { 
+				done(); 
 			} );
+	} );
+
+	before( function() {
+		rabbit.addConnection();
 	} );
 
 	it( 'should create exchange correctly', function( done ) {
 		rabbit.addExchange( 'ex.1', 'fanout', {
 			autoDelete: true
 		} )
-		.then( function( ex ) {
-			ex.name.should.equal( 'ex.1' );
+		.then( function() {
 			done();
 		} );
 	} );
@@ -60,8 +32,7 @@ describe( 'when creating channel, exchange, or queue', function() {
 		rabbit.addQueue( 'q.1', {
 			autoDelete: true
 		} )
-		.then( function( q ) {
-			q.name.should.equal( 'q.1' );
+		.then( function() {
 			done();
 		} );
 	} );
@@ -79,9 +50,6 @@ describe( 'with a valid exchange and queue', function() {
 		var actions = [
 			function() {
 				return rabbit.closeAll( true );
-			},
-			function() {
-				return rabbit.getChannel( 'one' );
 			},
 			function() {
 				return rabbit.addExchange( 'ex.1', 'fanout', 
@@ -120,7 +88,10 @@ describe( 'with a valid exchange and queue', function() {
 	} );
 
 	after( function( done ) {
-		close( done, true, 'default' );
+		rabbit.close( 'default', true )
+			.then( function() {
+				done();
+			} );
 	} );
 } );
 
@@ -168,7 +139,10 @@ describe( 'with a valid topic exchange and queue', function() {
 	} );
 
 	after( function( done ) {
-		close( done, true, 'default' );
+		rabbit.close( 'default', true )
+			.then( function() {
+				done();
+			} );
 	} );
 } );
 
@@ -204,9 +178,9 @@ describe( 'when testing reconnection', function() {
 		};
 
 		rabbit.configure( config )
-			.done( function() { 
+			.done( function() {
 				rabbit.close( 'reconnectionTest' )
-					.then( function() { 
+					.then( function() {
 						done(); 
 					} );
 			} );
@@ -220,8 +194,9 @@ describe( 'when testing reconnection', function() {
 	} );
 
 	after( function( done ) {
-		rabbit.close( 'reconnectionTest' ).done( function() {
-			done();
-		} );
+		rabbit.close( 'reconnectionTest' )
+			.then( function() {
+				done();
+			} );
 	} );
 } );

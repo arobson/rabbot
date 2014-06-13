@@ -6,27 +6,6 @@ var rabbit = require( '../src/index.js' ),
 	fs = require( 'fs' ),
 	when = require( 'when' );
 
-var open = function( done, connectionName ) {
-	rabbit.getConnection( connectionName )
-		.then( function() {
-			done();
-		} );
-};
-
-var close = function( done, reset, connectionName ) {
-	if ( connectionName ) {
-		rabbit.close( connectionName, reset )
-			.then( function() {
-				done();
-			} );
-	} else {
-		rabbit.closeAll( reset )
-			.then( function() {
-				done();
-			} );
-	}
-};
-
 describe( 'with a mixture of acks and nacks', function() {
 	var config = {
 		connection: {
@@ -61,20 +40,18 @@ describe( 'with a mixture of acks and nacks', function() {
 	before( function( done ) {
 		rabbit.configure( config )
 			.done( function() {
-				rabbit.getQueue( 'q.1' )
-					.then( function( queue ) {
-						ch = queue;
-						done();
-					} );
+				rabbit.clearAckInterval();
+				ch = rabbit.getQueue( 'q.1' );
+				done();
 			} );
 	} );
 
 	it( 'should enqueue acks/nacks for rabbit', function( done ) {
 		//Our batchAck is called last in our test, when we have
 		//7 acks to do, no nacks, nothing pending
-		rabbit.on( 'batchAckAll', function() {
-			done();
-		} ).disposeAfter( 1 );
+		// rabbit.on( 'batchAckAll', function() {
+		// 	done();
+		// } ).once();
 
 		var messages = [],
 			testHandler = rabbit.handle( 'acknack', function( message ) {
@@ -93,7 +70,7 @@ describe( 'with a mixture of acks and nacks', function() {
 		}
 
 		var logPending = function() {
-			// console.log( 'pendingMessages: \n', ch.pendingMessages );
+			// console.log( 'pendingMessages: \n', ch.pendingMessages.length );
 			// console.log( 'lastAck: ', ch.lastAck );
 			// console.log( 'lastNack: ', ch.lastNack );
 		};
@@ -102,8 +79,8 @@ describe( 'with a mixture of acks and nacks', function() {
 			var foundPending = 0,
 				foundAck = 0,
 				foundNack = 0;
-			for ( var i = 0; i < _.size( ch.receivedMessages ); i++ ) {
-				switch ( ch.receivedMessages[ i ].result ) {
+			_.each( ch.receivedMessages.messages, function( message ) {
+				switch ( message.status ) {
 					case 'pending':
 						foundPending++;
 						break;
@@ -114,7 +91,7 @@ describe( 'with a mixture of acks and nacks', function() {
 						foundNack++;
 						break;
 				}
-			}
+			} );
 			foundPending.should.equal( pendingNo );
 			foundAck.should.equal( ackNo );
 			foundNack.should.equal( nackNo );
@@ -174,8 +151,9 @@ describe( 'with a mixture of acks and nacks', function() {
 				setTimeout( step8, 100 );
 			},
 			step8 = function() {
-				checkPendingAcksNacks( 0, 6, 1 );
 				logPending();
+				checkPendingAcksNacks( 0, 6, 1 );
+				
 				rabbit.batchAck();
 				setTimeout( step9, 100 );
 			},
@@ -191,17 +169,19 @@ describe( 'with a mixture of acks and nacks', function() {
 				setTimeout( function() {
 					checkPendingAcksNacks( 0, 0, 0 );
 					logPending();
+					done();
 				}, 100 );
 			};
 
-		rabbit.startSubscription( 'q.1', 'default' )
-			.done( function() {
-				when.all( promises )
-					.done( step1 );
-			} );
+		rabbit.startSubscription( 'q.1', 'default' );
+		when.all( promises )
+			.done( step1 );
 	} );
 
 	after( function( done ) {
-		close( done, true, 'default' );
+		rabbit.close( 'default', true )
+			.then( function() {
+				done();
+			} );
 	} );
 } );

@@ -6,32 +6,10 @@ var rabbit = require( '../src/index.js' ),
 	fs = require( 'fs' ),
 	when = require( 'when' );
 
-var open = function( done, connectionName ) {
-	rabbit.getConnection( connectionName )
-		.then( function() {
-			done();
-		} );
-};
-
-var close = function( done, reset, connectionName ) {
-	if ( connectionName ) {
-		rabbit.close( connectionName, reset )
-			.then( function() {
-				done();
-			} );
-	} else {
-		rabbit.closeAll( reset )
-			.then( function() {
-				done();
-			} );
-	}
-};
-
 describe( 'with default connection', function() {
 
-	before( function( done ) {
-		rabbit.addConnection()
-			.then( function() { done(); } );
+	before( function() {
+		rabbit.addConnection();
 	} );
 
 	describe( 'with single request / reply', function() {
@@ -71,7 +49,10 @@ describe( 'with default connection', function() {
 		} );
 
 		after( function( done ) {
-			close( done, true, 'default' );
+			rabbit.close( 'default', true )
+				.then( function() {
+					done();
+				} );
 		} );
 	} );
 } );

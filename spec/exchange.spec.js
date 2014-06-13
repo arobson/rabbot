@@ -6,51 +6,19 @@ var rabbit = require( '../src/index.js' ),
 	fs = require( 'fs' ),
 	when = require( 'when' );
 
-var open = function( done, connectionName ) {
-	rabbit.getConnection( connectionName )
-		.then( function() {
-			done();
-		} );
-};
-
-var close = function( reset, connectionName, done ) {
-	if ( connectionName ) {
-		rabbit.close( connectionName, reset )
-			.then( function() {
-				done();
-			} );
-	} else {
-		rabbit.closeAll( reset )
-			.then( function() {
-				done();
-			} );
-	}
-};
-
 describe( 'with default connection', function() {
-	before( function( done ) {
-		var promises = [
-				rabbit.addConnection( { name: 'no-queue' } ),
-				rabbit.addConnection()
-			];
-		when.all( promises )
-			.then( function() { done(); } );
+	before( function() {
+		rabbit.addConnection( { name: 'no-queue' } );
 	} );
 
 	describe( 'with a valid exchange (no queue)', function() {
 		before( function( done ) {
-			rabbit.closeAll( true )
-				.done( function() {
-					rabbit.getConnection( 'no-queue' )
-						.then( function() {
-							rabbit.addExchange( 'temp.ext', 'fanout', {
-								autoDelete: true
-							}, 'no-queue' )
-							.done( function() {
-								done();
-							} );
-						} );
-				} );
+			rabbit.addExchange( 'temp.ext', 'fanout', {
+				autoDelete: true
+			}, 'no-queue' )
+			.done( function() {
+				done();
+			} );
 		} );
 
 		it( 'should confirm published message', function( done ) {
@@ -59,16 +27,17 @@ describe( 'with default connection', function() {
 			}, 'routingKey', 'correlationId', 'no-queue' )
 			.then( function() {
 				done();
-			} );
+			} )
 		} );
 
-		after( function( done ) {
-			close( true, 'no-queue', done );
+		after( function() {
+			rabbit.close( 'no-queue', true );
 		} );
 	} );
 
 	describe( 'with a dead-letter exchange', function() {
 		before( function( done ) {
+			rabbit.addConnection();
 			var promises = [
 				rabbit.addExchange( 'dlx.7', 'fanout', {
 					autoDelete: true
@@ -106,16 +75,25 @@ describe( 'with default connection', function() {
 
 		it( 'should get a message on the dead-letter', function( done ) {
 			this.timeout( 200 );
-			rabbit.handle( 'test.7', function( message ) {
+			var handler = rabbit.handle( 'test.7', function( message ) {
 				if ( message.body.number == 2 ) {
+					handler.remove();
 					done();
 				}
 			} );
+		} );
+
+		after( function( done ) {
+			rabbit.close( 'default', true )
+				.then( function() {
+					done();
+				} );
 		} );
 	} );
 
 	describe( 'with an alternate exchange', function() {
 		before( function( done ) {
+			rabbit.addConnection();
 			var promises = [
 				rabbit.addExchange( 'dlx.8', 'fanout', {
 					autoDelete: true
@@ -150,6 +128,13 @@ describe( 'with default connection', function() {
 				testHandler.remove();
 				done();
 			} );
+		} );
+
+		after( function( done ) {
+			rabbit.close( 'default', true )
+				.then( function() {
+					done();
+				} );
 		} );
 	} );
 
@@ -208,18 +193,14 @@ describe( 'with default connection', function() {
 
 		var queues = [];
 		before( function( done ) {
+			rabbit.addConnection();
 			rabbit.configure( config )
-				.done( function() {
+				.then( function() {
 					var subscriptions = [];
 					for ( var i = 1; i < 5; i++ ) {
-						var subscription = rabbit.startSubscription( 'qc.' + i, 'consistent-hash' );
-						subscriptions.push( subscription );
+						queues.push( rabbit.startSubscription( 'qc.' + i, 'consistent-hash' ) );
 					}
-					when.all( subscriptions )
-						.done( function( list ) {
-							queues = list;
-							done();
-						} );
+					done();
 				} );
 		} );
 
@@ -243,7 +224,7 @@ describe( 'with default connection', function() {
 				when.all( promises )
 					.done( function() {
 						_.each( queues, function( q ) {
-							receivedMessages += q.receivedCount;
+							receivedMessages += q.receivedMessages.receivedCount;
 						} );
 						done();
 					} );
@@ -258,15 +239,18 @@ describe( 'with default connection', function() {
 			it( 'should create even distribution', function() {
 				var quarter = receivedMessages / 4,
 					margin = quarter / 4;
-				queues[ 0 ].receivedCount.should.be.approximately( quarter, margin );
-				queues[ 1 ].receivedCount.should.be.approximately( quarter, margin );
-				queues[ 2 ].receivedCount.should.be.approximately( quarter, margin );
-				queues[ 3 ].receivedCount.should.be.approximately( quarter, margin );
+				queues[ 0 ].receivedMessages.receivedCount.should.be.approximately( quarter, margin );
+				queues[ 1 ].receivedMessages.receivedCount.should.be.approximately( quarter, margin );
+				queues[ 2 ].receivedMessages.receivedCount.should.be.approximately( quarter, margin );
+				queues[ 3 ].receivedMessages.receivedCount.should.be.approximately( quarter, margin );
 			} );
 			
 
 			after( function( done ) {
-				close( true, 'consistent-hash', done );
+				rabbit.close( 'consistent-hash', true )
+					.then( function() {
+						done();
+					} );
 			} );
 		} );
 	} );
