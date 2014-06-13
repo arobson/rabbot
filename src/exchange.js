@@ -71,7 +71,7 @@ var Channel = function( options, connection, topology ) {
 						contentType: 'application/json',
 						contentEncoding: 'utf8',
 						correlationId: message.correlationId || '',
-						replyTo: message.replyTo || topology.replyTo,
+						replyTo: message.replyTo || topology.replyQueue,
 						messageId: message.messageId || message.id || '',
 						timestamp: message.timestamp,
 						appId: message.appId || '',

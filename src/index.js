@@ -120,8 +120,7 @@ Broker.prototype.handle = function( messageType, handler, context ) {
 };
 
 Broker.prototype.publish = function( exchangeName, type, message, routingKey, correlationId, connectionName, sequenceNo ) {
-	var replyTo = undefined,
-		messageId = undefined,
+	var messageId = undefined,
 		appId = this.appId,
 		headers = {},
 		timestamp = Date.now(),
@@ -136,7 +135,6 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 			body: message,
 			routingKey: routingKey,
 			correlationId: correlationId,
-			replyTo: replyTo,
 			sequenceNo: sequenceNo,
 			timestamp: timestamp,
 			headers: {},
@@ -153,7 +151,6 @@ Broker.prototype.request = function( exchangeName, options, connectionName ) {
 	var requestId = uuid.v1();
 	options.messageId = requestId;
 	options.connectionName = connectionName;
-	options.replyTo = this.replyTo;
 	return when.promise( function( resolve, reject, notify ) {
 		var subscription = responses.subscribe( requestId, function( message ) {
 			if( message.properties.headers[ 'sequence_end' ] ) {

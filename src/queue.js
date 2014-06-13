@@ -74,29 +74,29 @@ var Channel = function( options, connection, topology ) {
 					var ops = messages.addMessage( raw.fields.deliveryTag );
 					raw.ack = ops.ack;
 					raw.nack = ops.nack;
-					raw.reply = function( reply, more ) {
+					var position = 0;
+					raw.reply = function( reply, replyType, more ) {
 						var replyTo = raw.properties.replyTo;
-							options = {
+						ops.ack();
+						if( replyTo ) {
+							var payload = new Buffer( JSON.stringify( reply ) ),
+							publishOptions = {
+								type: replyType || raw.type + '.reply',
+								contentType: 'application/json',
+								contentEncoding: 'utf8',
 								correlationId: raw.properties.messageId,
-								body: reply,
+								replyTo: topology.replyQueue,
 								headers: {}
 							};
-						ops.ack();
-						if( !more ) {
-							options.headers[ 'sequence_end' ] = true;
-						} else {
-							var initial = this.responseSubscriptions[ correlationId ].position || 0;
-							options.headers[ 'position' ] = initial;
-							this.responseSubscriptions[ correlationId ].position = initial + 1;
-						}
-						if( replyTo ) {
-							topology.createExchange( { name: replyTo, type: 'direct', autoDelete: true } )
-								.then( function( exchange ) {
-									exchange.publish( options );
-								} );
+							if( !more ) {
+								publishOptions.headers[ 'sequence_end' ] = true;
+							} else {
+								publishOptions.headers[ 'position' ] = ( position ++ );
+							}
+							return this.channel.sendToQueue( replyTo, payload, publishOptions );
 						}
 					}.bind( this );
-					if( raw.fields.exchange == topology.replyTo ) {
+					if( raw.fields.routingKey == topology.replyQueue ) {
 						responses.publish( correlationId, raw );
 					} else {
 						dispatch.publish( raw.properties.type, raw );

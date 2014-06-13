@@ -41,18 +41,11 @@ var Topology = function( connection ) {
 	this.definitions = {
 			bindings: {},
 			exchanges: {},
-			queues: {},
-			subscriptions: {}
+			queues: {}
 		};
-	this.responseId = replyId,
-	this.replyTo = [ this.responseId, 'response' ].join( '.' ),
-	this.replyQueue = [ this.responseId, 'response', 'queue' ].join( '.' );
+	this.replyQueue = [ replyId, 'response', 'queue' ].join( '.' );
 	connection.on( 'reconnected', this.onReconnect.bind( this ) );
-	this.createReplyExchange();
-};
-
-Topology.prototype.addSubscription = function( queue ) {
-	this.definitions.subscriptions[ queue ] = true;
+	this.createReplyQueue();
 };
 
 Topology.prototype.configureBindings = function( bindingDef, list ) {
@@ -104,7 +97,6 @@ Topology.prototype.configureExchanges = function( exchangeDef, list ) {
 
 Topology.prototype.createBinding = function( options ) {
 	var id = [ options.source, options.target ].join( '->' );
-
 	this.definitions.bindings[ id ] = options;
 	var term = options.queue ? 'queue' : 'exchange',
 		call = options.queue ? 'bindQueue' : 'bindExchange',
@@ -140,22 +132,11 @@ Topology.prototype.createQueue = function( options ) {
 	}.bind( this ) );
 };
 
-Topology.prototype.createReplyExchange = function() {
-	var promises = [
-		this.createExchange( { name: this.replyTo, type: 'direct', autoDelete: true } ),
-		this.createQueue( { name: this.replyQueue, autoDelete: true } )
-	];
-	return when.promise( function( resolve, reject ) {
-		when.all( promises )
-			.done( function() {
-				this.channels[ 'queue:' + this.replyQueue ].subscribe();
-				this.definitions.subscriptions[ this.replyQueue ] = true;
-				this.createBinding( { source: this.replyTo, target: this.replyQueue, keys: [], queue: true } )
-					.then( resolve )
-					.then( null, reject )
-					.catch( reject );
-			}.bind( this ) );
-	}.bind( this ) );
+Topology.prototype.createReplyQueue = function() {
+	this.createQueue( { name: this.replyQueue, autoDelete: true } )
+		.then( function( queue ) {
+			queue.subscribe();
+		} );
 };
 
 Topology.prototype.getChannel = function( name ) {

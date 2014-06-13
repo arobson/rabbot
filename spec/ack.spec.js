@@ -179,6 +179,7 @@ describe( 'with a mixture of acks and nacks', function() {
 	} );
 
 	after( function( done ) {
+		rabbit.setAckInterval( 500 );
 		rabbit.close( 'default', true )
 			.then( function() {
 				done();
