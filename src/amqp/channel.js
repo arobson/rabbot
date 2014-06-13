@@ -1,8 +1,7 @@
 var amqp = require( 'amqplib' ),
 	_ = require( 'lodash' ),
 	AmqpChannel = require( 'amqplib/lib/callback_model' ).Channel,
-	Promiser = require( './promiseMachine.js'),
-	gate = new ( require( './gate.js' ) )();
+	Promiser = require( './promiseMachine.js');
 
 var close = function( channel ) {
 	channel.close();

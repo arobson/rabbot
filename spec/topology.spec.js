@@ -30,9 +30,11 @@ describe( 'when creating channel, exchange, or queue', function() {
 
 	it( 'should create queue correctly', function( done ) {
 		rabbit.addQueue( 'q.1', {
-			autoDelete: true
+			autoDelete: true,
+			subscribe: true
 		} )
 		.then( function() {
+			rabbit.startSubscription( 'q.1' );
 			done();
 		} );
 	} );
@@ -41,7 +43,14 @@ describe( 'when creating channel, exchange, or queue', function() {
 		rabbit.bindQueue( 'ex.1', 'q.1', '' )
 			.done( function() {
 				done();
-			} )
+			} );
+	} );
+
+	after( function( done ) {
+		rabbit.close( 'default', true )
+			.then( function() {
+				done();
+			} );
 	} );
 } );
 
@@ -194,7 +203,7 @@ describe( 'when testing reconnection', function() {
 	} );
 
 	after( function( done ) {
-		rabbit.close( 'reconnectionTest' )
+		rabbit.close( 'reconnectionTest', true )
 			.then( function() {
 				done();
 			} );

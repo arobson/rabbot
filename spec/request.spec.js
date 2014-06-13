@@ -45,7 +45,6 @@ describe( 'with default connection', function() {
 			rabbit.request( 'ex.req.1', { type: 'request', body: { message: 'DO. A BARREL ROLL!' } } )
 				.then( function( reply ) {
 					reply.ack();
-					console.log( reply.body );
 					done();
 				} );
 		} );		
