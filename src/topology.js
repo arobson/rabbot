@@ -44,7 +44,10 @@ var Topology = function( connection ) {
 			queues: {}
 		};
 	this.replyQueue = [ replyId, 'response', 'queue' ].join( '.' );
-	connection.on( 'reconnected', this.onReconnect.bind( this ) );
+	connection.on( 'reconnected', function() {
+		this.createReplyQueue();
+		this.onReconnect();
+	}.bind( this ) );
 	this.createReplyQueue();
 };
 
@@ -133,10 +136,31 @@ Topology.prototype.createQueue = function( options ) {
 };
 
 Topology.prototype.createReplyQueue = function() {
-	this.createQueue( { name: this.replyQueue, autoDelete: true } )
-		.then( function( queue ) {
-			queue.subscribe();
-		} );
+	if( !this.channels[ 'queue:' + this.replyQueue ] ) {
+		this.createQueue( { name: this.replyQueue, autoDelete: true, subscribe: true } );
+	}
+};
+
+Topology.prototype.deleteExchange = function( name ) {
+	var key = 'exchange:' + name,
+		channel = this.channels[ key ];
+	if( channel ) {
+		channel.destroy();
+		delete this.channels[ key ];
+	} 
+	var control = this.getChannel( 'control' );
+	return control.deleteExchange( name );
+};
+
+Topology.prototype.deleteQueue = function( name ) {
+	var key = 'queue:' + name,
+		channel = this.channels[ key ];
+	if( channel ) {
+		channel.destroy();
+		delete this.channels[ key ];
+	} 
+	var control = this.getChannel( 'control' );
+	return control.deleteQueue( name );
 };
 
 Topology.prototype.getChannel = function( name ) {
@@ -162,6 +186,11 @@ Topology.prototype.onReconnect = function() {
 };
 
 Topology.prototype.reset = function() {
+	_.each( this.channels, function( channel ) {
+		if( channel.destroy ) {
+			channel.destroy();
+		}
+	} );
 	this.channels = {};
 	this.definitions = {
 		bindings: {},

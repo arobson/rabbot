@@ -12,6 +12,7 @@ describe( 'with default connection', function() {
 	} );
 
 	describe( 'with a consumer limit', function() {
+		var testHandler;
 		before( function( done ) {
 			var promises = [
 				rabbit.addExchange( 'ex.5', 'fanout', {
@@ -33,16 +34,17 @@ describe( 'with default connection', function() {
 		} );
 
 		it( 'should publish and handle messages correctly according to type', function( done ) {
-			var messages = [],
-				testHandler = rabbit.handle( 'test.5', function( message ) {
-					messages.push( message );
-					message.body.message.should.eql( 'hello, world!' );
-				} );
+			var messages = [];
 			for ( i = 0; i <= 5; i++ ) {
 				rabbit.publish( 'ex.5', 'test.5', {
 					message: 'hello, world!'
 				} );
 			}
+
+			testHandler = rabbit.handle( 'test.5', function( message ) {
+				messages.push( message );
+				message.body.message.should.eql( 'hello, world!' );
+			} );
 
 			// the cascading timeouts should gate the rate of messages
 			// that get received due to the limit of 1 message at a time
@@ -79,6 +81,7 @@ describe( 'with default connection', function() {
 		} );
 
 		after( function( done ) {
+			testHandler.remove();
 			rabbit.close( 'default', true )
 				.then( function() {
 					done();
@@ -87,7 +90,9 @@ describe( 'with default connection', function() {
 	} );
 
 	describe( 'with a queue limit', function() {
+		var testHandler;
 		before( function( done ) {
+			rabbit.clearAckInterval();
 			var promises = [
 				rabbit.addExchange( 'ex.6', 'fanout', {
 					autoDelete: true
@@ -113,17 +118,17 @@ describe( 'with default connection', function() {
 
 			var messages = [],
 				confirmedCount = 0,
-				testHandler = rabbit.handle( 'test.6', function( message ) {
-					messages.push( message );
-					message.body.message.should.eql( 'hello, world!' );
-					message.ack();
-					rabbit.batchAck();
-				} ),
 				queue = rabbit.connections[ 'default' ].getChannel( 'q.6' ),
 				batchAck = function() { 
 					queue.receivedMessages._processBatch(); 
 				};
 				
+			testHandler = rabbit.handle( 'test.6', function( message ) {
+				messages.push( message );
+				message.body.message.should.eql( 'hello, world!' );
+				message.ack();
+				rabbit.batchAck();
+			} );
 			
 			for ( i = 0; i <= 10; i++ ) {
 				rabbit.publish( 'ex.6', 'test.6', {
@@ -144,10 +149,19 @@ describe( 'with default connection', function() {
 		} );
 
 		after( function( done ) {
+			rabbit.setAckInterval( 500 );
+			testHandler.remove();
 			rabbit.close( 'default', true )
 				.then( function() {
 					done();
 				} );
 		} );
+	} );
+
+	after( function( done ) {
+		rabbit.close( 'default', true )
+			.then( function() {
+				done();
+			} );
 	} );
 } );

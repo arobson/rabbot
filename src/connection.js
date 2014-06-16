@@ -68,6 +68,7 @@ var Connection = function( options ) {
 				},
 				'close': function( err ) {
 					this.deferUntilTransition( 'connected' );
+					this.transition( 'closed' );
 				},
 				'failed': function( err ) {
 					this.emit( 'failed', err );
@@ -118,10 +119,14 @@ var Connection = function( options ) {
 					this.transition( 'connecting' );
 				},
 				'close': function( err ) {
+					connection.release();
 					this.emit( 'closed' );
 				},
 				'connect': function() {
 					this.transition( 'connecting' );
+				},
+				'failed': function( err ) {
+					this.emit( 'failed', err );
 				}
 			}
 		}

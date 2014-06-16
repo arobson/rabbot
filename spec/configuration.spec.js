@@ -42,7 +42,8 @@ describe( 'when configuring with valid settings', function() {
 				autoDelete: true
 			}, {
 				name: 'config-q.2',
-				autoDelete: true
+				autoDelete: true,
+				subscribe: true
 			} ],
 
 			bindings: [ {

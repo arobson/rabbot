@@ -35,12 +35,12 @@ describe( 'with a mixture of acks and nacks', function() {
 		} ]
 	};
 
-	var ch;
+	var ch, testHandler;
 
 	before( function( done ) {
+		rabbit.clearAckInterval();
 		rabbit.configure( config )
 			.done( function() {
-				rabbit.clearAckInterval();
 				ch = rabbit.getQueue( 'q.1' );
 				done();
 			} );
@@ -53,17 +53,16 @@ describe( 'with a mixture of acks and nacks', function() {
 		// 	done();
 		// } ).once();
 
-		var messages = [],
-			testHandler = rabbit.handle( 'acknack', function( message ) {
-				messages.push( message );
-			} );
-
+		var messages = [];
 		var promises = [];
 		var publishCall = function() {
 			return rabbit.publish( 'ex.acknack', 'acknack', {
 				message: 'hello, world!'
 			} );
 		}
+		testHandler = rabbit.handle( 'acknack', function( message ) {
+			messages.push( message );
+		} );
 
 		for ( var i = 0; i < 10; i++ ) {
 			promises.push( publishCall() );
@@ -175,11 +174,14 @@ describe( 'with a mixture of acks and nacks', function() {
 
 		rabbit.startSubscription( 'q.1', 'default' );
 		when.all( promises )
-			.done( step1 );
+			.done( function() {
+				step1();
+			} );
 	} );
 
 	after( function( done ) {
 		rabbit.setAckInterval( 500 );
+		testHandler.remove();
 		rabbit.close( 'default', true )
 			.then( function() {
 				done();

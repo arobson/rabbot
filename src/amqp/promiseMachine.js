@@ -5,15 +5,68 @@ var _ = require( 'lodash' ),
 	machina = require( 'machina' )( _ ),
 	log = require( '../log.js' );
 
+var staticId = 0;
 
 module.exports = function( factory, target, release, disposalEvent ) {
 	var disposalEvent = disposalEvent || 'close';
 	var PromiseMachine = machina.Fsm.extend( {
+		id: staticId++,
 		initialState: 'acquiring',
 		item: undefined,
+		waitInterval: 0,
+		waitMax: 5000,
+		_acquire: function() {
+			this.emit( 'acquiring' );
+			factory()
+				.then( function( o ) {
+					this.item = o;
+					this.waitInterval = 0;
+					if( this.item.on ) {
+						this.disposeHandle = this.item.once( disposalEvent, function( err ) {
+							this.emit( 'lost' );
+							this.transition( 'released' );
+						}.bind( this ) );
+						this.item.once( 'error', function( err ) {
+							this.transition( 'failed' );
+						}.bind( this ) );
+					}
+					this.transition( 'acquired' );
+				}.bind( this ) )
+				.then( null, function( err ) {
+					log.info( { message: 'failure occured acquiring a resource', error: err.stack } );
+					this.emit( 'failed', err );
+					this.handle( 'failed' );
+				}.bind( this ) )
+				.catch( function( ex ) {
+					log.info( { message: 'failure occured acquiring a resource', error: ex.stack } );
+					this.emit( 'failed', tex );
+					this.handle( 'failed' );
+				} );
+		},
+		_release: function() {
+			try {
+					if( this.item ) {
+					this.item.removeAllListeners();
+					this.emit( 'releasing' );
+					if( !this.item ) {
+						return;
+					}
+					if( release ) {
+						release( this.item );
+					} else {
+						this.item.close();
+					}
+				}
+			} catch( err ) {
+
+			}
+		},
 		acquire: function() {
 			this.handle( 'acquire' );
 			return this;
+		},
+		destroy: function() {
+			this.handle( 'destroy' );
 		},
 		operate: function( call, args ) {
 			var op = { operation: call, argList: args, index: this.index },
@@ -30,31 +83,24 @@ module.exports = function( factory, target, release, disposalEvent ) {
 		states: {
 			'acquiring': {
 				_onEnter: function() {
-					this.emit( 'acquiring' );
-					factory()
-						.then( function( o ) {
-							this.item = o;
-							if( this.item.on ) {
-								this.disposeHandle = this.item.once( disposalEvent, function() {
-									this.emit( 'lost' );
-									this.transition( 'acquiring' );
-									this.handle( 'invalidated' );
-								}.bind( this ) );
-							}
-							this.transition( 'acquired' );
-						}.bind( this ) )
-						.then( null, function( err ) {
-							this.lastError = err;
-							log.info( { message: 'failure occured acquiring a resource', error: err.stack } );
-							this.emit( 'error', err );
-							this.transition( 'failed' );
-						}.bind( this ) )
-						.catch( function( ex ) {
-							this.lastError = ex;
-							log.info( { message: 'failure occured acquiring a resource', error: ex.stack } );
-							this.emit( 'exception', ex );
-							this.transition( 'failed' );
-						} );
+					this._acquire();
+				},
+				failed: function() {
+					setTimeout( function() {
+						this.transition( 'acquiring' );
+						if( ( this.waitInterval + 100 ) < this.waitMax ) {
+							this.waitInterval += 100;
+						}
+					}.bind( this ), this.waitInterval );
+				},
+				destroy: function() {
+					this._release();
+					this.item = undefined;
+					this.transition( 'destroyed' );
+				},
+				release: function () {
+					this._release();
+					this.transition( 'released' );
 				},
 				operate: function( call ) {
 					this.deferUntilTransition( 'acquired' );
@@ -63,6 +109,11 @@ module.exports = function( factory, target, release, disposalEvent ) {
 			'acquired': {
 				_onEnter: function() {
 					this.emit( 'acquired' );
+				},
+				destroy: function() {
+					this._release();
+					this.item = undefined;
+					this.transition( 'destroyed' );
 				},
 				operate: function( call ) {
 					try {
@@ -82,22 +133,18 @@ module.exports = function( factory, target, release, disposalEvent ) {
 					this.transition( 'acquiring' );
 				},
 				release: function () {
-					this.item.removeAllListeners();
-					this.emit( 'releasing' );
-					if( !this.item ) {
-						return;
-					}
-					if( release ) {
-						release( this.item );
-					} else {
-						this.item.close();
-					}
+					this._release();
 					this.transition( 'released' );
+				}
+			},
+			'destroyed': {
+				_onEnter: function() {
+					
 				}
 			},
 			'released': {
 				_onEnter: function() {
-					this.emit( 'released' );
+					this.emit( 'released', this.id );
 				},
 				acquire: function() {
 					this.transition( 'acquiring' );
@@ -105,12 +152,20 @@ module.exports = function( factory, target, release, disposalEvent ) {
 				operate: function( call ) {
 					this.deferUntilTransition( 'acquired' );
 					this.transition( 'acquiring' );
+				},
+				destroy: function() {
+					this.transition( 'destroyed' );
 				}
 			},
 			'failed': {
 				_onEnter: function() {
 					this.emit( 'failed', this.lastError );
-					this.transition( 'acquiring' );
+					setTimeout( function() {
+						this.transition( 'acquiring' );
+						if( ( this.waitInterval + 100 ) < this.waitMax ) {
+							this.waitInterval += 100;
+						}
+					}.bind( this ), this.waitInterval );
 				},
 				operate: function( call ) {
 					this.deferUntilTransition( 'acquired' );

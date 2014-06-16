@@ -31,7 +31,11 @@ describe( 'with default connection', function() {
 		} );
 
 		after( function() {
-			rabbit.close( 'no-queue', true );
+			rabbit.deleteExchange( 'temp.ext' )
+				.then( function() {
+					rabbit.close( 'no-queue', true );
+					done();
+				} );
 		} );
 	} );
 
@@ -77,7 +81,9 @@ describe( 'with default connection', function() {
 			this.timeout( 200 );
 			var handler = rabbit.handle( 'test.7', function( message ) {
 				if ( message.body.number == 2 ) {
+					message.ack();
 					handler.remove();
+					rabbit.startSubscription( 'q.7' );
 					done();
 				}
 			} );
@@ -131,9 +137,12 @@ describe( 'with default connection', function() {
 		} );
 
 		after( function( done ) {
-			rabbit.close( 'default', true )
+			rabbit.deleteExchange( 'ex.8' )
 				.then( function() {
-					done();
+					rabbit.close( 'default', true )
+						.then( function() {
+							done();
+						} );
 				} );
 		} );
 	} );

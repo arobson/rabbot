@@ -25,7 +25,7 @@ var Channel = function( options, connection, topology ) {
 			channel: undefined,
 			responseSubscriptions: {},
 			signalSubscription: undefined,
-			
+			handlers: [],
 			_addPendingMessage: function( message ) {
 				var seqNo = ++this._sequenceNo;
 				message.sequenceNo = seqNo;
@@ -75,7 +75,7 @@ var Channel = function( options, connection, topology ) {
 					raw.ack = ops.ack;
 					raw.nack = ops.nack;
 					var position = 0;
-					raw.reply = function( reply, replyType, more ) {
+					raw.reply = function( reply, more, replyType ) {
 						var replyTo = raw.properties.replyTo;
 						ops.ack();
 						if( replyTo ) {
@@ -113,6 +113,10 @@ var Channel = function( options, connection, topology ) {
 				}.bind( this ) );
 			},
 
+			destroy: function() {
+				this.transition( 'destroyed' );
+			},
+
 			subscribe: function() {
 				this.subscribed = true;
 				var op = function() {
@@ -125,25 +129,35 @@ var Channel = function( options, connection, topology ) {
 			states: {
 				'setup': {
 					_onEnter: function() {
-						connection.on( 'reconnected', function() {
+						this.handlers.push( connection.on( 'reconnected', function() {
 							this.transition( 'initializing' );
-						}.bind( this ) );
-						messages.on( 'ack', function( data ) {
+						}.bind( this ) ) );
+
+						this.handlers.push( messages.on( 'ack', function( data ) {
 							this.channel.ack( { fields: { deliveryTag: data.tag } }, data.inclusive );
-						}.bind( this ) );
+						}.bind( this ) ) );
 
-						messages.on( 'nack', function( data ) {
+						this.handlers.push( messages.on( 'nack', function( data ) {
 							this.channel.nack( { fields: { deliveryTag: data.tag } }, data.inclusive );
-						}.bind( this ) );
+						}.bind( this ) ) );
 
-						messages.on( 'ackAll', function() {
+						this.handlers.push( messages.on( 'ackAll', function() {
 							this.channel.ackAll();
-						}.bind( this ) );
+						}.bind( this ) ) );
 
-						messages.on( 'nackAll', function() {
+						this.handlers.push( messages.on( 'nackAll', function() {
 							this.channel.nackAll();
-						}.bind( this ) );
+						}.bind( this ) ) );
 						this.transition( 'initializing' );
+					}
+				},
+				'destroyed': {
+					_onEnter: function() {
+						_.each( this.handlers, function( handle ) {
+							handle.unsubscribe();
+						} );
+						this.channel.destroy();
+						this.channel = undefined;
 					}
 				},
 				'initializing': {

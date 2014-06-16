@@ -5,18 +5,23 @@ var rabbit = require( '../src/index.js' );
 describe( 'with invalid connection criteria', function() {
 
 	before( function() {
-		rabbit.addConnection( {
-			name: 'silly',
-			server: 'shfifty-five.gov'
-		} );
+		
 	} );
 
 	it( 'should fail to connect', function( done ) {
 		rabbit.on( 'silly.connection.failed', function( err ) {
+			console.log( err );
 			err.should.equal( 'No endpoints could be reached' );
-			rabbit.close( 'silly' );
-			done();
+			rabbit.close( 'silly', true )
+				.then( function() {
+					done();
+				} );
 		} ).once();
+
+		rabbit.addConnection( {
+			name: 'silly',
+			server: 'shfifty-five.gov'
+		} );
 	} );
 } );
 
@@ -40,13 +45,11 @@ describe( 'with default connection criteria', function() {
 		} );
 
 		after( function( done ) {
-			var promise = rabbit.close( 'connection.one' );
-			if( promise.then ) {
-				promise.then( function() { 
+			rabbit.close( 'connection.one', true )
+				.then( function() { 
 					done();
 				} );
-			}
-		} );
+		} ); 
 	} );
 
 	describe( 'when disconnected', function() {
@@ -64,12 +67,10 @@ describe( 'with default connection criteria', function() {
 		} );
 
 		after( function( done ) {
-			var promise = rabbit.close( 'connection.two' );
-			if( promise.then ) {
-				promise.then( function() { 
+			rabbit.close( 'connection.two', true )
+				.then( function() { 
 					done();
 				} );
-			}
 		} );
 
 		it( 'should reconnect on getting a channel', function( done ) {

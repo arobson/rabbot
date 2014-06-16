@@ -11,7 +11,7 @@ describe( 'with default connection', function() {
 	before( function() {
 		rabbit.addConnection();
 	} );
-
+	var handle;
 	describe( 'with single request / reply', function() {
 		before( function( done ) {
 			this.timeout( 5000 );
@@ -34,7 +34,8 @@ describe( 'with default connection', function() {
 						} );
 				} );
 
-			var handle = rabbit.handle( 'request', function( message ) {
+			handle = rabbit.handle( 'request', function( message ) {
+				console.log( message.body );
 				message.reply( { body: { message: 'roger that.' } } );
 				handle.remove();
 			} );
@@ -47,7 +48,14 @@ describe( 'with default connection', function() {
 					reply.ack();
 					done();
 				} );
-		} );		
+		} );
+
+		after( function( done ) {
+			rabbit.close( 'default', true )
+				.then( function() {
+					done();
+				} );
+		} );
 	} );
 
 	describe( 'with multiple replies', function() {
@@ -73,9 +81,9 @@ describe( 'with default connection', function() {
 				} );
 
 			var handle = rabbit.handle( 'request.2', function( message ) {
-				message.reply( { body: { message: 'NEVER.' } }, undefined, true );
-				message.reply( { body: { message: 'EVER.' } }, undefined, true );
-				message.reply( { body: { message: 'NEVER EVER!' } }, undefined );
+				message.reply( { body: { message: 'NEVER.' } }, true );
+				message.reply( { body: { message: 'EVER.' } }, true );
+				message.reply( { body: { message: 'NEVER EVER!' } } );
 				handle.remove();
 			} );
 		} );

@@ -22,11 +22,11 @@ var Channel = function( options, connection, topology ) {
 	var Fsm = machina.Fsm.extend( {
 			name: options.name,
 			channel: undefined,
-			pendingMessages: [],
+			pendingMessages: {},
 			_sequenceNo: 0,
-			
+			handlers: [],
 			_addPendingMessage: function( message ) {
-				var seqNo = ++this._sequenceNo;
+				var seqNo = ( ++ this._sequenceNo );
 				message.sequenceNo = seqNo;
 				this.pendingMessages[ seqNo ] = message;
 				return message;
@@ -110,6 +110,10 @@ var Channel = function( options, connection, topology ) {
 				}.bind( this ) );
 			},
 
+			destroy: function() {
+				this.transition( 'destroyed' );
+			},
+
 			publish: function( message ) {
 				return when.promise( function( resolve, reject ) {
 					var op = function() {
@@ -119,17 +123,39 @@ var Channel = function( options, connection, topology ) {
 				}.bind( this ) );
 			},
 
+			republish: function() {
+				if( _.keys( this.pendingMessages ).length > 0 ) {
+					var promises = _.map( this.pendingMessages, function( message ) {
+						return when.promise( function( resolve, reject ) {
+							this._publish( message, resolve, reject );
+						}.bind( this ) );
+					}.bind( this ) );
+					return when.all( promises );
+				} else {
+					return when( true );
+				}
+			},
+
 			initialState: 'setup',
 			states: {
 				'setup': {
 					_onEnter: function() {
-						topology.on( 'bindings-completed', function() {
+						this.handlers.push( topology.on( 'bindings-completed', function() {
 							this.handle( 'bindings-completed' );
-						}.bind( this) );
-						connection.on( 'reconnected', function() {
+						}.bind( this) ) );
+						this.handlers.push( connection.on( 'reconnected', function() {
 							this.transition( 'reconnecting' );
-						}.bind( this ) );
+						}.bind( this ) ) );
 						this.transition( 'initializing' );
+					}
+				},
+				'destroyed': {
+					_onEnter: function() {
+						_.each( this.handlers, function( handle ) {
+							handle.unsubscribe();
+						} );
+						this.channel.destroy();
+						this.channel = undefined;
 					}
 				},
 				'initializing': {
@@ -160,7 +186,11 @@ var Channel = function( options, connection, topology ) {
 						this.emit( 'defined' );
 					},
 					'bindings-completed': function() {
-						this.transition( 'ready' );
+						this.republish()
+							.then( function() {
+								this.transition( 'ready' );
+							}.bind( this ) )
+							.then( null, function( err ) { console.log( err.stack ); } );
 					},
 					released: function() {
 						this.transition( 'released' );

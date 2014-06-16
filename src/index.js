@@ -27,20 +27,25 @@ var Broker = function() {
 };
 
 Broker.prototype.addConnection = function( options ) {
-	var connection = Connection( options || {} ),
-		topology = Topology( connection );
-	connection.on( 'connected', function() {
-		this.emit( 'connected', connection );
-		this.emit( connection.name + '.connection.opened', connection );
-	}.bind( this) );
-	connection.on( 'closed', function() {
-		this.emit( connection.name + '.connection.closed', connection );
-	}.bind( this ) );
-	connection.on( 'failed', function( err ) {
-		this.emit( connection.name + '.connection.failed', err );
-	}.bind( this ) );
-	this.connections[ connection.name ] = topology;
-	return topology;
+	var name = options ? ( options.name || 'default' ) : 'default';
+	if( !this.connections[ name ] ) {
+		var connection = Connection( options || {} ),
+			topology = Topology( connection );
+		connection.on( 'connected', function() {
+			this.emit( 'connected', connection );
+			this.emit( connection.name + '.connection.opened', connection );
+		}.bind( this) );
+		connection.on( 'closed', function() {
+			this.emit( connection.name + '.connection.closed', connection );
+		}.bind( this ) );
+		connection.on( 'failed', function( err ) {
+			this.emit( name + '.connection.failed', err );
+		}.bind( this ) );
+		this.connections[ connection.name ] = topology;
+		return topology;
+	} else {
+		return this.connections[ name ];
+	}
 };
 
 Broker.prototype.addExchange = function( name, type, options, connectionName ) {
@@ -103,6 +108,16 @@ Broker.prototype.close = function( connectionName, reset ) {
 	}
 };
 
+Broker.prototype.deleteExchange = function( name, connectionName ) {
+	connectionName = connectionName || 'default';
+	return this.connections[ connectionName ].deleteExchange( name );
+};
+
+Broker.prototype.deleteQueue = function( name, connectionName ) {
+	connectionName = connectionName || 'default';
+	return this.connections[ connectionName ].deleteQueue( name );
+};
+
 Broker.prototype.getExchange = function( name, connectionName ) {
 	connectionName = connectionName || 'default';
 	return this.connections[ connectionName ].channels[ 'exchange:' + name ];
@@ -121,7 +136,6 @@ Broker.prototype.handle = function( messageType, handler, context ) {
 
 Broker.prototype.publish = function( exchangeName, type, message, routingKey, correlationId, connectionName, sequenceNo ) {
 	var messageId = undefined,
-		appId = this.appId,
 		headers = {},
 		timestamp = Date.now(),
 		options;
