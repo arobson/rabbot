@@ -1,109 +1,230 @@
 var _ = require( 'lodash' ),
 	when = require( 'when' ),
-	pipeline = require( 'when/pipeline' );
+	pipeline = require( 'when/pipeline' ),
+	postal = require( 'postal' ),
+	dispatch = postal.channel( 'rabbit.dispatch' ),
+	responses = postal.channel( 'rabbit.responses' ),
+	StatusList = require( './statusList.js' ),
+	machina = require( 'machina' )( _ ),
+	Monologue = require( 'monologue.js' )( _ ),
+	log = require( './log.js' );
 
-module.exports = function( Broker, log ) {
+var Channel = function( options, connection, topology ) {
 
-	// wraps 'useExchange'
-	Broker.prototype.addExchange = function( name, type, options, connectionName, suppressAddTask ) {
-		options.name = name;
-		options.type = type;
-		return this.useExchange( options, connectionName, suppressAddTask );
+	var aliasOptions = function( options, aliases ) {
+		var aliased = _.transform( options, function( result, value, key ) {
+			var alias = aliases[ key ];
+			result[ alias || key ] = value;
+		} );
+		return _.omit( aliased, Array.prototype.slice.call( arguments, 2 ) );
 	};
 
-	Broker.prototype.bindExchange = function( source, target, keys, connectionName, suppressAddTask ) {
-		connectionName = connectionName || 'default';
-		this.onReconnect( connectionName, 'bindExchange', arguments, 3, suppressAddTask );
-		return when.promise( function( resolve, reject ) {
-			this.getChannel( 'control', connectionName ) //Hey Alex, why are we always only binding to the control channel?
-				.then( null, function( err ) {
-					this.log.error( {
-						error: err,
-						reason: 'Could not get the control channel to bind exchange "' + target + '" to exchange ""' + source + ' with keys "' + JSON.stringify( keys ) + '"'
-					} );
-					reject( err );
-				}.bind( this ) )
-				.then( function( channel ) {
-					var actualKeys = [ '' ];
-					if( keys && keys.length > 0 ) {
-						actualKeys = _.isArray( keys ) ? keys : [ keys ];
-					}
-					var bindings = _.map( actualKeys, function( key ) {
-						return channel.model.bindExchange( target, source, key );
-					} );
-					when.all( bindings )
-						.then( null, function( err ) {
-							this.log.error( {
-								error: err,
-								reason: 'Binding exchange "' + target + '" to exchange ""' + source + ' with keys "' + JSON.stringify( keys ) + '" failed.'
-							} );
-							reject( err );
-						}.bind( this ) )
-						.done( resolve );
+	var Fsm = machina.Fsm.extend( {
+			name: options.name,
+			channel: undefined,
+			pendingMessages: {},
+			_sequenceNo: 0,
+			handlers: [],
+			_addPendingMessage: function( message ) {
+				var seqNo = ( ++ this._sequenceNo );
+				message.sequenceNo = seqNo;
+				this.pendingMessages[ seqNo ] = message;
+				return message;
+			},
+
+			_define: function() {
+				if( options.persistent ) {
+					this.persistent = true;
+				}
+				var valid = aliasOptions( options, {
+					alternate: 'alternateExchange'
+				}, 'persistent' );
+				var promise = this.channel.assertExchange( options.name, options.type, valid );
+				promise.then( function() {
+					this.handle( 'defined' );
 				}.bind( this ) );
-		}.bind( this ) );
-	};
+			},
 
-	Broker.prototype._configureExchanges = function( exchangeDef, connectionName ) {
-		return when.promise( function( resolve, reject ) {
-			if ( _.isUndefined( exchangeDef ) ) {
-				resolve();
-			} else {
-				var actualDefinitions = _.isArray( exchangeDef ) ? exchangeDef : [ exchangeDef ],
-					actions = [];
-				_.each( actualDefinitions, function( def ) {
-					actions.push( function() {
-						return this.useExchange( def, connectionName );
+			_getChannel: function() {
+				if( !this.channel ) {
+					var channel = connection.createChannel( true );
+					this.channel = channel;
+					channel.on( 'acquired', function() {
+						this.handle( 'define' );
 					}.bind( this ) );
-				}.bind( this ) );
-				pipeline( actions )
-					.then( null, function( err ) {
-						reject( err );
-					} )
-					.done( function() {
-						resolve();
-					} );
-			}
-		}.bind( this ) );
-	};
+					channel.on( 'released', function() {
+							this.handle( 'released' );
+					}.bind( this ) )
+				} else {
+					this.channel.acquire(); 
+				}
+			},
 
-
-	Broker.prototype.getExchange = function( name, connectionName ) {
-		connectionName = connectionName || 'default';
-		var exchange = this.connections[ connectionName ].exchanges[ name ];
-		return exchange;
-	};
-
-	Broker.prototype.useExchange = function( exchangeDef, connectionName, suppressAddTask ) {
-		connectionName = connectionName || 'default';
-		this.onReconnect( connectionName, 'useExchange', arguments, 1, suppressAddTask );
-		var channelName = 'exchange-' + exchangeDef.name;
-		return when.promise( function( resolve, reject ) {
-			this.getChannel( channelName, connectionName, true )
-				.then( null, function( err ) {
-					reject( err );
-				} )
-				.then( function( channel ) {
-					this.connections[ connectionName ].exchanges[ exchangeDef.name ] = channel;
-					if ( exchangeDef.persistent ) {
-						channel.persistent = true;
-					}
-					var valid = this.aliasOptions( exchangeDef, {
-						alternate: 'alternateExchange'
-					}, 'persistent' );
-					var result = channel.model.assertExchange( exchangeDef.name, exchangeDef.type, valid )
-						.then( null, function( err ) {
-							this.log.error( {
-								error: err,
-								reason: 'Could not create exchange "' + JSON.stringify( exchangeDef ) + '" on connection "' + connectionName + '".'
-							} );
-							reject( err );
-						}.bind( this ) )
-						.then( function() {
+			_publish: function( message, resolve, reject ) {
+				var baseHeaders = {
+					'CorrelationId': message.correlationId
+				};
+				message.headers = _.merge( baseHeaders, message.headers );
+				var payload = new Buffer( JSON.stringify( message.body ) ),
+					publishOptions = {
+						type: message.type || '',
+						contentType: 'application/json',
+						contentEncoding: 'utf8',
+						correlationId: message.correlationId || '',
+						replyTo: message.replyTo || topology.replyQueue,
+						messageId: message.messageId || message.id || '',
+						timestamp: message.timestamp,
+						appId: message.appId || '',
+						headers: message.headers
+					},
+					seqNo;
+				if ( !message.sequenceNo ) {
+					message = this._addPendingMessage( message );
+				}
+				seqNo = message.sequenceNo || this._sequenceNo; // create a closure around sequence
+				if ( this.persistent ) {
+					publishOptions.persistent = true;
+				}
+				var effectiveKey = message.routingKey == '' ? '' : publishOptions.type;
+				this.channel.publish(
+					this.name,
+					effectiveKey,
+					payload,
+					publishOptions,
+					function( err ) {
+						if ( err == null ) {
+							delete this.pendingMessages[ seqNo ];
 							resolve();
-						} );
-				}.bind( this ) );
-		}.bind( this ) );
-	};
+						} else {
+							reject( err );
+						}
+					}.bind( this ) );
+			},
 
+			check: function() {
+				return when.promise( function( resolve ) {
+					this.on( 'defined', function() {
+						resolve();
+					} ).once();
+					this.handle( 'check' );
+				}.bind( this ) );
+			},
+
+			destroy: function() {
+				this.transition( 'destroyed' );
+			},
+
+			publish: function( message ) {
+				return when.promise( function( resolve, reject ) {
+					var op = function() {
+						this._publish( message, resolve, reject );
+					}.bind( this );
+					this.handle( 'publish', op );
+				}.bind( this ) );
+			},
+
+			republish: function() {
+				if( _.keys( this.pendingMessages ).length > 0 ) {
+					var promises = _.map( this.pendingMessages, function( message ) {
+						return when.promise( function( resolve, reject ) {
+							this._publish( message, resolve, reject );
+						}.bind( this ) );
+					}.bind( this ) );
+					return when.all( promises );
+				} else {
+					return when( true );
+				}
+			},
+
+			initialState: 'setup',
+			states: {
+				'setup': {
+					_onEnter: function() {
+						this.handlers.push( topology.on( 'bindings-completed', function() {
+							this.handle( 'bindings-completed' );
+						}.bind( this) ) );
+						this.handlers.push( connection.on( 'reconnected', function() {
+							this.transition( 'reconnecting' );
+						}.bind( this ) ) );
+						this.transition( 'initializing' );
+					}
+				},
+				'destroyed': {
+					_onEnter: function() {
+						_.each( this.handlers, function( handle ) {
+							handle.unsubscribe();
+						} );
+						this.channel.destroy();
+						this.channel = undefined;
+					}
+				},
+				'initializing': {
+					_onEnter: function() {
+						this._getChannel();
+					},
+					define: function() {
+						this._define();
+					},
+					defined: function() {
+						this.transition( 'ready' );
+					},
+					released: function() {
+						this.transition( 'released' );
+					},
+					publish: function() {
+						this.deferUntilTransition( 'ready' );
+					}
+				},
+				'reconnecting': {
+					_onEnter: function() {
+						this._getChannel();
+					},
+					define: function() {
+						this._define();
+					},
+					defined: function() {
+						this.emit( 'defined' );
+					},
+					'bindings-completed': function() {
+						this.republish()
+							.then( function() {
+								this.transition( 'ready' );
+							}.bind( this ) )
+							.then( null, function( err ) { console.log( err.stack ); } );
+					},
+					released: function() {
+						this.transition( 'released' );
+					},
+					publish: function() {
+						this.deferUntilTransition( 'ready' );
+					}
+				},
+				'ready': {
+					_onEnter: function() {
+						this.emit( 'defined' );
+					},
+					check: function() {
+						this.emit( 'defined' );
+					},
+					released: function() {
+						this.transition( 'released' );
+					},
+					publish: function( op ) {
+						op();
+					}
+				},
+				'released': {
+					publish: function( op ) {
+						this.deferUntilTransition( 'ready' );
+						this.transition( 'initializing' );
+					}
+				}
+			}
+	} );
+
+	Monologue.mixin( Fsm );
+	var fsm = new Fsm();
+	return fsm;
 };
+
+module.exports = Channel;

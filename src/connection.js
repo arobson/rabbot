@@ -2,151 +2,138 @@ var _ = require( 'lodash' ),
 	amqp = require( 'amqplib' ),
 	Monologue = require( 'monologue.js' )( _ ),
 	when = require( 'when' ),
-	pipeline = require( 'when/pipeline' ),
+	pipeline = require( 'when/sequence' ),
 	bunyan = require( 'bunyan' ),
-	fs = require( 'fs' );
+	fs = require( 'fs' ),
+	machina = require( 'machina' )( _ ),
+	newChannel = require( './amqp/channel.js' ),
+	newConnection = require( './amqp/connection.js' );
 
-	var trim = function( x ) { return x.trim( ' ' ); },
-		split = function( x ) {
-			if( _.isNumber( x ) ) {
-				return [ x ];
-			} else if( _.isArray( x ) ) {
-				return x;
-			} else {
-				return x.split( ',' ).map( trim );
-			}
-		};
+var Connection = function( options ) {
+	
+	var channels = {},
+		definitions = {
+			bindings: {},
+			exchanges: {},
+			queues: {},
+			subscriptions: {}
+		},
+		connection = undefined;
 
-	var Connection = function( options, broker ) {
-		options = options || {};
-		this.channels = {};
-		this.exchanges = {};
-		this.queues = {};
-		this.consuming = [];
-		this.reconnectTasks = [];
-		_.map( options, function( val, key ) {
-			this[ key ] = val;
-		}.bind( this ) );
-		this.name = options.name || 'default';
-		this.broker = broker;
-		this.connectionIndex = 0;
+	var Fsm = machina.Fsm.extend( {
+		name: options.name || 'default',
+		initialState: 'initializing',
+		reconnected: false,
+		close: function() {
+			return when.promise( function( resolve, reject ) {
+				this.on( 'closed', resolve );
+				this.handle( 'close' );
+			}.bind( this ) );
+		},
 
-		var server = this.server || this.RABBIT_BROKER || 'localhost',
-			port = this.port || this.RABBIT_PORT || 5672;
+		createChannel: function( confirm ) {
+			this.connect();
+			return newChannel.create( connection, confirm );
+		},
 
-		this.servers = split( server );
-		this.ports = split( port );
-		this.limit = _.max( [ this.servers.length, this.ports.length ] );
-	};
+		connect: function() {
+			return when.promise( function( resolve, reject ) {
+				this.on( 'connected', function() {
+					resolve();
+				} );
+				this.handle( 'connect' );
+			}.bind( this ) );
+		},
 
-	Connection.prototype.bumpIndex = function() {
-		if( this.limit - 1 > this.connectionIndex ) {
-			this.connectionIndex ++;
-		} else {
-			this.connectionIndex = 0;
-		}
-	};
-
-	Connection.prototype.getPort = function() {
-		if( this.connectionIndex >= this.ports.length ) {
-			return this.ports[ 0 ];
-		} else {
-			return this.ports[ this.connectionIndex ];
-		}
-	}
-
-	Connection.prototype.getServer = function() {
-		if( this.connectionIndex >= this.servers.length ) {
-			return this.servers[ 0 ];
-		} else {
-			return this.servers[ this.connectionIndex ];
-		}
-	}
-
-	Connection.prototype.getUri = function( server, port ) {
-		return ( this.RABBIT_PROTOCOL || 'amqp://' ) +
-			( this.user || this.RABBIT_USER || 'guest' ) +
-			':' +
-			( this.pass || this.RABBIT_PASSWORD || 'guest' ) +
-			'@' + server + ':' + port + '/' +
-			( this.vhost || this.RABBIT_VHOST || '%2f' ) +
-			'?heartbeat=' +
-			( this.heartBeat || this.RABBIT_HEARTBEAT || 2000 );
-	};
-
-	Connection.prototype.getNextUri = function() {
-		var server = this.getServer(),
-			port = this.getPort();
-			uri = this.getUri( server, port );
-		return uri;
-	};
-
-	Connection.prototype.connect = function() {
-		return when.promise( function( resolve, reject ) {
-			var attempted = [];
-			var nextUri;
-			tryConnect = function() {
-				nextUri = this.getNextUri();
-				if( _.indexOf( attempted, nextUri) < 0 ) {
-					this.tryUri( nextUri )
-						.then( null, function( err ) {
-							tryConnect();
-						} )
-						.then( resolve );
-					attempted.push( nextUri );
-				} else {
-					reject( 'No endpoints could be reached' );
-				}
+		replay: function( ev ) {
+			return function( x ) {
+				this.handle( ev, x );
 			}.bind( this );
-			tryConnect();
-		}.bind( this ) );
-	};
+		},
 
-	Connection.prototype.tryUri = function( uri ) {
-		return when.promise( function( resolve, reject ) {
-			amqp
-				.connect( uri )
-				.then( function( conn ) {
-					this.handle = conn;
-					this.isOpen = true;
-					conn.on( 'close', function() {
-						this.broker.emit( this.name + '.connection.closed', this );
-					}.bind( this ) );
-
-					this.broker.emit( this.name + '.connection.opened', this );
-					if ( this.name === 'default' ) {
-						this.broker.emit( 'connected', this );
+		states: {
+			'initializing': {
+				_onEnter: function() {
+					connection = newConnection( options );
+					connection.on( 'acquiring', this.replay( 'acquiring' ) );
+					connection.on( 'acquired', this.replay( 'acquired' ) );
+					connection.on( 'failed', this.replay( 'failed' ) );
+					connection.on( 'lost', this.replay( 'lost' ) );
+				},
+				'acquiring': function() {
+					this.transition( 'connected' ); 
+				},
+				'acquired': function() {
+					this.transition( 'connected' );
+				},
+				'close': function( err ) {
+					this.deferUntilTransition( 'connected' );
+					this.transition( 'closed' );
+				},
+				'failed': function( err ) {
+					this.emit( 'failed', err );
+				}
+			},
+			'connecting': {
+				_onEnter: function() {
+					connection.acquire();
+				},
+				'acquired': function() {
+					this.transition( 'connected' );
+				},
+				'close': function( err ) {
+					this.deferUntilTransition( 'connected' );
+				},
+				'failed': function( err ) {
+					this.emit( 'failed', err );
+				}
+			},
+			'connected': {
+				_onEnter: function() {
+					if( this.reconnected ) {
+						this.emit( 'reconnected' );
 					}
+					this.reconnected = true;
+					this.emit( 'connected' );
+				},
+				'failed': function( err ) {
+					this.emit( 'failed', err );
+					this.transition( 'connecting' );
+				},
+				'lost': function( err ) {
+					this.transition( 'connecting' );
+				},
+				'close': function() {
+					connection.release();
+					this.transition( 'closed' );
+				},
+				'connect': function() {
+					this.emit( 'connected' );
+				}
+			},
+			'closed': {
+				_onEnter: function() {
+					this.emit( 'closed', {} );
+				},
+				'acquiring': function() {
+					this.transition( 'connecting' );
+				},
+				'close': function( err ) {
+					connection.release();
+					this.emit( 'closed' );
+				},
+				'connect': function() {
+					this.transition( 'connecting' );
+				},
+				'failed': function( err ) {
+					this.emit( 'failed', err );
+				}
+			}
+		}
+	} );
 
-					if ( this.reconnectTasks.length > 0 ) {
-						// re-execute all reconnectTasks
-						pipeline( this.reconnectTasks )
-							.done( function() {
-								this.broker.sendPendingMessages();
-								resolve( this );
-							}.bind( this ) );
-					} else {
-						this.broker.sendPendingMessages();
-						resolve( this );
-					}
-				}.bind( this ) )
-				.then( null, function( err ) {
-					this.bumpIndex();
-					this.broker.emit( this.name + '.connection.failed', {
-						name: this.name,
-						err: err
-					} );
-					this.broker.emit( 'errorLogged' );
-					this.handle = undefined;
-					this.broker.log.error( {
-						error: err,
-						reason: 'Attempt to connect with uri "' + uri + '" failed'
-					} );
-					reject( err );
-				}.bind( this ) );
-		}.bind( this ) );
-	};
-
-	Monologue.mixin( Connection );
+	Monologue.mixin( Fsm );
+	return new Fsm();
+};
 
 module.exports = Connection;

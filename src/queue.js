@@ -1,113 +1,226 @@
 var _ = require( 'lodash' ),
 	when = require( 'when' ),
-	pipeline = require( 'when/pipeline' );
+	pipeline = require( 'when/pipeline' ),
+	postal = require( 'postal' ),
+	dispatch = postal.channel( 'rabbit.dispatch' ),
+	responses = postal.channel( 'rabbit.responses' ),
+	StatusList = require( './statusList.js' ),
+	machina = require( 'machina' )( _ ),
+	Monologue = require( 'monologue.js' )( _ ),
+	log = require( './log.js' );
 
-module.exports = function( Broker, log ) {
+var Channel = function( options, connection, topology ) {
 
-	// wraps useQueue
-	Broker.prototype.addQueue = function( name, options, connectionName, suppressAddTask ) {
-		options.name = name;
-		return this.useQueue( options, connectionName, suppressAddTask );
+	var aliasOptions = function( options, aliases ) {
+		var aliased = _.transform( options, function( result, value, key ) {
+			var alias = aliases[ key ];
+			result[ alias || key ] = value;
+		} );
+		return _.omit( aliased, Array.prototype.slice.call( arguments, 2 ) );
 	};
 
-	Broker.prototype.bindQueue = function( source, target, keys, connectionName, suppressAddTask ) {
-		connectionName = connectionName || 'default';
-		this.onReconnect( connectionName, 'bindQueue', arguments, 3, suppressAddTask );
-		return when.promise( function( resolve, reject ) {
-			this.getChannel( 'control', connectionName )
-				.then( null, function( err ) {
-					this.log.error( {
-						error: err,
-						reason: 'Could not get the control channel to bind queue "' + target + '" to exchange "' + source + '" with keys "' + JSON.stringify( keys ) + '"'
-					} );
-					reject( err );
-				}.bind( this ) )
-				.then( function( channel ) {
-					var actualKeys = [ '' ];
-					if( keys && keys.length > 0 ) {
-						actualKeys = _.isArray( keys ) ? keys : [ keys ];
-					}
-					var bindings = _.map( actualKeys, function( key ) {
-						return channel.model.bindQueue( target, source, key );
-					} );
-					when.all( bindings )
-						.then( null, function( err ) {
-							this.log.error( {
-								error: err,
-								reason: 'Binding exchange "' + target + '" to exchange ""' + source + ' with keys "' + JSON.stringify( keys ) + '" failed.'
-							} );
-							reject( err );
-						}.bind( this ) )
-						.done( resolve );
-				}.bind( this ) );
-		}.bind( this ) );
-	};
+	var messages = new StatusList(),
+		Fsm = machina.Fsm.extend( {
+			name: options.name,
+			channel: undefined,
+			responseSubscriptions: {},
+			signalSubscription: undefined,
+			handlers: [],
+			_addPendingMessage: function( message ) {
+				var seqNo = ++this._sequenceNo;
+				message.sequenceNo = seqNo;
+				this.pendingMessages[ seqNo ] = message;
+				return message;
+			},
 
-	Broker.prototype._configureQueues = function( queueDef, connectionName ) {
-		return when.promise( function( resolve, reject ) {
-			if ( _.isUndefined( queueDef ) ) {
-				resolve();
-			} else {
-				var actualDefinitions = _.isArray( queueDef ) ? queueDef : [ queueDef ],
-					actions = [];
-				_.each( actualDefinitions, function( def ) {
-					actions.push( function() {
-						return this.useQueue( def, connectionName );
-					}.bind( this ) );
-				}.bind( this ) );
-				pipeline( actions )
-					.then( null, function( err ) {
-						reject( err );
-					} )
-					.done( function() {
-						resolve();
-					} );
-			}
-		}.bind( this ) );
-	};
-
-	Broker.prototype.getQueue = function( name, connectionName ) {
-		connectionName = connectionName || 'default';
-		var queue = this.connections[ connectionName ].queues[ name ];
-		return queue;
-	};
-
-	Broker.prototype.useQueue = function( queueDef, connectionName, suppressAddTask ) {
-		connectionName = connectionName || 'default';
-		this.onReconnect( connectionName, 'useQueue', arguments, 1, suppressAddTask );
-		var name = queueDef.name;
-		channelName = 'queue-' + name;
-		return when.promise( function( resolve, reject ) {
-			this.getChannel( channelName, connectionName )
-				.then( null, function( err ) {
-					reject( err );
-				} )
-				.then( function( channel ) {
-					this.connections[ connectionName ].queues[ name ] = channel;
-					var valid = this.aliasOptions( queueDef, {
+			_define: function() {
+				var valid = aliasOptions( options, {
 						queueLimit: 'maxLength',
 						deadLetter: 'deadLetterExchange'
 					}, 'subscribe', 'limit' ),
-						result = channel.model.assertQueue( name, valid );
-					if ( queueDef[ 'limit' ] ) {
-						channel.model.prefetch( queueDef[ 'limit' ] );
-					}
-					var consuming = _.contains( this.connections[ connectionName ].consuming, name );
-					if ( queueDef.subscribe || consuming ) {
-						this.subscribe( channel, name );
-					}
-					result
-						.then( null, function( err ) {
-							this.log.error( {
-								error: err,
-								reason: 'Could not create queue "' + JSON.stringify( queueDef ) + '" on connection "' + connectionName + '".'
-							} );
-							reject( err );
-						}.bind( this ) )
-						.then( function() {
-							resolve();
-						} );
+					promise = this.channel.assertQueue( options.name, valid );
+				promise.then( function() {
+					this.handle( 'defined' );
 				}.bind( this ) );
-		}.bind( this ) );
-	};
+				if ( options[ 'limit' ] ) {
+					this.channel.prefetch( options[ 'limit' ] );
+				}
+				if ( options.subscribe ) {
+					this.subscribe();
+				}
+				return promise;
+			},
+
+			_getChannel: function() {
+				if( !this.channel ) {
+					var channel = connection.createChannel( true );
+					this.channel = channel;
+					channel.on( 'acquired', function() {
+						this.handle( 'define' );
+					}.bind( this ) );
+					channel.on( 'released', function() {
+							this.handle( 'released' );
+					}.bind( this ) )
+				} else {
+					this.channel.acquire(); 
+				}
+			},
+
+			_subscribe: function() {
+				messages._listenForSignal();
+				return this.channel.consume( this.name, function( raw ) {
+					var correlationId = raw.properties.correlationId;
+					raw.body = JSON.parse( raw.content.toString( 'utf8' ) );
+					var ops = messages.addMessage( raw.fields.deliveryTag );
+					raw.ack = ops.ack;
+					raw.nack = ops.nack;
+					var position = 0;
+					raw.reply = function( reply, more, replyType ) {
+						var replyTo = raw.properties.replyTo;
+						ops.ack();
+						if( replyTo ) {
+							var payload = new Buffer( JSON.stringify( reply ) ),
+							publishOptions = {
+								type: replyType || raw.type + '.reply',
+								contentType: 'application/json',
+								contentEncoding: 'utf8',
+								correlationId: raw.properties.messageId,
+								replyTo: topology.replyQueue,
+								headers: {}
+							};
+							if( !more ) {
+								publishOptions.headers[ 'sequence_end' ] = true;
+							} else {
+								publishOptions.headers[ 'position' ] = ( position ++ );
+							}
+							return this.channel.sendToQueue( replyTo, payload, publishOptions );
+						}
+					}.bind( this );
+					if( raw.fields.routingKey == topology.replyQueue ) {
+						responses.publish( correlationId, raw );
+					} else {
+						dispatch.publish( raw.properties.type, raw );
+					}
+				}.bind( this ) );
+			},
+
+			check: function() {
+				return when.promise( function( resolve ) {
+					this.on( 'defined', function() {
+						resolve();
+					} ).once();
+					this.handle( 'check' );
+				}.bind( this ) );
+			},
+
+			destroy: function() {
+				this.transition( 'destroyed' );
+			},
+
+			subscribe: function() {
+				this.subscribed = true;
+				var op = function() {
+					this._subscribe();
+				}.bind( this );
+				this.handle( 'subscribe', op );
+			},
+			
+			initialState: 'setup',
+			states: {
+				'setup': {
+					_onEnter: function() {
+						this.handlers.push( connection.on( 'reconnected', function() {
+							this.transition( 'initializing' );
+						}.bind( this ) ) );
+
+						this.handlers.push( messages.on( 'ack', function( data ) {
+							this.channel.ack( { fields: { deliveryTag: data.tag } }, data.inclusive );
+						}.bind( this ) ) );
+
+						this.handlers.push( messages.on( 'nack', function( data ) {
+							this.channel.nack( { fields: { deliveryTag: data.tag } }, data.inclusive );
+						}.bind( this ) ) );
+
+						this.handlers.push( messages.on( 'ackAll', function() {
+							this.channel.ackAll();
+						}.bind( this ) ) );
+
+						this.handlers.push( messages.on( 'nackAll', function() {
+							this.channel.nackAll();
+						}.bind( this ) ) );
+						this.transition( 'initializing' );
+					}
+				},
+				'destroyed': {
+					_onEnter: function() {
+						_.each( this.handlers, function( handle ) {
+							handle.unsubscribe();
+						} );
+						this.channel.destroy();
+						this.channel = undefined;
+					}
+				},
+				'initializing': {
+					_onEnter: function() {
+						this._getChannel();
+					},
+					define: function() {
+						this.transition( 'defining' );
+					},
+					defined: function() {
+						this.transition( 'ready' );
+					},
+					released: function() {
+						this.transition( 'initializing' );
+					},
+					subscribe: function() {
+						this.deferUntilTransition( 'ready' );
+					}
+				},
+				'defining': {
+					_onEnter: function() {
+						this._define();
+					},
+					define: function() {
+						this.transition( 'defining' );
+					},
+					defined: function() {
+						this.transition( 'ready' );
+					},
+					released: function() {
+						this._define();
+					},
+					subscribe: function() {
+						this.deferUntilTransition( 'ready' );
+					}
+				},
+				'ready': {
+					_onEnter: function() {
+						this.emit( 'defined' );
+					},
+					check: function() {
+						this.emit( 'defined' );
+					},
+					released: function() {
+						this.transition( 'released' );
+					},
+					subscribe: function( op ) {
+						var tag = op();
+					}
+				},
+				'released': {
+					subscribe: function( op ) {
+						this.deferUntilTransition( 'ready' );
+						this.transition( 'initializing' );
+					}
+				}
+			}
+	} );
+
+	Monologue.mixin( Fsm );
+	var fsm = new Fsm();
+	fsm.receivedMessages = messages;
+	return fsm;
 };
+
+module.exports = Channel;

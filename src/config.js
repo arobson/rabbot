@@ -1,45 +1,33 @@
 var _ = require( 'lodash' ),
 	when = require( 'when' ),
-	pipeline = require( 'when/pipeline' );
+	pipeline = require( 'when/pipeline' ),
+	log = require( './log' );
 
-module.exports = function( Broker, log ) {
-
-	Broker.prototype.aliasOptions = function( options, aliases ) {
-		var aliased = _.transform( options, function( result, value, key ) {
-			var alias = aliases[ key ];
-			result[ alias || key ] = value;
-		} );
-		return _.omit( aliased, Array.prototype.slice.call( arguments, 2 ) );
-	};
+module.exports = function( Broker ) {
 
 	Broker.prototype.configure = function( config ) {
 		// convenience method to add connection and build up using specified configuration
 		// normally, the approach here might be a bit pedantic, but it's preferable
 		// to the pyramid of doom callbacks
 		this.config = config;
-		config.connection.name = config.connection.name || 'default';
 		var connection,
-			configExchanges = _.bind( this._configureExchanges, this ),
-			configQueues = _.bind( this._configureQueues, this ),
-			configBindings = _.bind( this._configureBindings, this ),
 			emit = this.emit;
 		return when.promise( function( resolve, reject ) {
-			var createExchanges = function( conn ) {
-				connection = conn;
-				configExchanges( config.exchanges, connection.name )
+			var createExchanges = function() {
+				connection.configureExchanges( config.exchanges )
 					.then( null, function( err ) {
-						this.log.error( {
+						log.error( {
 							error: err,
 							reason: 'Could not configure exchanges as specified'
 						} );
 						reject( err );
 					}.bind( this ) )
-					.then( createQueues );
+					.then( createQueues )
 				}.bind( this ),
 				createQueues = function() {
-					configQueues( config.queues, connection.name )
+					connection.configureQueues( config.queues )
 						.then( null, function( err ) {
-							this.log.error( {
+							log.error( {
 								error: err,
 								reason: 'Could not configure queues as specified'
 							} );
@@ -48,9 +36,9 @@ module.exports = function( Broker, log ) {
 						.done( createBindings );
 				}.bind( this ),
 				createBindings = function() {
-					configBindings( config.bindings, connection.name )
+					connection.configureBindings( config.bindings, connection.name )
 						.then( null, function( err ) {
-							this.log.error( {
+							log.error( {
 								error: err,
 								reason: 'Could not configure bindings as specified'
 							} );
@@ -62,44 +50,9 @@ module.exports = function( Broker, log ) {
 					emit( connection.name + '.connection.configured', connection );
 					resolve();
 				};
-			this.addConnection( config.connection )
-				.then( null, function( err ) {
-					this.log.error( {
-						error: err,
-						reason: 'Could not establish the connection specified'
-					} );
-					reject( err );
-				}.bind( this ) )
-				.then( function( c ) {
-					createExchanges( c );
-				} );
-		}.bind( this ) );
-	};
+			connection = this.addConnection( config.connection );
 
-	Broker.prototype._configureBindings = function( bindingDef, connectionName ) {
-		return when.promise( function( resolve, reject ) {
-			if ( _.isUndefined( bindingDef ) ) {
-				resolve();
-			} else {
-				var actualDefinitions = _.isArray( bindingDef ) ? bindingDef : [ bindingDef ],
-					actions = [];
-				_.each( actualDefinitions, function( def ) {
-					var q = this.getQueue( def.target, connectionName ),
-						call = q ? 'bindQueue' : 'bindExchange',
-						bind = function() {
-							return this[ call ]( def.exchange, def.target, def.keys, connectionName );
-						}.bind( this );
-					actions.push( bind );
-				}.bind( this ) );
-
-				pipeline( actions )
-					.then( null, function( err ) {
-						reject( err );
-					} )
-					.done( function() {
-						resolve();
-					} );
-			}
+			createExchanges();
 		}.bind( this ) );
 	};
 };

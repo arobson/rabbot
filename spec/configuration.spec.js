@@ -6,67 +6,14 @@ var rabbit = require( '../src/index.js' ),
 	fs = require( 'fs' ),
 	when = require( 'when' );
 
-var open = function( done, connectionName ) {
-	rabbit.getConnection( connectionName )
-		.then( function() {
-			done();
-		} );
-};
-
-var close = function( done, reset, connectionName ) {
-	if ( connectionName ) {
-		rabbit.close( connectionName, reset )
-			.then( function() {
-				done();
-			} );
-	} else {
-		rabbit.closeAll( reset )
-			.then( function() {
-				done();
-			} );
-	}
-};
-
-describe( 'when aliasing options', function() {
-	var options = {
-		a: 1,
-		bee: 2,
-		cee: 3,
-		dee: 4,
-		e: 5,
-		eff: 6,
-		gee: 7
-	};
-	var expected = {
-		a: 1,
-		b: 2,
-		c: 3,
-		d: 4,
-		e: 5
-	};
-	var aliased = {};
-	before( function() {
-		aliased = rabbit.aliasOptions( options, {
-			bee: 'b',
-			cee: 'c',
-			dee: 'd'
-		}, 'gee', 'eff' );
-	} );
-
-	it( 'should filter out invalid options', function() {
-		aliased.should.eql( expected );
-	} );
-} );
-
 describe( 'when configuring with valid settings', function() {
-	// this.timeout(99999);
-	var testConnection = undefined;
+	// var testConnection = undefined;
 	var promise = undefined;
 
 	before( function( done ) {
 		rabbit.on( 'configTest.connection.configured', function( conn ) {
-			testConnection = conn;
-			testConnection.should.have.property( 'name', 'configTest' );
+			// testConnection = conn;
+			// testConnection.should.have.property( 'name', 'configTest' );
 			done();
 		} ).disposeAfter( 1 );
 
@@ -88,14 +35,6 @@ describe( 'when configuring with valid settings', function() {
 				name: 'config-ex.2',
 				type: 'topic',
 				autoDelete: true
-			}, {
-				name: 'config-ex.3',
-				type: 'direct',
-				autoDelete: true
-			}, {
-				name: 'config-ex.4',
-				type: 'direct',
-				autoDelete: true
 			} ],
 
 			queues: [ {
@@ -103,7 +42,8 @@ describe( 'when configuring with valid settings', function() {
 				autoDelete: true
 			}, {
 				name: 'config-q.2',
-				autoDelete: true
+				autoDelete: true,
+				subscribe: true
 			} ],
 
 			bindings: [ {
@@ -114,20 +54,19 @@ describe( 'when configuring with valid settings', function() {
 				exchange: 'config-ex.2',
 				target: 'config-q.2',
 				keys: 'test1'
-			}, {
-				exchange: 'config-ex.3',
-				target: 'config-ex.4',
-				keys: 'bob'
 			} ]
-
 		};
 
 		promise = rabbit.configure( config );
 		promise.should.be.ok;
+		promise.then( function() { done(); } );
 	} );
 
 	after( function( done ) {
-		close( done, true, 'configTest' );
+		rabbit.close( 'configTest', true )
+			.then( function() {
+				done();
+			} );
 	} );
 
 	it( 'returns and resolves a promise', function( done ) {
@@ -137,18 +76,6 @@ describe( 'when configuring with valid settings', function() {
 			}.bind( this ) );
 	} );
 
-	it( 'adds or verifies the requested exchanges', function( done ) {
-		testConnection.exchanges[ 'config-ex.1' ].should.be.ok;
-		testConnection.exchanges[ 'config-ex.2' ].should.be.ok;
-		done();
-	} );
-
-	it( 'adds or verifies the requested queues', function( done ) {
-		testConnection.queues[ 'config-q.1' ].should.be.ok;
-		testConnection.queues[ 'config-q.2' ].should.be.ok;
-		done();
-	} );
-
 	it( 'binds exchanges to queues', function( done ) {
 		// send a message to test
 
@@ -156,12 +83,9 @@ describe( 'when configuring with valid settings', function() {
 			msg.body.should.have.property( 'greeting', 'hello world' );
 			done();
 		}, this );
-
-		rabbit.startSubscription( 'config-q.1', 'configTest' )
-			.done( function() {
-				rabbit.publish( 'config-ex.1', 'config.test.message', {
-					greeting: 'hello world'
-				}, '', '', 'configTest' );
-			} );
+		rabbit.startSubscription( 'config-q.1', 'configTest' );
+		rabbit.publish( 'config-ex.1', 'config.test.message', {
+			greeting: 'hello world'
+		}, '', '', 'configTest' );
 	} );
 } );

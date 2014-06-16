@@ -1,6 +1,6 @@
 {
   "name": "wascally",
-  "version": "0.1.9",
+  "version": "0.2.0-1",
   "description": "Abstractions to simplify working with the wascally wabbitMQ",
   "main": "src/index.js",
   "scripts": {
@@ -30,11 +30,13 @@
     "processhost": "~0.1.6"
   },
   "dependencies": {
+    "amqplib": "~0.2.0",
+    "bunyan": "~0.22.1",
     "lodash": "~2.4.1",
-    "amqplib": "~0.1.3",
-    "when": "~3.0.0",
-    "postal": "~0.9.0-rc1",
+    "machina": "^0.3.6",
     "monologue.js": "~0.1.4",
-    "bunyan": "~0.22.1"
+    "node-uuid": "^1.4.1",
+    "postal": "~0.9.0-rc1",
+    "when": "~3.0.0"
   }
 }
