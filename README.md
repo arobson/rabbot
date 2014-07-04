@@ -41,7 +41,7 @@ rabbit.publish( 'exchange.name', {
 ```
 
 ### publish( exchangeName, typeName, messageBody, [routingKey], [correlationId], [connectionName] )
-Messages bodies are simple objects. You must provide a type specifier for the message which will be used to set AMQP's properties.type. If you don't provide a routing key, the type specifier will be used. If this is undesirable, you will have to provide a '' or undefined value in the routing key argument.
+Messages bodies are simple objects. You must provide a type specifier for the message which will be used to set AMQP's properties.type. If you don't provide a routing key, the type specifier will be used. If this is undesirable, you will have to provide a '' for the routing key argument/option.
 
 ```javascript
 // the first 3 arguments are required
@@ -174,3 +174,17 @@ To establish a connection with all settings in place and ready to go call config
 		// ready to go!
 	} );
 ```
+
+## AMQPS, SSL/TLS Support
+Providing the following configuration options setting the related environment varibles will cause wascally to attempt connecting via AMQPS. For more details about which settings perform what role, refer to the amqplib's page on [SSL](http://www.squaremobius.net/amqp.node/doc/ssl.html).
+
+```javascript
+	connection: { 		// sample connection hash
+		caPath: '', 	// comma delimited paths to CA files. RABBIT_CA 
+		certPath: '', 	// path to cert file. RABBIT_CERT 
+		keyPath: '',	// path to key file. RABBIT_KEY
+		passphrase: '', // passphrase associated with cert/pfx. RABBIT_PASSPHRASE
+		pfxPath: ''		// path to pfx file. RABBIT_PFX
+	}
+```
+

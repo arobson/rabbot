@@ -4,9 +4,17 @@ var gulp = require( 'gulp' ),
 	exec = require("child_process").exec;
 
 gulp.task( 'test', function() {
-	gulp.src( './spec/*.spec.js' )
+	var errors = [];
+	return gulp.src( './spec/*.spec.js' )
 		.pipe( mocha( { reporter: 'spec' } ) )
-		.on( 'error', function( err ) { console.log( err.stack ); } );
+		.on( 'error', function( err) { errors.push( err );} )
+		.on( 'end', function() {
+			if( errors.length > 0 ) {
+				process.exit( -1 );
+			} else {
+				process.exit( 0 );
+			}
+		} );
 } );
 
 gulp.task( 'sleep-and-test', function() {
