@@ -1,5 +1,6 @@
 var amqp = require( 'amqplib' ),
 	_ = require( 'lodash' ),
+	fs = require( 'fs' ),
 	when = require( 'when' ),
 	AmqpConnection = require( 'amqplib/lib/callback_model' ).CallbackModel,
 	Promiser = require( './promiseMachine.js');
@@ -40,6 +41,34 @@ var Adapter = function( parameters ) {
 	this.pass = getOption( parameters, 'RABBIT_PASSWORD' ) || getOption( parameters, 'pass', 'guest' );
 	this.user = getOption( parameters, 'RABBIT_USER' ) || getOption( parameters, 'user', 'guest' );
 	this.vhost = getOption( parameters, 'RABBIT_VHOST' ) || getOption( parameters, 'vhost', '%2f' );
+	var certPath = getOption( parameters, 'RABBIT_CERT' ) || getOption( parameters, 'certPath' ),
+		keyPath = getOption( parameters, 'RABBIT_KEY' ) || getOption( parameters, 'keyPath' ),
+		caPaths = getOption( parameters, 'RABBIT_CA' ) || getOption( parameters, 'caPath' ),
+		passphrase = getOption( parameters, 'RABBIT_PASSPHRASE' ) || getOption( parameters, 'passphrase' ),
+		pfxPath = getOption( parameters, 'RABBIT_PFX' ) || getOption( parameters, 'pfxPath' ),
+		useSSL = certPath || keyPath || passphrase || caPaths || pfxPath;
+	this.options = { noDelay: true };
+	if( certPath ) {
+		this.options.cert = fs.readFileSync( certPath );
+	}
+	if( keyPath ) {
+		this.options.key = fs.readFileSync( keyPath );
+	}
+	if( passphrase ) {
+		this.options.passphrase = passphrase;
+	}
+	if( pfxPath ) {
+		this.options.pfx = fs.readFileSync( pfxPath );
+	}
+	if( caPaths ) {
+		var list = caPaths.split( ',' );
+		this.options.ca = _.map( list, function( caPath ) { 
+			return fs.readFileSync( caPath ); 
+		} )
+	}
+	if( useSSL ) {
+		this.protocol = 'amqps';
+	}
 	this.limit = _.max( [ this.servers.length, this.ports.length ] );
 };
 
@@ -50,7 +79,7 @@ Adapter.prototype.connect = function() {
 		attempt = function() {
 			var nextUri = this.getNextUri();
 			if( _.indexOf( attempted, nextUri ) < 0 ) {
-				amqp.connect( nextUri, { noDelay: true } )
+				amqp.connect( nextUri, this.options )
 					.then( resolve )
 					.then( null, function( err ) {
 						attempted.push( nextUri );

@@ -85,7 +85,7 @@ var Channel = function( options, connection, topology ) {
 				if ( this.persistent ) {
 					publishOptions.persistent = true;
 				}
-				var effectiveKey = message.routingKey == '' ? '' : publishOptions.type;
+				var effectiveKey = message.routingKey == '' ? '' : message.routingKey || publishOptions.type;
 				this.channel.publish(
 					this.name,
 					effectiveKey,
