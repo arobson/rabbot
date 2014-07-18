@@ -33,7 +33,7 @@ module.exports = function( Broker ) {
 							} );
 							reject( err );
 						}.bind( this ) )
-						.done( createBindings );
+						.then( createBindings );
 				}.bind( this ),
 				createBindings = function() {
 					connection.configureBindings( config.bindings, connection.name )
@@ -44,7 +44,7 @@ module.exports = function( Broker ) {
 							} );
 							reject( err );
 						}.bind( this ) )
-						.done( finish );
+						.then( finish );
 				}.bind( this ),
 				finish = function() {
 					emit( connection.name + '.connection.configured', connection );
