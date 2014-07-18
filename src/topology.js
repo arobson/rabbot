@@ -53,7 +53,7 @@ var Topology = function( connection ) {
 
 Topology.prototype.configureBindings = function( bindingDef, list ) {
 	if ( _.isUndefined( bindingDef ) ) {
-			return when( true );
+		return when( true );
 	} else {
 		var actualDefinitions = toArray( bindingDef, list ),
 			bindings = _.map( actualDefinitions, function( def ) {
@@ -76,7 +76,7 @@ Topology.prototype.configureBindings = function( bindingDef, list ) {
 
 Topology.prototype.configureQueues = function( queueDef, list ) {
 	if ( _.isUndefined( queueDef ) ) {
-		when( true );
+		return when( true );
 	} else {
 		var actualDefinitions = toArray( queueDef, list ),
 			queues = _.map( actualDefinitions, function( def ) {
