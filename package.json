@@ -1,6 +1,6 @@
 {
   "name": "wascally",
-  "version": "0.2.0-4",
+  "version": "0.2.0-5",
   "description": "Abstractions to simplify working with the wascally wabbitMQ",
   "main": "src/index.js",
   "scripts": {
@@ -20,6 +20,10 @@
     {
       "name": "Austin Young",
       "url": "http://github.com/LeankitAustin"
+    },
+    {
+      "name": "Scott Walters",
+      "url": "http://github.com/LeankitScott"
     }
   ],
   "license": "MIT License - http://opensource.org/licenses/MIT",
