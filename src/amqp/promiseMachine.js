@@ -87,7 +87,7 @@ module.exports = function( factory, target, release, disposalEvent ) {
 				},
 				failed: function() {
 					setTimeout( function() {
-						this.transition( 'acquiring' );
+						this.transition( 'failed' );
 						if( ( this.waitInterval + 100 ) < this.waitMax ) {
 							this.waitInterval += 100;
 						}
