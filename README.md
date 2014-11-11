@@ -75,7 +75,7 @@ rabbit.request( 'request.exchange', {
 	} )
 	.then( function( final ) {
 		// the last message in a series OR the only reply will be sent to this callback
-	} );
+	} ); 
 ```
 
 ### handle( typeName, handler, [context] )
