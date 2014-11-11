@@ -70,6 +70,7 @@ rabbit.request( 'request.exchange', {
 	.then( function( final ) {
 		// the last message in a series OR the only reply will be sent to this callback
 	} ); 
+```
 
 ### handle( typeName, handler, [context] )
 Message handlers are registered to handle a message based on the typeName. Calling handle will return a reference to the handler that can later be removed (though it's unlikely you'll do this often). The message that is passed to the handler is the raw Rabbit payload. The body property contains the message body published. 'ack' and 'nack' methods are provided on the message as well to allow you to easily acknowledge successful handling or reject the message.
