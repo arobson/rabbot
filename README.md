@@ -111,7 +111,7 @@ This example shows how to have wascally wrap all your handlers with a try catch 
 ```javascript
 // after this call, any new callbacks attached via handle will be wrapped in a try/catch
 // that nacks the message on an error
-rabbit.nackOnErrors();
+rabbit.nackOnError();
 
 var handler = rabbit.handle( 'company.project.messages.logEntry', function( message ) {
 	console.log( message.body );
