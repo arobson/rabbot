@@ -35,7 +35,6 @@ describe( 'with default connection', function() {
 				} );
 
 			handle = rabbit.handle( 'request', function( message ) {
-				console.log( message.body );
 				message.reply( { body: { message: 'roger that.' } } );
 				handle.remove();
 			} );

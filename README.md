@@ -161,7 +161,7 @@ Enqueues the message for rejection. This will re-enqueue the message.
 Rejects the message without re-queueing it. Please use with caution and consider having a dead-letter-exchange assigned to the queue before using this feature.
 
 ### message.reply( message, [more], [replyType] )
-The message is just the reply body. Providing true to more will cause the message to get sent to the .progress callback of the request promise so that you can send multiple replies. The `replyType` argument allows you to set the type of the reply. (important when messaging with statically typed languages)
+Acknowledges the messages and sends the message back to the requestor. The `message` is only the body of the reply. Providing true to `more` will cause the message to get sent to the .progress callback of the request promise so that you can send multiple replies. The `replyType` argument allows you to set the type of the reply. (important when messaging with statically typed languages)
 
 ## Managing Topology
 

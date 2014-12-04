@@ -1,7 +1,7 @@
 
 ## 0.2.*
 
-### prerelease 6
+### prerelease 7
  * Add demos and documentation to better explain handlers
  * Allow replies to provide a `replyType` without specifying `more` parameter
  * Add support for per-message expiration

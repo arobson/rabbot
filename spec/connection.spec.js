@@ -10,7 +10,6 @@ describe( 'with invalid connection criteria', function() {
 
 	it( 'should fail to connect', function( done ) {
 		rabbit.on( 'silly.connection.failed', function( err ) {
-			console.log( err );
 			err.should.equal( 'No endpoints could be reached' );
 			rabbit.close( 'silly', true )
 				.then( function() {
