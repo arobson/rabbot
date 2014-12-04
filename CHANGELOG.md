@@ -9,3 +9,4 @@
  * Code clean-up / addressing linting errors
  * Fix README issues
  * Correct typo in spec
+ * Code clean-up / addressing linting errors
