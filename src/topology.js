@@ -1,39 +1,42 @@
-var when = require( 'when' ),
-	_ = require( 'lodash' ),
-	uuid = require( 'node-uuid' ),
-	Exchange = require( './exchange.js' ),
-	Queue = require( './queue.js' ),
-	Monologue = require( 'monologue.js' )( _ );
+var when = require( 'when' );
+var _ = require( 'lodash' );
+var uuid = require( 'node-uuid' );
+var Exchange = require( './exchange.js' );
+var Queue = require( './queue.js' );
+var Monologue = require( 'monologue.js' )( _ );
 
-var aliasOptions = function( options, aliases ) {
-		var aliased = _.transform( options, function( result, value, key ) {
-			var alias = aliases[ key ];
-			result[ alias || key ] = value;
+var replyId = uuid.v1();
+
+function aliasOptions( options, aliases ) {
+	var aliased = _.transform( options, function( result, value, key ) {
+		var alias = aliases[ key ];
+		result[ alias || key ] = value;
+	} );
+	return _.omit( aliased, Array.prototype.slice.call( arguments, 2 ) );
+}
+
+function getKeys( keys ) {
+	var actualKeys = [ '' ];
+	if( keys && keys.length > 0 ) {
+		actualKeys = _.isArray( keys ) ? keys : [ keys ];
+	}
+	return actualKeys;
+}
+
+function toArray( x, list ) {
+	if( _.isArray( x ) ) {
+		return x; 
+	}
+	if( _.isObject( x ) && list ) {
+		return _.map( x, function( item ) { 
+			return item; 
 		} );
-		return _.omit( aliased, Array.prototype.slice.call( arguments, 2 ) );
-	},
-	getKeys = function( keys ) {
-		var actualKeys = [ '' ];
-		if( keys && keys.length > 0 ) {
-			actualKeys = _.isArray( keys ) ? keys : [ keys ];
-		}
-		return actualKeys;
-	},
-	replyId = uuid.v1(),
-	toArray = function( x, list ) {
-		if( _.isArray( x ) ) {
-			return x; 
-		}
-		if( _.isObject( x ) && list ) {
-			return _.map( x, function( item ) { 
-				return item; 
-			} );
-		}
-		if( _.isUndefined( x ) || _.isEmpty( x ) ) {
-			return [];
-		}
-		return [ x ];
-	};
+	}
+	if( _.isUndefined( x ) || _.isEmpty( x ) ) {
+		return [];
+	}
+	return [ x ];
+}
 
 var Topology = function( connection ) {
 	this.connection = connection;
@@ -66,7 +69,7 @@ Topology.prototype.configureBindings = function( bindingDef, list ) {
 							queue: q !== undefined 
 						} );
 				}.bind( this ) );
-		if( bindings.length == 0 ) {
+		if( bindings.length === 0 ) {
 			return when( true );
 		} else {
 			return when.all( bindings );
@@ -78,8 +81,8 @@ Topology.prototype.configureQueues = function( queueDef, list ) {
 	if ( _.isUndefined( queueDef ) ) {
 		return when( true );
 	} else {
-		var actualDefinitions = toArray( queueDef, list ),
-			queues = _.map( actualDefinitions, function( def ) {
+		var actualDefinitions = toArray( queueDef, list );
+		var queues = _.map( actualDefinitions, function( def ) {
 				return this.createQueue( def );
 			}.bind( this ) );
 		return when.all( queues );
@@ -101,12 +104,12 @@ Topology.prototype.configureExchanges = function( exchangeDef, list ) {
 Topology.prototype.createBinding = function( options ) {
 	var id = [ options.source, options.target ].join( '->' );
 	this.definitions.bindings[ id ] = options;
-	var term = options.queue ? 'queue' : 'exchange',
-		call = options.queue ? 'bindQueue' : 'bindExchange',
-		source = options.source,
-		target = options.target,
-		keys = getKeys( options.keys ),
-		channel = this.getChannel( 'control' );
+	var term = options.queue ? 'queue' : 'exchange';
+	var call = options.queue ? 'bindQueue' : 'bindExchange';
+	var source = options.source;
+	var target = options.target;
+	var keys = getKeys( options.keys );
+	var channel = this.getChannel( 'control' );
 	return when.all( 
 		_.map( keys, function( key ) {
 			return channel[ call ]( target, source, key );
@@ -153,8 +156,8 @@ Topology.prototype.deleteExchange = function( name ) {
 };
 
 Topology.prototype.deleteQueue = function( name ) {
-	var key = 'queue:' + name,
-		channel = this.channels[ key ];
+	var key = 'queue:' + name;
+	var channel = this.channels[ key ];
 	if( channel ) {
 		channel.destroy();
 		delete this.channels[ key ];

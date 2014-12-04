@@ -1,32 +1,37 @@
-var amqp = require( 'amqplib' ),
-	_ = require( 'lodash' ),
-	fs = require( 'fs' ),
-	when = require( 'when' ),
-	AmqpConnection = require( 'amqplib/lib/callback_model' ).CallbackModel,
-	Promiser = require( './promiseMachine.js');
+var amqp = require( 'amqplib' );
+var _ = require( 'lodash' );
+var fs = require( 'fs' );
+var when = require( 'when' );
+var AmqpConnection = require( 'amqplib/lib/callback_model' ).CallbackModel;
+var Promiser = require( './promiseMachine.js');
 
-var getOption = function( opts, key, alt ) {
-		if( opts.get ) {
-			return opts.get( key, alt );
-		} else {
-			return opts[ key ] || alt;
-		}
-	},
-	getUri = function( protocol, user, pass, server, port, vhost, heartbeat ) {
-		return protocol + user + ':' + pass +
-			'@' + server + ':' + port + '/' + vhost +
-			'?heartbeat=' + heartbeat;
-	},
-	split = function( x ) {
-		if( _.isNumber( x ) ) {
-			return [ x ];
-		} else if( _.isArray( x ) ) {
-			return x;
-		} else {
-			return x.split( ',' ).map( trim );
-		}
-	},
-	trim = function( x ) { return x.trim( ' ' ); };
+function getOption( opts, key, alt ) {
+	if( opts.get ) {
+		return opts.get( key, alt );
+	} else {
+		return opts[ key ] || alt;
+	}
+}
+
+function getUri( protocol, user, pass, server, port, vhost, heartbeat ) {
+	return protocol + user + ':' + pass +
+		'@' + server + ':' + port + '/' + vhost +
+		'?heartbeat=' + heartbeat;
+}
+
+function split( x ) {
+	if( _.isNumber( x ) ) {
+		return [ x ];
+	} else if( _.isArray( x ) ) {
+		return x;
+	} else {
+		return x.split( ',' ).map( trim );
+	}
+}
+
+function trim ( x ) { 
+	return x.trim( ' ' ); 
+}
 
 var Adapter = function( parameters ) {
 	var serverList = getOption( parameters, 'RABBIT_BROKER' ) || getOption( parameters, 'server', 'localhost' ),
@@ -41,12 +46,12 @@ var Adapter = function( parameters ) {
 	this.pass = getOption( parameters, 'RABBIT_PASSWORD' ) || getOption( parameters, 'pass', 'guest' );
 	this.user = getOption( parameters, 'RABBIT_USER' ) || getOption( parameters, 'user', 'guest' );
 	this.vhost = getOption( parameters, 'RABBIT_VHOST' ) || getOption( parameters, 'vhost', '%2f' );
-	var certPath = getOption( parameters, 'RABBIT_CERT' ) || getOption( parameters, 'certPath' ),
-		keyPath = getOption( parameters, 'RABBIT_KEY' ) || getOption( parameters, 'keyPath' ),
-		caPaths = getOption( parameters, 'RABBIT_CA' ) || getOption( parameters, 'caPath' ),
-		passphrase = getOption( parameters, 'RABBIT_PASSPHRASE' ) || getOption( parameters, 'passphrase' ),
-		pfxPath = getOption( parameters, 'RABBIT_PFX' ) || getOption( parameters, 'pfxPath' ),
-		useSSL = certPath || keyPath || passphrase || caPaths || pfxPath;
+	var certPath = getOption( parameters, 'RABBIT_CERT' ) || getOption( parameters, 'certPath' );
+	var keyPath = getOption( parameters, 'RABBIT_KEY' ) || getOption( parameters, 'keyPath' );
+	var caPaths = getOption( parameters, 'RABBIT_CA' ) || getOption( parameters, 'caPath' );
+	var passphrase = getOption( parameters, 'RABBIT_PASSPHRASE' ) || getOption( parameters, 'passphrase' );
+	var pfxPath = getOption( parameters, 'RABBIT_PFX' ) || getOption( parameters, 'pfxPath' );
+	var useSSL = certPath || keyPath || passphrase || caPaths || pfxPath;
 	this.options = { noDelay: true };
 	if( certPath ) {
 		this.options.cert = fs.readFileSync( certPath );
@@ -64,7 +69,7 @@ var Adapter = function( parameters ) {
 		var list = caPaths.split( ',' );
 		this.options.ca = _.map( list, function( caPath ) { 
 			return fs.readFileSync( caPath ); 
-		} )
+		} );
 	}
 	if( useSSL ) {
 		this.protocol = 'amqps';

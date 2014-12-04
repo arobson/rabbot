@@ -1,18 +1,21 @@
-var _ = require( 'lodash' ),
-	postal = require( 'postal' ),
-	Monologue = require( 'monologue.js' )( _ ),
-	signal = postal.channel( 'rabbit.ack' );
+var _ = require( 'lodash' );
+var postal = require( 'postal' );
+var Monologue = require( 'monologue.js' )( _ );
+var signal = postal.channel( 'rabbit.ack' );
 
 var calls = { 
 	ack: '_ack', 
-	nack: '_nack' 
+	nack: '_nack',
+	reject: '_reject'
 };
 
 var StatusList = function() {
 	this.lastAck = -1;
 	this.lastNack = -1;
+	this.lastReject = -1;
 	this.firstAck = undefined;
 	this.firstNack = undefined;
+	this.firstReject = undefined;
 	this.messages = [];
 	this.receivedCount = 0;
 };
@@ -36,8 +39,8 @@ StatusList.prototype._ackOrNackSequence = function() {
 			return;
 		}
 		var firstStatus = firstMessage.status;
-			sequenceEnd = firstMessage.tag,
-			call = calls[ firstStatus ];
+		var sequenceEnd = firstMessage.tag;
+		var call = calls[ firstStatus ];
 		if( firstStatus == 'pending' ) {
 			return;
 		} else {
@@ -88,23 +91,39 @@ StatusList.prototype._nackAll = function() {
 	this.emit( 'nackAll' );
 };
 
+StatusList.prototype._reject = function( tag, inclusive ) {
+	this.lastReject = tag;
+	this._resolveTag( tag, 'reject', inclusive );
+};
+
+StatusList.prototype._rejectAll = function() {
+	this.lastReject = this._lastByStatus( 'reject' ).tag;
+	this._removeByStatus( 'reject' );
+	this.firstReject = undefined;
+	this.emit( 'rejectAll' );
+};
+
 StatusList.prototype._processBatch = function() {
 	this.acking = this.acking !== undefined ? this.acking : false;
 	if ( !this.acking ) {
 		this.acking = true;
-		var hasPending = ( _.findIndex( this.messages, { status: 'pending' } ) > 0 ),
-			hasAck = this.firstAck,
-			hasNack = this.firstNack;
+		var hasPending = ( _.findIndex( this.messages, { status: 'pending' } ) > 0 );
+		var hasAck = this.firstAck;
+		var hasNack = this.firstNack;
+		var hasReject = this.firstReject;
 		//Just acksPending
-		if ( !hasPending && !hasNack && hasAck ) {
+		if ( !hasPending && !hasNack && hasAck && !hasReject ) {
 			this._ackAll();
 		}
 		//Just nacksPending
-		else if ( !hasPending && hasNack && !hasAck ) {
+		else if ( !hasPending && hasNack && !hasAck && !hasReject ) {
 			this._nackAll();
 		}
+		else if( !hasPending && !hasNack && !hasAck && hasReject ) {
+			this._rejectAll();
+		}
 		//acksPending or nacksPending
-		else if ( hasNack || hasAck ) {
+		else if ( hasNack || hasAck || hasReject ) {
 			this._ackOrNackSequence();
 		}
 		//Only pending
@@ -114,8 +133,8 @@ StatusList.prototype._processBatch = function() {
 
 StatusList.prototype._resolveTag = function( tag, operation, inclusive ) {
 	this._removeUpToTag( tag );
-	var nextAck = this._firstByStatus( 'ack' ),
-		nextNack = this._firstByStatus( 'nack' );
+	var nextAck = this._firstByStatus( 'ack' );
+	var nextNack = this._firstByStatus( 'nack' );
 	this.firstAck = nextAck ? nextAck.tag : undefined;
 	this.firstNack = nextNack ? nextNack.tag : undefined;
 	this.emit( operation, { tag: tag, inclusive: inclusive } );
@@ -143,11 +162,15 @@ StatusList.prototype.addMessage = function( tag ) {
 	return {
 		ack: function() { 
 			this.firstAck = this.firstAck || tag;
-			message.status = 'ack' 
+			message.status = 'ack';
 		}.bind( this ),
 		nack: function() {
 			this.firstNack = this.firstNack || tag;
-			message.status = 'nack' 
+			message.status = 'nack';
+		}.bind( this ),
+		reject: function() {
+			this.firstReject = this.firstReject || tag;
+			message.status = 'reject';
 		}.bind( this )
 	};
 };

@@ -1,27 +1,29 @@
-var _ = require( 'lodash' ),
-	amqp = require( 'amqplib' ),
-	Monologue = require( 'monologue.js' )( _ ),
-	when = require( 'when' ),
-	pipeline = require( 'when/pipeline' ),
-	fs = require( 'fs' ),
-	Connection = require( './connection.js'),
-	Topology = require( './topology.js' ),
-	postal = require( 'postal' ),
-	uuid = require( 'node-uuid' ),
-	log = require( './log.js' );
+var _ = require( 'lodash' );
+var amqp = require( 'amqplib' );
+var Monologue = require( 'monologue.js' )( _ );
+var when = require( 'when' );
+var pipeline = require( 'when/pipeline' );
+var fs = require( 'fs' );
+var Connection = require( './connection.js');
+var Topology = require( './topology.js' );
+var postal = require( 'postal' );
+var uuid = require( 'node-uuid' );
+var log = require( './log.js' );
 
 var defaultTo = function( x, y ) {
 	x = x || y;
 };
 
-var dispatch = postal.channel( 'rabbit.dispatch' ),
-	responses = postal.channel( 'rabbit.responses' ),
-	signal = postal.channel( 'rabbit.ack' ),
-	responseSubscriptions = {};
+var dispatch = postal.channel( 'rabbit.dispatch' );
+var responses = postal.channel( 'rabbit.responses' );
+var signal = postal.channel( 'rabbit.ack' );
+var responseSubscriptions = {};
 
 var Broker = function() {
 	this.connections = {};
 	this.setAckInterval( 500 );
+	this.hasHandles = false;
+	this.autoNack = false;
 	_.bindAll( this );
 };
 
@@ -62,6 +64,9 @@ Broker.prototype.addExchange = function( name, type, options, connectionName ) {
 Broker.prototype.addQueue = function( name, options, connectionName ) {
 	connectionName = connectionName || 'default';
 	options.name = name;
+	if( options.subscribe && !this.hasHandles ) {
+		console.warn( 'Subscription to "' + name + '" was started without any handlers. This will result in lost messages!' );
+	}
 	return this.connections[ connectionName ].createQueue( options, connectionName );
 };
 
@@ -77,8 +82,8 @@ Broker.prototype.bindExchange = function( source, target, keys, connectionName )
 Broker.prototype.bindQueue = function( source, target, keys, connectionName ) {
 	connectionName = connectionName || 'default';
 	return this.connections[ connectionName ].createBinding( 
-		{ source: source, target: target, keys: keys, queue: true }
-		, connectionName 
+		{ source: source, target: target, keys: keys, queue: true },
+		connectionName 
 	);
 };
 
@@ -128,10 +133,25 @@ Broker.prototype.getQueue = function( name, connectionName ) {
 };
 
 Broker.prototype.handle = function( messageType, handler, context ) {
+	this.hasHandles = true;
 	var subscription = dispatch.subscribe( messageType, handler.bind( context ) );
+	if( this.autoNack ) {
+		subscription.catch( function( err, msg ) {
+			console.log( 'Handler for "' + messageType + '" failed with:', err.stack );
+			msg.nack();
+		} );
+	}
 	subscription.remove = subscription.unsubscribe;
 	return subscription;
 };
+
+Broker.prototype.ignoreHandlerErrors = function() {
+	this.autoNack = false;
+}
+
+Broker.prototype.nackOnError = function() {
+	this.autoNack = true;
+}
 
 Broker.prototype.publish = function( exchangeName, type, message, routingKey, correlationId, connectionName, sequenceNo ) {
 	var messageId = undefined,
@@ -152,7 +172,7 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 			timestamp: timestamp,
 			headers: {},
 			connectionName: connectionName || 'default'
-		}
+		};
 	}
 	connectionName = connectionName || 'default';
 	return this.getExchange( exchangeName, connectionName )
@@ -166,7 +186,7 @@ Broker.prototype.request = function( exchangeName, options, connectionName ) {
 	options.connectionName = connectionName;
 	return when.promise( function( resolve, reject, notify ) {
 		var subscription = responses.subscribe( requestId, function( message ) {
-			if( message.properties.headers[ 'sequence_end' ] ) {
+			if( message.properties.headers[ 'sequence_end' ] ) { // jshint ignore:line
 				resolve( message );
 				subscription.unsubscribe();
 			} else {
@@ -184,14 +204,17 @@ Broker.prototype.setAckInterval = function( interval ) {
 	this.ackIntervalId = setInterval( this.batchAck, interval );
 };
 
-Broker.prototype.startSubscription = function( queue, connectionName ) {
+Broker.prototype.startSubscription = function( queueName, connectionName ) {
+	if( !this.hasHandles ) {
+		console.warn( 'Subscription to "' + queueName + '" was started without any handlers. This will result in lost messages!' );
+	}
 	connectionName = connectionName || 'default';
-	var queue = this.getQueue( queue, connectionName );
+	var queue = this.getQueue( queueName, connectionName );
 	if( queue ) {
 		var consumerTag = queue.subscribe( queue );
 		return queue;
 	} else {
-		throw new Error( 'No queue named "' + queue + '" for connection "' + connectionName + '". Subscription failed.' );
+		throw new Error( 'No queue named "' + queueName + '" for connection "' + connectionName + '". Subscription failed.' );
 	}
 };
 

@@ -1,5 +1,5 @@
-var	postal = require( 'postal' ),
-	log = postal.channel( 'log' );
+var	postal = require( 'postal' );
+var log = postal.channel( 'log' );
 
 module.exports = {
 	info: function( entry ) {
