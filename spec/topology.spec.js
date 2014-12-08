@@ -157,6 +157,7 @@ describe( 'with a valid topic exchange and queue', function() {
 
 describe( 'when testing reconnection', function() {
 	before( function( done ) {
+		this.timeout( 5000 );
 		var config = {
 			connection: {
 				name: 'reconnectionTest',

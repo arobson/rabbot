@@ -1,13 +1,13 @@
-var _ = require( 'lodash' ),
-	when = require( 'when' ),
-	pipeline = require( 'when/pipeline' ),
-	postal = require( 'postal' ),
-	dispatch = postal.channel( 'rabbit.dispatch' ),
-	responses = postal.channel( 'rabbit.responses' ),
-	StatusList = require( './statusList.js' ),
-	machina = require( 'machina' )( _ ),
-	Monologue = require( 'monologue.js' )( _ ),
-	log = require( './log.js' );
+var _ = require( 'lodash' );
+var when = require( 'when' );
+var pipeline = require( 'when/pipeline' );
+var postal = require( 'postal' );
+var dispatch = postal.channel( 'rabbit.dispatch' );
+var responses = postal.channel( 'rabbit.responses' );
+var StatusList = require( './statusList.js' );
+var machina = require( 'machina' )( _ );
+var Monologue = require( 'monologue.js' )( _ );
+var log = require( './log.js' );
 
 var Channel = function( options, connection, topology ) {
 
@@ -54,7 +54,7 @@ var Channel = function( options, connection, topology ) {
 					}.bind( this ) );
 					channel.on( 'released', function() {
 							this.handle( 'released' );
-					}.bind( this ) )
+					}.bind( this ) );
 				} else {
 					this.channel.acquire(); 
 				}
@@ -75,7 +75,8 @@ var Channel = function( options, connection, topology ) {
 						messageId: message.messageId || message.id || '',
 						timestamp: message.timestamp,
 						appId: message.appId || '',
-						headers: message.headers
+						headers: message.headers,
+						expiration: message.expiresAfter || undefined
 					},
 					seqNo;
 				if ( !message.sequenceNo ) {
@@ -85,14 +86,14 @@ var Channel = function( options, connection, topology ) {
 				if ( this.persistent ) {
 					publishOptions.persistent = true;
 				}
-				var effectiveKey = message.routingKey == '' ? '' : message.routingKey || publishOptions.type;
+				var effectiveKey = message.routingKey === '' ? '' : message.routingKey || publishOptions.type;
 				this.channel.publish(
 					this.name,
 					effectiveKey,
 					payload,
 					publishOptions,
 					function( err ) {
-						if ( err == null ) {
+						if ( err == null ) { // jshint ignore:line
 							delete this.pendingMessages[ seqNo ];
 							resolve();
 						} else {

@@ -1,7 +1,8 @@
 # Wascally
 This is a very opinionated abstraction over amqplib to help simplify certain common tasks and (hopefully) reduce the effort required to use RabbitMQ in your Node services.
 
-Features:
+### Features:
+
  * Gracefully handle re-connections
  * Automatically re-define all topology on re-connection
  * Automatically re-send any unconfirmed messages on re-connection
@@ -9,12 +10,17 @@ Features:
  * Handle batching of acknowledgements and rejections
  * Topology & configuration via the JSON configuration method (thanks to @JohnDMathis!)
 
-Assumptions & Defaults:
+### Assumptions & Defaults:
+
  * Fault-tolerance/resilience over throughput
  * Default to publish confirmation
  * Default to ack mode on consumers
  * Heterogenous services that include statically typed languages
  * JSON as the only serialization provider
+
+### Demos
+ 
+ * [pubsub](https://github.com/LeanKit-Labs/wascally/blob/master/demo/pubsub/README.md)
 
 # API Reference
 This library implements promises for many of the calls via when.js.
@@ -26,18 +32,19 @@ This syntax allows you to provide arguments via an options object, here's an exa
 
 ```javascript
 rabbit.publish( 'exchange.name', {
-	routingKey: 'hi',
-	type: 'company.project.messages.textMessage',
-	correlationId: 'one',
-	body: { text: 'hello!' },
-	messageId: '100',
-	expiration: '' // TTL in ms as a string
-	timestamp: // posix timestamp (long)
-	headers: {
-		'random': 'application specific value'
+		routingKey: 'hi',
+		type: 'company.project.messages.textMessage',
+		correlationId: 'one',
+		body: { text: 'hello!' },
+		messageId: '100',
+		expiresAfter: 1000 // TTL in ms, in this example 1 second
+		timestamp: // posix timestamp (long)
+		headers: {
+			'random': 'application specific value'
+		}
 	},
 	connectionName: '' // another optional way to provide connection name if needed
-} );
+);
 ```
 
 ### publish( exchangeName, typeName, messageBody, [routingKey], [correlationId], [connectionName] )
@@ -69,11 +76,18 @@ rabbit.request( 'request.exchange', {
 	} )
 	.then( function( final ) {
 		// the last message in a series OR the only reply will be sent to this callback
-	} ); 
+	} );
 ```
 
 ### handle( typeName, handler, [context] )
+
+> Handle calls must to happen __before__ the subscriptions have started.
+
 Message handlers are registered to handle a message based on the typeName. Calling handle will return a reference to the handler that can later be removed (though it's unlikely you'll do this often). The message that is passed to the handler is the raw Rabbit payload. The body property contains the message body published. 'ack' and 'nack' methods are provided on the message as well to allow you to easily acknowledge successful handling or reject the message.
+
+
+#### Explicit Error Handling
+In this example, any possible error is caught in an explicit try/catch:
 
 ```javascript
 var handler = rabbit.handle( 'company.project.messages.logEntry', function( message ) {
@@ -89,7 +103,50 @@ var handler = rabbit.handle( 'company.project.messages.logEntry', function( mess
 handler.remove();
 ```
 
+#### Automatically Nack On Error
+This example shows how to have wascally wrap all your handlers with a try catch that will:
+
+ * nack the message
+ * console.log that an error has occurred in a handle
+
+```javascript
+// after this call, any new callbacks attached via handle will be wrapped in a try/catch
+// that nacks the message on an error
+rabbit.nackOnError();
+
+var handler = rabbit.handle( 'company.project.messages.logEntry', function( message ) {
+	console.log( message.body );
+	message.ack();
+} );
+
+handler.remove();
+
+// after this call, new callbacks attached via handle will *not* be wrapped in a try/catch
+rabbit.ignoreHandlerErrors();
+```
+
+#### Late-bound Error Handling
+You may want to provide a strategy for handling errors to multiple handles or wish to attach an error handler after the fact.
+
+```javascript
+var handler = rabbit.handle( 'company.project.messages.logEntry', function( message ) {
+	console.log( message.body );
+	message.ack();
+} );
+
+handler.catch( function( err, msg ) {
+	// do something with the error & message
+	msg.nack();
+} );
+```
+
+#### !!! IMPORTANT !!! ####
+Failure to handle errors will result in silent failures and lost messages.
+
 ### startSubscription( queueName, [connectionName] )
+
+> Remember to set your handlers up before starting subscriptions
+
 Starts a consumer on the queue specified. connectionName is optional and only required if you're subscribing to a queue on a connection other than the default one.
 
 ## Message API
@@ -99,10 +156,13 @@ Wascally defaults to (and assumes) queues are in ack mode. It batches ack and na
 Enqueues the message for acknowledgement.
 
 ### message.nack()
-Enqueues the message for rejection. This will re-enqueue the message. Rejection of messages that aren't returned to the queue aren't supported *yet*.
+Enqueues the message for rejection. This will re-enqueue the message.
+
+### message.reject()
+Rejects the message without re-queueing it. Please use with caution and consider having a dead-letter-exchange assigned to the queue before using this feature.
 
 ### message.reply( message, [more], [replyType] )
-The message is just the reply body. Providing true to more will cause the message to get sent to the .progress callback of the request promise so that you can send multiple replies. To control the replyType of the message, provide it as the last argument.
+Acknowledges the messages and sends the message back to the requestor. The `message` is only the body of the reply. Providing true to `more` will cause the message to get sent to the .progress callback of the request promise so that you can send multiple replies. The `replyType` argument allows you to set the type of the reply. (important when messaging with statically typed languages)
 
 ## Managing Topology
 
@@ -141,6 +201,11 @@ Binds the target exchange to the source exchange. Messages flow from source to t
 Binds the target queue to the source exchange. Messages flow from source to target.
 
 ## Configuration via JSON
+
+> Note: if you set subscribe to true, you'll need to ensure that handlers have been
+
+> attached before calling setup.
+
 This example shows most of the available options described above.
 ```javascript
 	var settings = {
@@ -188,4 +253,3 @@ Providing the following configuration options setting the related environment va
 		pfxPath: ''		// path to pfx file. RABBIT_PFX
 	}
 ```
-

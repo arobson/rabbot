@@ -1,7 +1,7 @@
-var _ = require( 'lodash' ),
-	when = require( 'when' ),
-	pipeline = require( 'when/pipeline' ),
-	log = require( './log' );
+var _ = require( 'lodash' );
+var when = require( 'when' );
+var pipeline = require( 'when/pipeline' );
+var log = require( './log' );
 
 module.exports = function( Broker ) {
 
@@ -10,8 +10,8 @@ module.exports = function( Broker ) {
 		// normally, the approach here might be a bit pedantic, but it's preferable
 		// to the pyramid of doom callbacks
 		this.config = config;
-		var connection,
-			emit = this.emit;
+		var connection;
+		var emit = this.emit;
 		return when.promise( function( resolve, reject ) {
 			var createExchanges = function() {
 				connection.configureExchanges( config.exchanges )
@@ -22,7 +22,7 @@ module.exports = function( Broker ) {
 						} );
 						reject( err );
 					}.bind( this ) )
-					.then( createQueues )
+					.then( createQueues );
 				}.bind( this ),
 				createQueues = function() {
 					connection.configureQueues( config.queues )

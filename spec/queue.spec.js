@@ -158,6 +158,113 @@ describe( 'with default connection', function() {
 		} );
 	} );
 
+	describe( 'with handler errors', function() {
+		var testHandler;
+		before( function( done ) {
+			var promises = [
+				rabbit.addExchange( 'ex.9', 'fanout', {
+					autoDelete: true
+				} ),
+				rabbit.addQueue( 'q.9', {
+					autoDelete: true,
+					subscribe: true,
+					limit: 1
+				} )
+			];
+			when.all( promises )
+				.done( function() {
+					rabbit.bindQueue( 'ex.9', 'q.9', '' )
+						.done( function() {
+							done();
+						} );
+				} );
+		} );
+
+		it( 'should nack message the first time on error', function( done ) {
+			var errored = false;
+			rabbit.nackOnError();
+			testHandler = rabbit.handle( 'test.message', function( msg ) {
+				if( errored ) {
+					msg.ack();
+					msg.fields.exchange.should.equal( 'ex.9' );
+					done();
+					rabbit.ignoreHandlerErrors();
+				} else {
+					errored = true;
+					throw new Error( 'Imma fail just to be a jerk :D' );
+				}
+			} );
+			rabbit.publish( 'ex.9', 'test.message', 'hello' );
+		} );
+
+		after( function( done ) {
+			testHandler.remove();
+			rabbit.close( 'default', true )
+				.then( function() {
+					done();
+				} );
+		} );
+	} );
+
+	describe( 'with handler errors', function() {
+		var testHandler;
+		before( function( done ) {
+			var promises = [
+				rabbit.addExchange( 'ex.10', 'fanout', {
+					autoDelete: true
+				} ),
+				rabbit.addExchange( 'dlx.10', 'fanout', {
+					autoDelete: true
+				} ),
+				rabbit.addQueue( 'dlq.10', {
+					autoDelete: true,
+					subscribe: true,
+					limit: 1
+				} ),
+				rabbit.addQueue( 'q.10', {
+					autoDelete: true,
+					subscribe: true,
+					deadLetter: 'dlx.10',
+					limit: 1
+				} )
+			];
+			when.all( promises )
+				.done( function() {
+					rabbit.bindQueue( 'dlx.10', 'dlq.10', '' );
+					rabbit.bindQueue( 'ex.10', 'q.10', '' )
+						.done( function() {
+							done();
+						} );
+				} );
+		} );
+
+		it( 'should reject message the first time on error', function( done ) {
+			var errored = false;
+			testHandler = rabbit.handle( 'test.message', function( msg ) {
+				if( errored ) {
+					msg.fields.exchange.should.equal( 'dlx.10' );
+					msg.ack();
+					done();
+				} else {
+					errored = true;
+					throw new Error( 'Imma fail just to be a jerk :D' );
+				}
+			} );
+			testHandler.catch( function( err, msg ) {
+				msg.reject();
+			} );
+			rabbit.publish( 'ex.10', 'test.message', 'hello' );
+		} );
+
+		after( function( done ) {
+			testHandler.remove();
+			rabbit.close( 'default', true )
+				.then( function() {
+					done();
+				} );
+		} );
+	} );
+
 	after( function( done ) {
 		rabbit.close( 'default', true )
 			.then( function() {

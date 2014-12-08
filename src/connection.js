@@ -1,23 +1,23 @@
-var _ = require( 'lodash' ),
-	amqp = require( 'amqplib' ),
-	Monologue = require( 'monologue.js' )( _ ),
-	when = require( 'when' ),
-	pipeline = require( 'when/sequence' ),
-	fs = require( 'fs' ),
-	machina = require( 'machina' )( _ ),
-	newChannel = require( './amqp/channel.js' ),
-	newConnection = require( './amqp/connection.js' );
+var _ = require( 'lodash' );
+var amqp = require( 'amqplib' );
+var Monologue = require( 'monologue.js' )( _ );
+var when = require( 'when' );
+var pipeline = require( 'when/sequence' );
+var fs = require( 'fs' );
+var machina = require( 'machina' )( _ );
+var newChannel = require( './amqp/channel.js' );
+var newConnection = require( './amqp/connection.js' );
 
 var Connection = function( options ) {
 	
-	var channels = {},
-		definitions = {
+	var channels = {};
+	var definitions = {
 			bindings: {},
 			exchanges: {},
 			queues: {},
 			subscriptions: {}
-		},
-		connection = undefined;
+		};
+	var connection;
 
 	var Fsm = machina.Fsm.extend( {
 		name: options.name || 'default',

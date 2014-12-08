@@ -1,13 +1,13 @@
-var _ = require( 'lodash' ),
-	when = require( 'when' ),
-	pipeline = require( 'when/pipeline' ),
-	postal = require( 'postal' ),
-	dispatch = postal.channel( 'rabbit.dispatch' ),
-	responses = postal.channel( 'rabbit.responses' ),
-	StatusList = require( './statusList.js' ),
-	machina = require( 'machina' )( _ ),
-	Monologue = require( 'monologue.js' )( _ ),
-	log = require( './log.js' );
+var _ = require( 'lodash' );
+var when = require( 'when' );
+var pipeline = require( 'when/pipeline' );
+var postal = require( 'postal' );
+var dispatch = postal.channel( 'rabbit.dispatch' );
+var responses = postal.channel( 'rabbit.responses' );
+var StatusList = require( './statusList.js' );
+var machina = require( 'machina' )( _ );
+var Monologue = require( 'monologue.js' )( _ );
+var log = require( './log.js' );
 
 var Channel = function( options, connection, topology ) {
 
@@ -19,8 +19,8 @@ var Channel = function( options, connection, topology ) {
 		return _.omit( aliased, Array.prototype.slice.call( arguments, 2 ) );
 	};
 
-	var messages = new StatusList(),
-		Fsm = machina.Fsm.extend( {
+	var messages = new StatusList();
+	var Fsm = machina.Fsm.extend( {
 			name: options.name,
 			channel: undefined,
 			responseSubscriptions: {},
@@ -74,8 +74,13 @@ var Channel = function( options, connection, topology ) {
 					var ops = messages.addMessage( raw.fields.deliveryTag );
 					raw.ack = ops.ack;
 					raw.nack = ops.nack;
+					raw.reject = ops.reject;
 					var position = 0;
 					raw.reply = function( reply, more, replyType ) {
+						if( _.isString( more) ) {
+							replyType = more;
+							more = false;
+						}
 						var replyTo = raw.properties.replyTo;
 						ops.ack();
 						if( replyTo ) {
@@ -97,7 +102,7 @@ var Channel = function( options, connection, topology ) {
 						}
 					}.bind( this );
 					if( raw.fields.routingKey == topology.replyQueue ) {
-						responses.publish( correlationId, raw );
+						responses.publish( correlationId, raw )
 					} else {
 						dispatch.publish( raw.properties.type, raw );
 					}
@@ -147,6 +152,10 @@ var Channel = function( options, connection, topology ) {
 
 						this.handlers.push( messages.on( 'nackAll', function() {
 							this.channel.nackAll();
+						}.bind( this ) ) );
+
+						this.handlers.push( messages.on( 'rejectAll', function() {
+							this.channel.nackAll( false );
 						}.bind( this ) ) );
 						this.transition( 'initializing' );
 					}
