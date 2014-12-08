@@ -162,11 +162,7 @@ Enqueues the message for rejection. This will re-enqueue the message.
 Rejects the message without re-queueing it. Please use with caution and consider having a dead-letter-exchange assigned to the queue before using this feature.
 
 ### message.reply( message, [more], [replyType] )
-<<<<<<< HEAD
 Acknowledges the messages and sends the message back to the requestor. The `message` is only the body of the reply. Providing true to `more` will cause the message to get sent to the .progress callback of the request promise so that you can send multiple replies. The `replyType` argument allows you to set the type of the reply. (important when messaging with statically typed languages)
-=======
-The message is just the reply body. Providing true to more will cause the message to get sent to the .progress callback of the request promise so that you can send multiple replies. The `replyType` argument allows you to set the type of the reply. (important when messaging with statically typed languages)
->>>>>>> Add warnings when a subscription is started without handlers assigned (#19). Add auto error handling for message handlers (#20). Update README to better explain the  call (#18). Add simple demo showing several features in use (#13)
 
 ## Managing Topology
 
