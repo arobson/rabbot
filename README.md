@@ -32,18 +32,19 @@ This syntax allows you to provide arguments via an options object, here's an exa
 
 ```javascript
 rabbit.publish( 'exchange.name', {
-	routingKey: 'hi',
-	type: 'company.project.messages.textMessage',
-	correlationId: 'one',
-	body: { text: 'hello!' },
-	messageId: '100',
-	expiresAfter: 1000 // TTL in ms, in this example 1 second
-	timestamp: // posix timestamp (long)
-	headers: {
-		'random': 'application specific value'
+		routingKey: 'hi',
+		type: 'company.project.messages.textMessage',
+		correlationId: 'one',
+		body: { text: 'hello!' },
+		messageId: '100',
+		expiresAfter: 1000 // TTL in ms, in this example 1 second
+		timestamp: // posix timestamp (long)
+		headers: {
+			'random': 'application specific value'
+		}
 	},
 	connectionName: '' // another optional way to provide connection name if needed
-} );
+);
 ```
 
 ### publish( exchangeName, typeName, messageBody, [routingKey], [correlationId], [connectionName] )

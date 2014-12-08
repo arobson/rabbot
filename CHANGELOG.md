@@ -7,3 +7,5 @@
  * Add support for per-message expiration
  * Add support for reject (nack without re-queue)
  * Code clean-up / addressing linting errors
+ * Fix README issues
+ * Correct typo in spec

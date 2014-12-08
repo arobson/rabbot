@@ -37,7 +37,7 @@ describe( 'when working with a stable resource', function() {
 
 } );
 
-describe( 'when acquiire fails, retry should occur', function() {
+describe( 'when acquire fails, retry should occur', function() {
 	var Not4You = function() {
 
 	};
