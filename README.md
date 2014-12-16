@@ -6,7 +6,7 @@ This is a very opinionated abstraction over amqplib to help simplify certain com
  * Gracefully handle re-connections
  * Automatically re-define all topology on re-connection
  * Automatically re-send any unconfirmed messages on re-connection
- * Support the majort of RabbitMQ's extensions
+ * Support the majority of RabbitMQ's extensions
  * Handle batching of acknowledgements and rejections
  * Topology & configuration via the JSON configuration method (thanks to @JohnDMathis!)
 
