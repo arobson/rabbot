@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plato - queue.js</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!--[if lt IE 9]>
+  <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+
+  <link href="../../assets/css/vendor/morris.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/bootstrap.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/font-awesome.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/codemirror.css" rel="stylesheet">
+  <link href="../../assets/css/plato.css" rel="stylesheet">
+  <link href="../../assets/css/plato-file.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+<div class="navbar navbar-fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="http://github.com/es-analysis/plato">Plato on Github</a>
+    <ul class="nav navbar-nav">
+      <li>
+        <a href="../../index.html">Report Home</a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="jumbotron">
+  <div class="container">
+    <h1>queue.js</h1>
+  </div>
+</div>
+
+<div class="container aggregate-stats">
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Maintainability <a href="http://blogs.msdn.com/b/codeanalysis/archive/2007/11/20/maintainability-index-range-and-meaning.aspx"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="A value between 0 and 100 that represents the relative ease of maintaining the code. A high value means better maintainability." data-original-title="Maintainability Index"  data-container="body"></i></a></h2>
+      <p class="stat">73.78</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Lines of code <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h2>
+      <p class="stat">235</p>
+    </div>
+  </div>
+  <div class="row historical">
+    <div class="col-md-6">
+      <p id="chart_historical_maint" class="chart"></p>
+    </div>
+    <div class="col-md-6">
+      <p id="chart_historical_sloc" class="chart"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Difficulty  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="The difficulty measure is related to the difficulty of the program to write or understand." data-original-title="Difficulty" data-container="body"></i></a></h2>
+      <p class="stat">29.73</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Estimated Errors  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Halstead's delivered bugs is an estimate for the number of errors in the implementation." data-original-title="Delivered Bugs" data-container="body"></i></a></h2>
+      <p class="stat">2.53</p>
+    </div>
+  </div>
+</div>
+
+<div class="container charts">
+  <div class="row">
+    <h2 class="header">Function weight</h2>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h3 class="chart-header">By Complexity <a href="http://en.wikipedia.org/wiki/Cyclomatic_complexity"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="This metric counts the number of distinct paths through a block of code. Lower values are better." data-original-title="Cyclomatic Complexity" data-container="body"></i></a></h3>
+      <div id="fn-by-complexity" class="stat"></div>
+    </div>
+    <div class="col-md-6">
+      <h3 class="chart-header">By SLOC  <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h3>
+      <div id="fn-by-sloc" class="stat"></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="row">
+    <textarea id="file-source" class="col-md-12">var _ = require( &#039;lodash&#039; );
+var when = require( &#039;when&#039; );
+var pipeline = require( &#039;when/pipeline&#039; );
+var postal = require( &#039;postal&#039; );
+var dispatch = postal.channel( &#039;rabbit.dispatch&#039; );
+var responses = postal.channel( &#039;rabbit.responses&#039; );
+var StatusList = require( &#039;./statusList.js&#039; );
+var machina = require( &#039;machina&#039; )( _ );
+var Monologue = require( &#039;monologue.js&#039; )( _ );
+var log = require( &#039;./log.js&#039; );
+
+var Channel = function( options, connection, topology ) {
+
+	var aliasOptions = function( options, aliases ) {
+		var aliased = _.transform( options, function( result, value, key ) {
+			var alias = aliases[ key ];
+			result[ alias || key ] = value;
+		} );
+		return _.omit( aliased, Array.prototype.slice.call( arguments, 2 ) );
+	};
+
+	var messages = new StatusList();
+	var Fsm = machina.Fsm.extend( {
+			name: options.name,
+			channel: undefined,
+			responseSubscriptions: {},
+			signalSubscription: undefined,
+			handlers: [],
+			_addPendingMessage: function( message ) {
+				var seqNo = ++this._sequenceNo;
+				message.sequenceNo = seqNo;
+				this.pendingMessages[ seqNo ] = message;
+				return message;
+			},
+
+			_define: function() {
+				var valid = aliasOptions( options, {
+						queueLimit: &#039;maxLength&#039;,
+						deadLetter: &#039;deadLetterExchange&#039;
+					}, &#039;subscribe&#039;, &#039;limit&#039; ),
+					promise = this.channel.assertQueue( options.name, valid );
+				promise.then( function() {
+					this.handle( &#039;defined&#039; );
+				}.bind( this ) );
+				if ( options[ &#039;limit&#039; ] ) {
+					this.channel.prefetch( options[ &#039;limit&#039; ] );
+				}
+				if ( options.subscribe ) {
+					this.subscribe();
+				}
+				return promise;
+			},
+
+			_getChannel: function() {
+				if( !this.channel ) {
+					var channel = connection.createChannel( true );
+					this.channel = channel;
+					channel.on( &#039;acquired&#039;, function() {
+						this.handle( &#039;define&#039; );
+					}.bind( this ) );
+					channel.on( &#039;released&#039;, function() {
+							this.handle( &#039;released&#039; );
+					}.bind( this ) )
+				} else {
+					this.channel.acquire(); 
+				}
+			},
+
+			_subscribe: function() {
+				messages._listenForSignal();
+				return this.channel.consume( this.name, function( raw ) {
+					var correlationId = raw.properties.correlationId;
+					raw.body = JSON.parse( raw.content.toString( &#039;utf8&#039; ) );
+					var ops = messages.addMessage( raw.fields.deliveryTag );
+					raw.ack = ops.ack;
+					raw.nack = ops.nack;
+					raw.reject = ops.reject;
+					var position = 0;
+					raw.reply = function( reply, more, replyType ) {
+						if( _.isString( more) ) {
+							replyType = more;
+							more = false;
+						}
+						var replyTo = raw.properties.replyTo;
+						ops.ack();
+						if( replyTo ) {
+							var payload = new Buffer( JSON.stringify( reply ) ),
+							publishOptions = {
+								type: replyType || raw.type + &#039;.reply&#039;,
+								contentType: &#039;application/json&#039;,
+								contentEncoding: &#039;utf8&#039;,
+								correlationId: raw.properties.messageId,
+								replyTo: topology.replyQueue,
+								headers: {}
+							};
+							if( !more ) {
+								publishOptions.headers[ &#039;sequence_end&#039; ] = true;
+							} else {
+								publishOptions.headers[ &#039;position&#039; ] = ( position ++ );
+							}
+							return this.channel.sendToQueue( replyTo, payload, publishOptions );
+						}
+					}.bind( this );
+					if( raw.fields.routingKey == topology.replyQueue ) {
+						responses.publish( correlationId, raw )
+					} else {
+						dispatch.publish( raw.properties.type, raw );
+					}
+				}.bind( this ) );
+			},
+
+			check: function() {
+				return when.promise( function( resolve ) {
+					this.on( &#039;defined&#039;, function() {
+						resolve();
+					} ).once();
+					this.handle( &#039;check&#039; );
+				}.bind( this ) );
+			},
+
+			destroy: function() {
+				this.transition( &#039;destroyed&#039; );
+			},
+
+			subscribe: function() {
+				this.subscribed = true;
+				var op = function() {
+					this._subscribe();
+				}.bind( this );
+				this.handle( &#039;subscribe&#039;, op );
+			},
+			
+			initialState: &#039;setup&#039;,
+			states: {
+				&#039;setup&#039;: {
+					_onEnter: function() {
+						this.handlers.push( connection.on( &#039;reconnected&#039;, function() {
+							this.transition( &#039;initializing&#039; );
+						}.bind( this ) ) );
+
+						this.handlers.push( messages.on( &#039;ack&#039;, function( data ) {
+							this.channel.ack( { fields: { deliveryTag: data.tag } }, data.inclusive );
+						}.bind( this ) ) );
+
+						this.handlers.push( messages.on( &#039;nack&#039;, function( data ) {
+							this.channel.nack( { fields: { deliveryTag: data.tag } }, data.inclusive );
+						}.bind( this ) ) );
+
+						this.handlers.push( messages.on( &#039;ackAll&#039;, function() {
+							this.channel.ackAll();
+						}.bind( this ) ) );
+
+						this.handlers.push( messages.on( &#039;nackAll&#039;, function() {
+							this.channel.nackAll();
+						}.bind( this ) ) );
+
+						this.handlers.push( messages.on( &#039;rejectAll&#039;, function() {
+							this.channel.nackAll( false );
+						}.bind( this ) ) );
+						this.transition( &#039;initializing&#039; );
+					}
+				},
+				&#039;destroyed&#039;: {
+					_onEnter: function() {
+						_.each( this.handlers, function( handle ) {
+							handle.unsubscribe();
+						} );
+						this.channel.destroy();
+						this.channel = undefined;
+					}
+				},
+				&#039;initializing&#039;: {
+					_onEnter: function() {
+						this._getChannel();
+					},
+					define: function() {
+						this.transition( &#039;defining&#039; );
+					},
+					defined: function() {
+						this.transition( &#039;ready&#039; );
+					},
+					released: function() {
+						this.transition( &#039;initializing&#039; );
+					},
+					subscribe: function() {
+						this.deferUntilTransition( &#039;ready&#039; );
+					}
+				},
+				&#039;defining&#039;: {
+					_onEnter: function() {
+						this._define();
+					},
+					define: function() {
+						this.transition( &#039;defining&#039; );
+					},
+					defined: function() {
+						this.transition( &#039;ready&#039; );
+					},
+					released: function() {
+						this._define();
+					},
+					subscribe: function() {
+						this.deferUntilTransition( &#039;ready&#039; );
+					}
+				},
+				&#039;ready&#039;: {
+					_onEnter: function() {
+						this.emit( &#039;defined&#039; );
+					},
+					check: function() {
+						this.emit( &#039;defined&#039; );
+					},
+					released: function() {
+						this.transition( &#039;released&#039; );
+					},
+					subscribe: function( op ) {
+						var tag = op();
+					}
+				},
+				&#039;released&#039;: {
+					subscribe: function( op ) {
+						this.deferUntilTransition( &#039;ready&#039; );
+						this.transition( &#039;initializing&#039; );
+					}
+				}
+			}
+	} );
+
+	Monologue.mixin( Fsm );
+	var fsm = new Fsm();
+	fsm.receivedMessages = messages;
+	return fsm;
+};
+
+module.exports = Channel;</textarea>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>.</p>
+  </div>
+</footer>
+
+<script type="text/html" id="complexity-popover-template">
+  <div class="complexity-notice">
+    Complexity : {{ complexity.cyclomatic }} <br>
+    Length : {{ complexity.halstead.length }} <br>
+    Difficulty : {{ complexity.halstead.difficulty.toFixed(2) }} <br>
+    Est # bugs : {{ complexity.halstead.bugs.toFixed(2) }}<br>
+  </div>
+</script>
+
+<script type="text/javascript" src="../../assets/scripts/bundles/core-bundle.js"></script>
+<script type="text/javascript" src="../../assets/scripts/bundles/codemirror.js"></script>
+<script type="text/javascript" src="../../assets/scripts/codemirror.markpopovertext.js"></script>
+<script type="text/javascript" src="report.js"></script>
+<script type="text/javascript" src="report.history.js"></script>
+<script type="text/javascript" src="../../assets/scripts/plato-file.js"></script>
+</body>
+</html>

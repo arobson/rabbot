@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plato - amqp/connection.js</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!--[if lt IE 9]>
+  <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+
+  <link href="../../assets/css/vendor/morris.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/bootstrap.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/font-awesome.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/codemirror.css" rel="stylesheet">
+  <link href="../../assets/css/plato.css" rel="stylesheet">
+  <link href="../../assets/css/plato-file.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+<div class="navbar navbar-fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="http://github.com/es-analysis/plato">Plato on Github</a>
+    <ul class="nav navbar-nav">
+      <li>
+        <a href="../../index.html">Report Home</a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="jumbotron">
+  <div class="container">
+    <h1>amqp/connection.js</h1>
+  </div>
+</div>
+
+<div class="container aggregate-stats">
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Maintainability <a href="http://blogs.msdn.com/b/codeanalysis/archive/2007/11/20/maintainability-index-range-and-meaning.aspx"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="A value between 0 and 100 that represents the relative ease of maintaining the code. A high value means better maintainability." data-original-title="Maintainability Index"  data-container="body"></i></a></h2>
+      <p class="stat">68.81</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Lines of code <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h2>
+      <p class="stat">131</p>
+    </div>
+  </div>
+  <div class="row historical">
+    <div class="col-md-6">
+      <p id="chart_historical_maint" class="chart"></p>
+    </div>
+    <div class="col-md-6">
+      <p id="chart_historical_sloc" class="chart"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Difficulty  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="The difficulty measure is related to the difficulty of the program to write or understand." data-original-title="Difficulty" data-container="body"></i></a></h2>
+      <p class="stat">30.48</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Estimated Errors  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Halstead's delivered bugs is an estimate for the number of errors in the implementation." data-original-title="Delivered Bugs" data-container="body"></i></a></h2>
+      <p class="stat">1.63</p>
+    </div>
+  </div>
+</div>
+
+<div class="container charts">
+  <div class="row">
+    <h2 class="header">Function weight</h2>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h3 class="chart-header">By Complexity <a href="http://en.wikipedia.org/wiki/Cyclomatic_complexity"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="This metric counts the number of distinct paths through a block of code. Lower values are better." data-original-title="Cyclomatic Complexity" data-container="body"></i></a></h3>
+      <div id="fn-by-complexity" class="stat"></div>
+    </div>
+    <div class="col-md-6">
+      <h3 class="chart-header">By SLOC  <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h3>
+      <div id="fn-by-sloc" class="stat"></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="row">
+    <textarea id="file-source" class="col-md-12">var amqp = require( &#039;amqplib&#039; );
+var _ = require( &#039;lodash&#039; );
+var fs = require( &#039;fs&#039; );
+var when = require( &#039;when&#039; );
+var AmqpConnection = require( &#039;amqplib/lib/callback_model&#039; ).CallbackModel;
+var Promiser = require( &#039;./promiseMachine.js&#039;);
+
+function getOption( opts, key, alt ) {
+	if( opts.get ) {
+		return opts.get( key, alt );
+	} else {
+		return opts[ key ] || alt;
+	}
+}
+
+function getUri( protocol, user, pass, server, port, vhost, heartbeat ) {
+	return protocol + user + &#039;:&#039; + pass +
+		&#039;@&#039; + server + &#039;:&#039; + port + &#039;/&#039; + vhost +
+		&#039;?heartbeat=&#039; + heartbeat;
+}
+
+function split( x ) {
+	if( _.isNumber( x ) ) {
+		return [ x ];
+	} else if( _.isArray( x ) ) {
+		return x;
+	} else {
+		return x.split( &#039;,&#039; ).map( trim );
+	}
+}
+
+function trim ( x ) { 
+	return x.trim( &#039; &#039; ); 
+}
+
+var Adapter = function( parameters ) {
+	var serverList = getOption( parameters, &#039;RABBIT_BROKER&#039; ) || getOption( parameters, &#039;server&#039;, &#039;localhost&#039; ),
+		portList = getOption( parameters, &#039;RABBIT_PORT&#039;, 5672 );
+
+	this.name = parameters ? ( parameters.name || &#039;default&#039; ) : &#039;default&#039;;
+	this.connectionIndex = 0;
+	this.servers = split( serverList );
+	this.ports = split( portList );
+	this.heartbeat = getOption( parameters, &#039;RABBIT_HEARTBEAT&#039; ) || getOption( parameters, &#039;heartbeat&#039;, 2000 );
+	this.protocol = getOption( parameters, &#039;RABBIT_PROTOCOL&#039; ) || getOption( parameters, &#039;protocol&#039;, &#039;amqp://&#039; );
+	this.pass = getOption( parameters, &#039;RABBIT_PASSWORD&#039; ) || getOption( parameters, &#039;pass&#039;, &#039;guest&#039; );
+	this.user = getOption( parameters, &#039;RABBIT_USER&#039; ) || getOption( parameters, &#039;user&#039;, &#039;guest&#039; );
+	this.vhost = getOption( parameters, &#039;RABBIT_VHOST&#039; ) || getOption( parameters, &#039;vhost&#039;, &#039;%2f&#039; );
+	var certPath = getOption( parameters, &#039;RABBIT_CERT&#039; ) || getOption( parameters, &#039;certPath&#039; );
+	var keyPath = getOption( parameters, &#039;RABBIT_KEY&#039; ) || getOption( parameters, &#039;keyPath&#039; );
+	var caPaths = getOption( parameters, &#039;RABBIT_CA&#039; ) || getOption( parameters, &#039;caPath&#039; );
+	var passphrase = getOption( parameters, &#039;RABBIT_PASSPHRASE&#039; ) || getOption( parameters, &#039;passphrase&#039; );
+	var pfxPath = getOption( parameters, &#039;RABBIT_PFX&#039; ) || getOption( parameters, &#039;pfxPath&#039; );
+	var useSSL = certPath || keyPath || passphrase || caPaths || pfxPath;
+	this.options = { noDelay: true };
+	if( certPath ) {
+		this.options.cert = fs.readFileSync( certPath );
+	}
+	if( keyPath ) {
+		this.options.key = fs.readFileSync( keyPath );
+	}
+	if( passphrase ) {
+		this.options.passphrase = passphrase;
+	}
+	if( pfxPath ) {
+		this.options.pfx = fs.readFileSync( pfxPath );
+	}
+	if( caPaths ) {
+		var list = caPaths.split( &#039;,&#039; );
+		this.options.ca = _.map( list, function( caPath ) { 
+			return fs.readFileSync( caPath ); 
+		} );
+	}
+	if( useSSL ) {
+		this.protocol = &#039;amqps&#039;;
+	}
+	this.limit = _.max( [ this.servers.length, this.ports.length ] );
+};
+
+Adapter.prototype.connect = function() {
+	return when.promise( function( resolve, reject ) {
+		var attempted = [],
+			attempt;	
+		attempt = function() {
+			var nextUri = this.getNextUri();
+			if( _.indexOf( attempted, nextUri ) &lt; 0 ) {
+				amqp.connect( nextUri, this.options )
+					.then( resolve )
+					.then( null, function( err ) {
+						attempted.push( nextUri );
+						this.bumpIndex();
+						attempt( err );
+					}.bind( this ) );
+			} else {
+				reject( &#039;No endpoints could be reached&#039; );
+			}
+		}.bind( this );
+		attempt();
+	}.bind( this ) );
+};
+
+Adapter.prototype.bumpIndex = function() {
+	if( this.limit - 1 &gt; this.connectionIndex ) {
+		this.connectionIndex ++;
+	} else {
+		this.connectionIndex = 0;
+	}
+};
+
+Adapter.prototype.getNextUri = function() {
+	var server = this.getNext( this.servers ),
+		port = this.getNext( this.ports );
+		uri = getUri( this.protocol, this.user, this.pass, server, port, this.vhost, this.heartbeat );
+	return uri;
+};
+
+Adapter.prototype.getNext = function( list ) {
+	if( this.connectionIndex &gt;= list.length ) {
+		return list[ 0 ];
+	} else {
+		return list[ this.connectionIndex ];
+	}
+};
+
+module.exports = function( options ) {
+		var close = function( connection ) {
+			connection.close();
+		};
+		var adapter = new Adapter( options );
+		return Promiser( adapter.connect.bind( adapter ), AmqpConnection, close, &#039;close&#039; );
+};</textarea>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>.</p>
+  </div>
+</footer>
+
+<script type="text/html" id="complexity-popover-template">
+  <div class="complexity-notice">
+    Complexity : {{ complexity.cyclomatic }} <br>
+    Length : {{ complexity.halstead.length }} <br>
+    Difficulty : {{ complexity.halstead.difficulty.toFixed(2) }} <br>
+    Est # bugs : {{ complexity.halstead.bugs.toFixed(2) }}<br>
+  </div>
+</script>
+
+<script type="text/javascript" src="../../assets/scripts/bundles/core-bundle.js"></script>
+<script type="text/javascript" src="../../assets/scripts/bundles/codemirror.js"></script>
+<script type="text/javascript" src="../../assets/scripts/codemirror.markpopovertext.js"></script>
+<script type="text/javascript" src="report.js"></script>
+<script type="text/javascript" src="report.history.js"></script>
+<script type="text/javascript" src="../../assets/scripts/plato-file.js"></script>
+</body>
+</html>

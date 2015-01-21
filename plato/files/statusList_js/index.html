@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plato - statusList.js</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!--[if lt IE 9]>
+  <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+
+  <link href="../../assets/css/vendor/morris.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/bootstrap.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/font-awesome.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/codemirror.css" rel="stylesheet">
+  <link href="../../assets/css/plato.css" rel="stylesheet">
+  <link href="../../assets/css/plato-file.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+<div class="navbar navbar-fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="http://github.com/es-analysis/plato">Plato on Github</a>
+    <ul class="nav navbar-nav">
+      <li>
+        <a href="../../index.html">Report Home</a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="jumbotron">
+  <div class="container">
+    <h1>statusList.js</h1>
+  </div>
+</div>
+
+<div class="container aggregate-stats">
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Maintainability <a href="http://blogs.msdn.com/b/codeanalysis/archive/2007/11/20/maintainability-index-range-and-meaning.aspx"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="A value between 0 and 100 that represents the relative ease of maintaining the code. A high value means better maintainability." data-original-title="Maintainability Index"  data-container="body"></i></a></h2>
+      <p class="stat">71.57</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Lines of code <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h2>
+      <p class="stat">180</p>
+    </div>
+  </div>
+  <div class="row historical">
+    <div class="col-md-6">
+      <p id="chart_historical_maint" class="chart"></p>
+    </div>
+    <div class="col-md-6">
+      <p id="chart_historical_sloc" class="chart"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Difficulty  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="The difficulty measure is related to the difficulty of the program to write or understand." data-original-title="Difficulty" data-container="body"></i></a></h2>
+      <p class="stat">61.76</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Estimated Errors  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Halstead's delivered bugs is an estimate for the number of errors in the implementation." data-original-title="Delivered Bugs" data-container="body"></i></a></h2>
+      <p class="stat">1.85</p>
+    </div>
+  </div>
+</div>
+
+<div class="container charts">
+  <div class="row">
+    <h2 class="header">Function weight</h2>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h3 class="chart-header">By Complexity <a href="http://en.wikipedia.org/wiki/Cyclomatic_complexity"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="This metric counts the number of distinct paths through a block of code. Lower values are better." data-original-title="Cyclomatic Complexity" data-container="body"></i></a></h3>
+      <div id="fn-by-complexity" class="stat"></div>
+    </div>
+    <div class="col-md-6">
+      <h3 class="chart-header">By SLOC  <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h3>
+      <div id="fn-by-sloc" class="stat"></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="row">
+    <textarea id="file-source" class="col-md-12">var _ = require( &#039;lodash&#039; );
+var postal = require( &#039;postal&#039; );
+var Monologue = require( &#039;monologue.js&#039; )( _ );
+var signal = postal.channel( &#039;rabbit.ack&#039; );
+
+var calls = { 
+	ack: &#039;_ack&#039;, 
+	nack: &#039;_nack&#039;,
+	reject: &#039;_reject&#039;
+};
+
+var StatusList = function() {
+	this.lastAck = -1;
+	this.lastNack = -1;
+	this.lastReject = -1;
+	this.firstAck = undefined;
+	this.firstNack = undefined;
+	this.firstReject = undefined;
+	this.messages = [];
+	this.receivedCount = 0;
+};
+
+StatusList.prototype._ackAll = function() {
+	this.lastAck = this._lastByStatus( &#039;ack&#039; ).tag;
+	this._removeByStatus( &#039;ack&#039; );
+	this.firstAck = undefined;
+	this.emit( &#039;ackAll&#039; );
+};
+
+StatusList.prototype._ack = function( tag, inclusive ) {
+	this.lastAck = tag;
+	this._resolveTag( tag, &#039;ack&#039;, inclusive );
+};
+
+StatusList.prototype._ackOrNackSequence = function() {
+	try {
+		var firstMessage = this.messages[ 0 ];
+		if ( firstMessage === undefined ) {
+			return;
+		}
+		var firstStatus = firstMessage.status;
+		var sequenceEnd = firstMessage.tag;
+		var call = calls[ firstStatus ];
+		if( firstStatus == &#039;pending&#039; ) {
+			return;
+		} else {
+			for ( var i = 1; i &lt; _.size( this.messages ) - 1; i++ ) {
+				if ( this.messages[ i ].status !== firstStatus ) {
+					break;
+				}
+				sequenceEnd = this.messages[ i ].tag;
+			}
+			if( call ) {
+				this[ call ]( sequenceEnd, true );
+			}
+		}
+	} catch ( err ) {
+		console.log( &#039;Error in _ackOrNackSequence&#039;, err.stack );
+	}
+};
+
+StatusList.prototype._ignoreSignal = function() {
+	if( this.signalSubscription ) {
+		this.signalSubscription.unsubscribe();
+	}
+};
+
+StatusList.prototype._firstByStatus = function( status ) {
+	return _.find( this.messages, { status: status } );
+};
+
+StatusList.prototype._lastByStatus = function( status ) {
+	return _.findLast( this.messages, { status: status } );
+};
+
+StatusList.prototype._listenForSignal = function() {
+	signal.subscribe( &#039;#&#039;, function() {
+		this._processBatch();
+	}.bind( this ) );
+};
+
+StatusList.prototype._nack = function( tag, inclusive ) {
+	this.lastNack = tag;
+	this._resolveTag( tag, &#039;nack&#039;, inclusive );
+};
+
+StatusList.prototype._nackAll = function() {
+	this.lastNack = this._lastByStatus( &#039;nack&#039; ).tag;
+	this._removeByStatus( &#039;nack&#039; );
+	this.firstNack = undefined;
+	this.emit( &#039;nackAll&#039; );
+};
+
+StatusList.prototype._reject = function( tag, inclusive ) {
+	this.lastReject = tag;
+	this._resolveTag( tag, &#039;reject&#039;, inclusive );
+};
+
+StatusList.prototype._rejectAll = function() {
+	this.lastReject = this._lastByStatus( &#039;reject&#039; ).tag;
+	this._removeByStatus( &#039;reject&#039; );
+	this.firstReject = undefined;
+	this.emit( &#039;rejectAll&#039; );
+};
+
+StatusList.prototype._processBatch = function() {
+	this.acking = this.acking !== undefined ? this.acking : false;
+	if ( !this.acking ) {
+		this.acking = true;
+		var hasPending = ( _.findIndex( this.messages, { status: &#039;pending&#039; } ) &gt; 0 );
+		var hasAck = this.firstAck;
+		var hasNack = this.firstNack;
+		var hasReject = this.firstReject;
+		//Just acksPending
+		if ( !hasPending &amp;&amp; !hasNack &amp;&amp; hasAck &amp;&amp; !hasReject ) {
+			this._ackAll();
+		}
+		//Just nacksPending
+		else if ( !hasPending &amp;&amp; hasNack &amp;&amp; !hasAck &amp;&amp; !hasReject ) {
+			this._nackAll();
+		}
+		else if( !hasPending &amp;&amp; !hasNack &amp;&amp; !hasAck &amp;&amp; hasReject ) {
+			this._rejectAll();
+		}
+		//acksPending or nacksPending
+		else if ( hasNack || hasAck || hasReject ) {
+			this._ackOrNackSequence();
+		}
+		//Only pending
+		this.acking = false;
+	}
+};
+
+StatusList.prototype._resolveTag = function( tag, operation, inclusive ) {
+	this._removeUpToTag( tag );
+	var nextAck = this._firstByStatus( &#039;ack&#039; );
+	var nextNack = this._firstByStatus( &#039;nack&#039; );
+	this.firstAck = nextAck ? nextAck.tag : undefined;
+	this.firstNack = nextNack ? nextNack.tag : undefined;
+	this.emit( operation, { tag: tag, inclusive: inclusive } );
+};
+
+StatusList.prototype._removeByStatus = function( status ) {
+	_.remove( this.messages, function( message ) {
+		return message.status == status;
+	} );
+};
+
+StatusList.prototype._removeUpToTag = function( tag ) {
+	_.remove( this.messages, function( message ) {
+		return message.tag &lt;= tag;
+	} );
+};
+
+StatusList.prototype.addMessage = function( tag ) {
+	this.receivedCount ++;
+	var message = {
+		tag: tag,
+		status: &#039;pending&#039;
+	};
+	this.messages.push( message );
+	return {
+		ack: function() { 
+			this.firstAck = this.firstAck || tag;
+			message.status = &#039;ack&#039;;
+		}.bind( this ),
+		nack: function() {
+			this.firstNack = this.firstNack || tag;
+			message.status = &#039;nack&#039;;
+		}.bind( this ),
+		reject: function() {
+			this.firstReject = this.firstReject || tag;
+			message.status = &#039;reject&#039;;
+		}.bind( this )
+	};
+};
+
+Monologue.mixin( StatusList );
+
+module.exports = StatusList;</textarea>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>.</p>
+  </div>
+</footer>
+
+<script type="text/html" id="complexity-popover-template">
+  <div class="complexity-notice">
+    Complexity : {{ complexity.cyclomatic }} <br>
+    Length : {{ complexity.halstead.length }} <br>
+    Difficulty : {{ complexity.halstead.difficulty.toFixed(2) }} <br>
+    Est # bugs : {{ complexity.halstead.bugs.toFixed(2) }}<br>
+  </div>
+</script>
+
+<script type="text/javascript" src="../../assets/scripts/bundles/core-bundle.js"></script>
+<script type="text/javascript" src="../../assets/scripts/bundles/codemirror.js"></script>
+<script type="text/javascript" src="../../assets/scripts/codemirror.markpopovertext.js"></script>
+<script type="text/javascript" src="report.js"></script>
+<script type="text/javascript" src="report.history.js"></script>
+<script type="text/javascript" src="../../assets/scripts/plato-file.js"></script>
+</body>
+</html>

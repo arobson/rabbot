@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plato - topology.js</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!--[if lt IE 9]>
+  <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+
+  <link href="../../assets/css/vendor/morris.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/bootstrap.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/font-awesome.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/codemirror.css" rel="stylesheet">
+  <link href="../../assets/css/plato.css" rel="stylesheet">
+  <link href="../../assets/css/plato-file.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+<div class="navbar navbar-fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="http://github.com/es-analysis/plato">Plato on Github</a>
+    <ul class="nav navbar-nav">
+      <li>
+        <a href="../../index.html">Report Home</a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="jumbotron">
+  <div class="container">
+    <h1>topology.js</h1>
+  </div>
+</div>
+
+<div class="container aggregate-stats">
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Maintainability <a href="http://blogs.msdn.com/b/codeanalysis/archive/2007/11/20/maintainability-index-range-and-meaning.aspx"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="A value between 0 and 100 that represents the relative ease of maintaining the code. A high value means better maintainability." data-original-title="Maintainability Index"  data-container="body"></i></a></h2>
+      <p class="stat">73.76</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Lines of code <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h2>
+      <p class="stat">210</p>
+    </div>
+  </div>
+  <div class="row historical">
+    <div class="col-md-6">
+      <p id="chart_historical_maint" class="chart"></p>
+    </div>
+    <div class="col-md-6">
+      <p id="chart_historical_sloc" class="chart"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Difficulty  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="The difficulty measure is related to the difficulty of the program to write or understand." data-original-title="Difficulty" data-container="body"></i></a></h2>
+      <p class="stat">46.81</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Estimated Errors  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Halstead's delivered bugs is an estimate for the number of errors in the implementation." data-original-title="Delivered Bugs" data-container="body"></i></a></h2>
+      <p class="stat">2.39</p>
+    </div>
+  </div>
+</div>
+
+<div class="container charts">
+  <div class="row">
+    <h2 class="header">Function weight</h2>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h3 class="chart-header">By Complexity <a href="http://en.wikipedia.org/wiki/Cyclomatic_complexity"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="This metric counts the number of distinct paths through a block of code. Lower values are better." data-original-title="Cyclomatic Complexity" data-container="body"></i></a></h3>
+      <div id="fn-by-complexity" class="stat"></div>
+    </div>
+    <div class="col-md-6">
+      <h3 class="chart-header">By SLOC  <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h3>
+      <div id="fn-by-sloc" class="stat"></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="row">
+    <textarea id="file-source" class="col-md-12">var when = require( &#039;when&#039; );
+var _ = require( &#039;lodash&#039; );
+var uuid = require( &#039;node-uuid&#039; );
+var Exchange = require( &#039;./exchange.js&#039; );
+var Queue = require( &#039;./queue.js&#039; );
+var Monologue = require( &#039;monologue.js&#039; )( _ );
+
+var replyId = uuid.v1();
+
+function aliasOptions( options, aliases ) {
+	var aliased = _.transform( options, function( result, value, key ) {
+		var alias = aliases[ key ];
+		result[ alias || key ] = value;
+	} );
+	return _.omit( aliased, Array.prototype.slice.call( arguments, 2 ) );
+}
+
+function getKeys( keys ) {
+	var actualKeys = [ &#039;&#039; ];
+	if( keys &amp;&amp; keys.length &gt; 0 ) {
+		actualKeys = _.isArray( keys ) ? keys : [ keys ];
+	}
+	return actualKeys;
+}
+
+function toArray( x, list ) {
+	if( _.isArray( x ) ) {
+		return x; 
+	}
+	if( _.isObject( x ) &amp;&amp; list ) {
+		return _.map( x, function( item ) { 
+			return item; 
+		} );
+	}
+	if( _.isUndefined( x ) || _.isEmpty( x ) ) {
+		return [];
+	}
+	return [ x ];
+}
+
+var Topology = function( connection ) {
+	this.connection = connection;
+	this.channels = {};
+	this.definitions = {
+			bindings: {},
+			exchanges: {},
+			queues: {}
+		};
+	this.replyQueue = [ replyId, &#039;response&#039;, &#039;queue&#039; ].join( &#039;.&#039; );
+	connection.on( &#039;reconnected&#039;, function() {
+		this.createReplyQueue();
+		this.onReconnect();
+	}.bind( this ) );
+	this.createReplyQueue();
+};
+
+Topology.prototype.configureBindings = function( bindingDef, list ) {
+	if ( _.isUndefined( bindingDef ) ) {
+		return when( true );
+	} else {
+		var actualDefinitions = toArray( bindingDef, list ),
+			bindings = _.map( actualDefinitions, function( def ) {
+				var q = this.definitions.queues[ def.target ];
+				return this.createBinding( 
+						{ 
+							source: def.exchange || def.source, 
+							target: def.target,
+							keys: def.keys,
+							queue: q !== undefined 
+						} );
+				}.bind( this ) );
+		if( bindings.length === 0 ) {
+			return when( true );
+		} else {
+			return when.all( bindings );
+		}
+	}
+};
+
+Topology.prototype.configureQueues = function( queueDef, list ) {
+	if ( _.isUndefined( queueDef ) ) {
+		return when( true );
+	} else {
+		var actualDefinitions = toArray( queueDef, list );
+		var queues = _.map( actualDefinitions, function( def ) {
+				return this.createQueue( def );
+			}.bind( this ) );
+		return when.all( queues );
+	}
+};
+
+Topology.prototype.configureExchanges = function( exchangeDef, list ) {
+	if ( _.isUndefined( exchangeDef ) ) {
+		return when( true );
+	} else {
+		var actualDefinitions = toArray( exchangeDef, list ),
+			exchanges = _.map( actualDefinitions, function( def ) {
+				return this.createExchange( def );
+			}.bind( this ) );
+		return when.all( exchanges );
+	}
+};
+
+Topology.prototype.createBinding = function( options ) {
+	var id = [ options.source, options.target ].join( &#039;-&gt;&#039; );
+	this.definitions.bindings[ id ] = options;
+	var term = options.queue ? &#039;queue&#039; : &#039;exchange&#039;;
+	var call = options.queue ? &#039;bindQueue&#039; : &#039;bindExchange&#039;;
+	var source = options.source;
+	var target = options.target;
+	var keys = getKeys( options.keys );
+	var channel = this.getChannel( &#039;control&#039; );
+	return when.all( 
+		_.map( keys, function( key ) {
+			return channel[ call ]( target, source, key );
+		} ) );
+};
+
+Topology.prototype.createExchange = function( options ) {
+	this.definitions.exchanges[ options.name ] = options;
+	var channelName = &#039;exchange:&#039; + options.name;
+	return when.promise( function( resolve, reject ) {
+		var exchange = this.channels[ channelName ] = new Exchange( options, this.connection, this );
+		exchange.on( &#039;defined&#039;, function() {
+			resolve( exchange );	
+		} );
+	}.bind( this ) );
+};
+
+Topology.prototype.createQueue = function( options ) {
+	this.definitions.queues[ options.name ] = options;
+	var channelName = &#039;queue:&#039; + options.name;
+	return when.promise( function( resolve, reject ) {
+		var queue = this.channels[ channelName ] = new Queue( options, this.connection, this );
+		queue.on( &#039;defined&#039;, function() {
+			resolve( queue );
+		} );
+	}.bind( this ) );
+};
+
+Topology.prototype.createReplyQueue = function() {
+	if( !this.channels[ &#039;queue:&#039; + this.replyQueue ] ) {
+		this.createQueue( { name: this.replyQueue, autoDelete: true, subscribe: true } );
+	}
+};
+
+Topology.prototype.deleteExchange = function( name ) {
+	var key = &#039;exchange:&#039; + name,
+		channel = this.channels[ key ];
+	if( channel ) {
+		channel.destroy();
+		delete this.channels[ key ];
+	} 
+	var control = this.getChannel( &#039;control&#039; );
+	return control.deleteExchange( name );
+};
+
+Topology.prototype.deleteQueue = function( name ) {
+	var key = &#039;queue:&#039; + name;
+	var channel = this.channels[ key ];
+	if( channel ) {
+		channel.destroy();
+		delete this.channels[ key ];
+	} 
+	var control = this.getChannel( &#039;control&#039; );
+	return control.deleteQueue( name );
+};
+
+Topology.prototype.getChannel = function( name ) {
+	var channel = this.channels[ name ];
+	if( !channel ) {
+		channel = this.connection.createChannel( false );
+		this.channels[ name ] = channel;
+	}
+	return channel;
+};
+
+Topology.prototype.onReconnect = function() {
+	var prerequisites = _.map( this.channels, function( channel ) {
+		return channel.check ? channel.check() : when( true );
+	}.bind( this ) );
+	when.all( prerequisites )
+		.then( function() {
+			this.configureBindings( this.definitions.bindings, true )
+				.then( function() {
+					this.emit( &#039;bindings-completed&#039; );
+				}.bind( this ) );
+		}.bind( this ) );
+};
+
+Topology.prototype.reset = function() {
+	_.each( this.channels, function( channel ) {
+		if( channel.destroy ) {
+			channel.destroy();
+		}
+	} );
+	this.channels = {};
+	this.definitions = {
+		bindings: {},
+		exchanges: {},
+		queues: {},
+		subscriptions: {}
+	};
+};
+
+Monologue.mixin( Topology );
+
+module.exports = function( connection ) {
+	return new Topology( connection );
+};</textarea>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>.</p>
+  </div>
+</footer>
+
+<script type="text/html" id="complexity-popover-template">
+  <div class="complexity-notice">
+    Complexity : {{ complexity.cyclomatic }} <br>
+    Length : {{ complexity.halstead.length }} <br>
+    Difficulty : {{ complexity.halstead.difficulty.toFixed(2) }} <br>
+    Est # bugs : {{ complexity.halstead.bugs.toFixed(2) }}<br>
+  </div>
+</script>
+
+<script type="text/javascript" src="../../assets/scripts/bundles/core-bundle.js"></script>
+<script type="text/javascript" src="../../assets/scripts/bundles/codemirror.js"></script>
+<script type="text/javascript" src="../../assets/scripts/codemirror.markpopovertext.js"></script>
+<script type="text/javascript" src="report.js"></script>
+<script type="text/javascript" src="report.history.js"></script>
+<script type="text/javascript" src="../../assets/scripts/plato-file.js"></script>
+</body>
+</html>

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plato - index.js</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!--[if lt IE 9]>
+  <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+
+  <link href="../../assets/css/vendor/morris.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/bootstrap.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/font-awesome.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/codemirror.css" rel="stylesheet">
+  <link href="../../assets/css/plato.css" rel="stylesheet">
+  <link href="../../assets/css/plato-file.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+<div class="navbar navbar-fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="http://github.com/es-analysis/plato">Plato on Github</a>
+    <ul class="nav navbar-nav">
+      <li>
+        <a href="../../index.html">Report Home</a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="jumbotron">
+  <div class="container">
+    <h1>index.js</h1>
+  </div>
+</div>
+
+<div class="container aggregate-stats">
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Maintainability <a href="http://blogs.msdn.com/b/codeanalysis/archive/2007/11/20/maintainability-index-range-and-meaning.aspx"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="A value between 0 and 100 that represents the relative ease of maintaining the code. A high value means better maintainability." data-original-title="Maintainability Index"  data-container="body"></i></a></h2>
+      <p class="stat">72.53</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Lines of code <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h2>
+      <p class="stat">227</p>
+    </div>
+  </div>
+  <div class="row historical">
+    <div class="col-md-6">
+      <p id="chart_historical_maint" class="chart"></p>
+    </div>
+    <div class="col-md-6">
+      <p id="chart_historical_sloc" class="chart"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Difficulty  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="The difficulty measure is related to the difficulty of the program to write or understand." data-original-title="Difficulty" data-container="body"></i></a></h2>
+      <p class="stat">32.55</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Estimated Errors  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Halstead's delivered bugs is an estimate for the number of errors in the implementation." data-original-title="Delivered Bugs" data-container="body"></i></a></h2>
+      <p class="stat">2.59</p>
+    </div>
+  </div>
+</div>
+
+<div class="container charts">
+  <div class="row">
+    <h2 class="header">Function weight</h2>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h3 class="chart-header">By Complexity <a href="http://en.wikipedia.org/wiki/Cyclomatic_complexity"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="This metric counts the number of distinct paths through a block of code. Lower values are better." data-original-title="Cyclomatic Complexity" data-container="body"></i></a></h3>
+      <div id="fn-by-complexity" class="stat"></div>
+    </div>
+    <div class="col-md-6">
+      <h3 class="chart-header">By SLOC  <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h3>
+      <div id="fn-by-sloc" class="stat"></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="row">
+    <textarea id="file-source" class="col-md-12">var _ = require( &#039;lodash&#039; );
+var amqp = require( &#039;amqplib&#039; );
+var Monologue = require( &#039;monologue.js&#039; )( _ );
+var when = require( &#039;when&#039; );
+var pipeline = require( &#039;when/pipeline&#039; );
+var fs = require( &#039;fs&#039; );
+var Connection = require( &#039;./connection.js&#039;);
+var Topology = require( &#039;./topology.js&#039; );
+var postal = require( &#039;postal&#039; );
+var uuid = require( &#039;node-uuid&#039; );
+var log = require( &#039;./log.js&#039; );
+
+var defaultTo = function( x, y ) {
+	x = x || y;
+};
+
+var dispatch = postal.channel( &#039;rabbit.dispatch&#039; );
+var responses = postal.channel( &#039;rabbit.responses&#039; );
+var signal = postal.channel( &#039;rabbit.ack&#039; );
+var responseSubscriptions = {};
+
+var Broker = function() {
+	this.connections = {};
+	this.setAckInterval( 500 );
+	this.hasHandles = false;
+	this.autoNack = false;
+	_.bindAll( this );
+};
+
+Broker.prototype.addConnection = function( options ) {
+	var name = options ? ( options.name || &#039;default&#039; ) : &#039;default&#039;;
+	if( !this.connections[ name ] ) {
+		var connection = Connection( options || {} ),
+			topology = Topology( connection );
+		connection.on( &#039;connected&#039;, function() {
+			this.emit( &#039;connected&#039;, connection );
+			this.emit( connection.name + &#039;.connection.opened&#039;, connection );
+		}.bind( this) );
+		connection.on( &#039;closed&#039;, function() {
+			this.emit( connection.name + &#039;.connection.closed&#039;, connection );
+		}.bind( this ) );
+		connection.on( &#039;failed&#039;, function( err ) {
+			this.emit( name + &#039;.connection.failed&#039;, err );
+		}.bind( this ) );
+		this.connections[ connection.name ] = topology;
+		return topology;
+	} else {
+		return this.connections[ name ];
+	}
+};
+
+Broker.prototype.addExchange = function( name, type, options, connectionName ) {
+	connectionName = connectionName || &#039;default&#039;;
+	if( _.isObject( name ) ) {
+		options = name;
+		connectionName = type;
+	} else {
+		options.name = name;
+		options.type = type;
+	}
+	return this.connections[ connectionName ].createExchange( options );
+};
+
+Broker.prototype.addQueue = function( name, options, connectionName ) {
+	connectionName = connectionName || &#039;default&#039;;
+	options.name = name;
+	if( options.subscribe &amp;&amp; !this.hasHandles ) {
+		console.warn( &#039;Subscription to &quot;&#039; + name + &#039;&quot; was started without any handlers. This will result in lost messages!&#039; );
+	}
+	return this.connections[ connectionName ].createQueue( options, connectionName );
+};
+
+Broker.prototype.batchAck = function() {
+	signal.publish( &#039;ack&#039;, {} );
+};
+
+Broker.prototype.bindExchange = function( source, target, keys, connectionName ) {
+	connectionName = connectionName || &#039;default&#039;;
+	return this[ connectionName ].createBinding( { source: source, target: target, keys: keys } );
+};
+
+Broker.prototype.bindQueue = function( source, target, keys, connectionName ) {
+	connectionName = connectionName || &#039;default&#039;;
+	return this.connections[ connectionName ].createBinding( 
+		{ source: source, target: target, keys: keys, queue: true },
+		connectionName 
+	);
+};
+
+Broker.prototype.clearAckInterval = function() {
+	clearInterval( this.ackIntervalId );
+};
+
+Broker.prototype.closeAll = function( reset ) {
+	// COFFEE IS FOR CLOSERS
+	var closers = _.map( this.connections, function( connection ) {
+		return this.close( connection.name, reset );
+	}, this );
+	return when.all( closers );
+};
+
+Broker.prototype.close = function( connectionName, reset ) {
+	connectionName = connectionName || &#039;default&#039;;
+	var connection = this.connections[ connectionName ].connection;
+	if ( !_.isUndefined( connection ) ) {
+		if ( reset ) {
+			this.connections[ connectionName ].reset();
+		}
+		return connection.close();
+	} else {
+		return when( true );
+	}
+};
+
+Broker.prototype.deleteExchange = function( name, connectionName ) {
+	connectionName = connectionName || &#039;default&#039;;
+	return this.connections[ connectionName ].deleteExchange( name );
+};
+
+Broker.prototype.deleteQueue = function( name, connectionName ) {
+	connectionName = connectionName || &#039;default&#039;;
+	return this.connections[ connectionName ].deleteQueue( name );
+};
+
+Broker.prototype.getExchange = function( name, connectionName ) {
+	connectionName = connectionName || &#039;default&#039;;
+	return this.connections[ connectionName ].channels[ &#039;exchange:&#039; + name ];
+};
+
+Broker.prototype.getQueue = function( name, connectionName ) {
+	connectionName = connectionName || &#039;default&#039;;
+	return this.connections[ connectionName ].channels[ &#039;queue:&#039; + name ];
+};
+
+Broker.prototype.handle = function( messageType, handler, context ) {
+	this.hasHandles = true;
+	var subscription = dispatch.subscribe( messageType, handler.bind( context ) );
+	if( this.autoNack ) {
+		subscription.catch( function( err, msg ) {
+			console.log( &#039;Handler for &quot;&#039; + messageType + &#039;&quot; failed with:&#039;, err.stack );
+			msg.nack();
+		} );
+	}
+	subscription.remove = subscription.unsubscribe;
+	return subscription;
+};
+
+Broker.prototype.ignoreHandlerErrors = function() {
+	this.autoNack = false;
+}
+
+Broker.prototype.nackOnError = function() {
+	this.autoNack = true;
+}
+
+Broker.prototype.publish = function( exchangeName, type, message, routingKey, correlationId, connectionName, sequenceNo ) {
+	var messageId = undefined,
+		headers = {},
+		timestamp = Date.now(),
+		options;
+	if( _.isObject( type ) ) {
+		options = type;
+		connectionName = message || options.connectionName;
+	} else {
+		options = {
+			appId: this.appId,
+			type: type,
+			body: message,
+			routingKey: routingKey,
+			correlationId: correlationId,
+			sequenceNo: sequenceNo,
+			timestamp: timestamp,
+			headers: {},
+			connectionName: connectionName || &#039;default&#039;
+		};
+	}
+	connectionName = connectionName || &#039;default&#039;;
+	return this.getExchange( exchangeName, connectionName )
+				.publish( options );
+};
+
+Broker.prototype.request = function( exchangeName, options, connectionName ) {
+	connectionName = connectionName || &#039;default&#039;;
+	var requestId = uuid.v1();
+	options.messageId = requestId;
+	options.connectionName = connectionName;
+	return when.promise( function( resolve, reject, notify ) {
+		var subscription = responses.subscribe( requestId, function( message ) {
+			if( message.properties.headers[ &#039;sequence_end&#039; ] ) { // jshint ignore:line
+				resolve( message );
+				subscription.unsubscribe();
+			} else {
+				notify( message );
+			}
+		} );
+		this.publish( exchangeName, options );
+	}.bind( this ) );
+};
+
+Broker.prototype.setAckInterval = function( interval ) {
+	if( this.ackIntervalId ) {
+		this.clearAckInterval();
+	}
+	this.ackIntervalId = setInterval( this.batchAck, interval );
+};
+
+Broker.prototype.startSubscription = function( queueName, connectionName ) {
+	if( !this.hasHandles ) {
+		console.warn( &#039;Subscription to &quot;&#039; + queueName + &#039;&quot; was started without any handlers. This will result in lost messages!&#039; );
+	}
+	connectionName = connectionName || &#039;default&#039;;
+	var queue = this.getQueue( queueName, connectionName );
+	if( queue ) {
+		var consumerTag = queue.subscribe( queue );
+		return queue;
+	} else {
+		throw new Error( &#039;No queue named &quot;&#039; + queueName + &#039;&quot; for connection &quot;&#039; + connectionName + &#039;&quot;. Subscription failed.&#039; );
+	}
+};
+
+require( &#039;./config.js&#039; )( Broker );
+
+Monologue.mixin( Broker );
+
+var broker = new Broker();
+
+module.exports = broker;</textarea>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>.</p>
+  </div>
+</footer>
+
+<script type="text/html" id="complexity-popover-template">
+  <div class="complexity-notice">
+    Complexity : {{ complexity.cyclomatic }} <br>
+    Length : {{ complexity.halstead.length }} <br>
+    Difficulty : {{ complexity.halstead.difficulty.toFixed(2) }} <br>
+    Est # bugs : {{ complexity.halstead.bugs.toFixed(2) }}<br>
+  </div>
+</script>
+
+<script type="text/javascript" src="../../assets/scripts/bundles/core-bundle.js"></script>
+<script type="text/javascript" src="../../assets/scripts/bundles/codemirror.js"></script>
+<script type="text/javascript" src="../../assets/scripts/codemirror.markpopovertext.js"></script>
+<script type="text/javascript" src="report.js"></script>
+<script type="text/javascript" src="report.history.js"></script>
+<script type="text/javascript" src="../../assets/scripts/plato-file.js"></script>
+</body>
+</html>
