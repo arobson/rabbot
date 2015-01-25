@@ -1,7 +1,5 @@
-var _ = require( 'lodash' );
 var when = require( 'when' );
-var pipeline = require( 'when/pipeline' );
-var log = require( './log' );
+var log = require( './log' )( 'wascally:configuration' );
 
 module.exports = function( Broker ) {
 
@@ -10,27 +8,22 @@ module.exports = function( Broker ) {
 		// normally, the approach here might be a bit pedantic, but it's preferable
 		// to the pyramid of doom callbacks
 		this.config = config;
+		require( './log' )( config.logging || {} );
 		var connection;
 		var emit = this.emit;
 		return when.promise( function( resolve, reject ) {
 			var createExchanges = function() {
-				connection.configureExchanges( config.exchanges )
-					.then( null, function( err ) {
-						log.error( {
-							error: err,
-							reason: 'Could not configure exchanges as specified'
-						} );
-						reject( err );
-					}.bind( this ) )
-					.then( createQueues );
+					connection.configureExchanges( config.exchanges )
+						.then( null, function( err ) {
+							log.error( 'Configuration of %s failed due to an error in one or more exchange settings: %s', connection.name, err );
+							reject( err );
+						}.bind( this ) )
+						.then( createQueues );
 				}.bind( this ),
 				createQueues = function() {
 					connection.configureQueues( config.queues )
 						.then( null, function( err ) {
-							log.error( {
-								error: err,
-								reason: 'Could not configure queues as specified'
-							} );
+							log.error( 'Configuration of %s failed due to an error in one or more queue settings: %s', connection.name, err );
 							reject( err );
 						}.bind( this ) )
 						.then( createBindings );
@@ -38,10 +31,7 @@ module.exports = function( Broker ) {
 				createBindings = function() {
 					connection.configureBindings( config.bindings, connection.name )
 						.then( null, function( err ) {
-							log.error( {
-								error: err,
-								reason: 'Could not configure bindings as specified'
-							} );
+							log.error( 'Configuration of %s failed due to an error in one or more bindings: %s', connection.name, err );
 							reject( err );
 						}.bind( this ) )
 						.then( finish );
@@ -51,7 +41,6 @@ module.exports = function( Broker ) {
 					resolve();
 				};
 			connection = this.addConnection( config.connection );
-
 			createExchanges();
 		}.bind( this ) );
 	};

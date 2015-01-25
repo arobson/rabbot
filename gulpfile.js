@@ -1,7 +1,7 @@
 var gulp = require( 'gulp' );
 var mocha = require( 'gulp-mocha' );
 var processhost = require( 'processhost' )();
-var exec = require( "child_process" ).exec;
+var exec = require( 'child_process' ).exec;
 var istanbul = require( 'gulp-istanbul' );
 var open = require( 'open' ); //jshint ignore : line
 
@@ -15,7 +15,7 @@ function cover( done ) {
 }
 
 function runSpecs() { // jshint ignore : line
-	return gulp.src( [ './spec/**/*.spec.js' ], { read: false } )
+	return gulp.src( [ './spec/behavior/*.spec.js', './spec/integration/integration.spec.js' ], { read: false } )
 		.pipe( mocha( { reporter: 'spec' } ) );
 }
 
@@ -40,8 +40,8 @@ gulp.task( 'continuous-coverage', function( cb ) {
 gulp.task( 'continuous-test', function() {
 	return runSpecs()
 		.on( 'end', function() {
-			console.log( process._getActiveRequests() );
-			console.log( process._getActiveHandles() );
+			// console.log( process._getActiveRequests() );
+			// console.log( process._getActiveHandles() );
 		} );
 } );
 
@@ -63,8 +63,8 @@ gulp.task( 'sleep-and-test', function() {
 	exec( "sleep 2", function( error, stdout, stderr ) {
 		runSpecs()
 			.on( 'end', function() {
-				console.log( process._getActiveRequests() );
-				console.log( process._getActiveHandles() );
+				// console.log( process._getActiveRequests() );
+				// console.log( process._getActiveHandles() );
 			} );
 	} );
 } );

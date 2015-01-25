@@ -81,10 +81,9 @@ rabbit.request( 'request.exchange', {
 
 ### handle( typeName, handler, [context] )
 
-> Handle calls must to happen __before__ the subscriptions have started.
+> Handle calls should happen __before__ starting subscriptions.
 
-Message handlers are registered to handle a message based on the typeName. Calling handle will return a reference to the handler that can later be removed (though it's unlikely you'll do this often). The message that is passed to the handler is the raw Rabbit payload. The body property contains the message body published. 'ack' and 'nack' methods are provided on the message as well to allow you to easily acknowledge successful handling or reject the message.
-
+Message handlers are registered to handle a message based on the typeName. Calling handle will return a reference to the handler that can later be removed (though it's unlikely you'll do this often). The message that is passed to the handler is the raw Rabbit payload. The body property contains the message body published. The message has `ack`, `nack` (requeue the message) and `reject` (don't requeue the message) methods to allow you to easily acknowledge successful handling or reject the message.
 
 #### Explicit Error Handling
 In this example, any possible error is caught in an explicit try/catch:
@@ -143,9 +142,34 @@ handler.catch( function( err, msg ) {
 #### !!! IMPORTANT !!! ####
 Failure to handle errors will result in silent failures and lost messages.
 
+### Unhandled Messages
+In previous versions, if a subscription was started in ack mode (the default) without a handler to process the message, the message would get lost in limbo until the connection (or channel) was closed and then the messages would be returned to the queue. This is very confusing and undesirable behavior. To help protect against this, the new default behavior is that any message received that doesn't have any elligible handlers will get `nack`'d and sent back to the queue immediately.
+
+This is _still_ problematic because it can create churn on the client and server as the message will be redelivered indefinitely.
+
+To change this behavior you can use one of the following calls, only one of these strategies can be activated at a time:
+
+#### onUnhandled( handler )
+```javascript
+rabbit.onUnhandled( function( message ) {
+	 // handle the message here
+} );
+```
+
+#### nackUnhandled() - default
+```javascript
+rabbit.nackUnhandled();
+```
+
+#### rejectUnhandled()
+This will reject the message so that it will _not_ get requeued. DO NOT use this without specifiying a dead letter exchange for your queues.
+```javascript
+rabbit.rejectUnhandled();
+```
+
 ### startSubscription( queueName, [connectionName] )
 
-> Remember to set your handlers up before starting subscriptions
+> Recommendation: set your handlers up before starting subscriptions
 
 Starts a consumer on the queue specified. connectionName is optional and only required if you're subscribing to a queue on a connection other than the default one.
 
@@ -189,6 +213,7 @@ Options is a hash that can contain the following:
  * exclusive		true|false		limits queue to the current connection only (danger)
  * subscribe		true|false		auto-start the subscription
  * limit 			2^16			max number of unacked messages allowed for consumer
+ * noAck			true|false 		the server will remove messages from the queue as soon as they are delivered
  * queueLimit		2^32			max number of ready messages a queue can hold
  * messageTtl		2^32			time in ms before a message expires on the queue
  * expires			2^32			time in ms before a queue with 0 consumers expires

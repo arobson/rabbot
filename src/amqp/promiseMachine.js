@@ -1,14 +1,13 @@
-var _ = require( 'lodash' ),
-	amqp = require( 'amqplib' ),
-	Monologue = require( 'monologue.js' )( _ ),
-	when = require( 'when' ),
-	machina = require( 'machina' )( _ ),
-	log = require( '../log.js' );
+var _ = require( 'lodash' );
+var Monologue = require( 'monologue.js' )( _ );
+var when = require( 'when' );
+var machina = require( 'machina' )( _ );
+var log = require( '../log.js' )( 'wascally:iomonad' );
 
 var staticId = 0;
 
 module.exports = function( factory, target, release, disposalEvent ) {
-	var disposalEvent = disposalEvent || 'close';
+	disposalEvent = disposalEvent || 'close';
 	var PromiseMachine = machina.Fsm.extend( {
 		id: staticId++,
 		initialState: 'acquiring',
@@ -21,45 +20,43 @@ module.exports = function( factory, target, release, disposalEvent ) {
 				.then( function( o ) {
 					this.item = o;
 					this.waitInterval = 0;
-					if( this.item.on ) {
-						this.disposeHandle = this.item.once( disposalEvent, function( err ) {
+					if ( this.item.on ) {
+						this.disposeHandle = this.item.once( disposalEvent, function( /* err */ ) {
 							this.emit( 'lost' );
 							this.transition( 'released' );
 						}.bind( this ) );
-						this.item.once( 'error', function( err ) {
+						this.item.once( 'error', function( /* err */ ) {
 							this.transition( 'failed' );
 						}.bind( this ) );
 					}
 					this.transition( 'acquired' );
 				}.bind( this ) )
 				.then( null, function( err ) {
-					log.info( { message: 'failure occured acquiring a resource', error: err.stack } );
+					log.debug( 'Resource acquisition failed with \'%s\'', err );
 					this.emit( 'failed', err );
 					this.handle( 'failed' );
 				}.bind( this ) )
 				.catch( function( ex ) {
-					log.info( { message: 'failure occured acquiring a resource', error: ex.stack } );
-					this.emit( 'failed', tex );
+					log.debug( 'Resource acquisition failed with \'%s\'', ex );
+					this.emit( 'failed', ex );
 					this.handle( 'failed' );
 				} );
 		},
 		_release: function() {
 			try {
-					if( this.item ) {
+				if ( this.item ) {
 					this.item.removeAllListeners();
 					this.emit( 'releasing' );
-					if( !this.item ) {
+					if ( !this.item ) {
 						return;
 					}
-					if( release ) {
+					if ( release ) {
 						release( this.item );
 					} else {
 						this.item.close();
 					}
 				}
-			} catch( err ) {
-
-			}
+			} catch (err) {}
 		},
 		acquire: function() {
 			this.handle( 'acquire' );
@@ -88,7 +85,7 @@ module.exports = function( factory, target, release, disposalEvent ) {
 				failed: function() {
 					setTimeout( function() {
 						this.transition( 'failed' );
-						if( ( this.waitInterval + 100 ) < this.waitMax ) {
+						if ( ( this.waitInterval + 100 ) < this.waitMax ) {
 							this.waitInterval += 100;
 						}
 					}.bind( this ), this.waitInterval );
@@ -98,7 +95,7 @@ module.exports = function( factory, target, release, disposalEvent ) {
 					this.item = undefined;
 					this.transition( 'destroyed' );
 				},
-				release: function () {
+				release: function() {
 					this._release();
 					this.transition( 'released' );
 				},
@@ -118,29 +115,27 @@ module.exports = function( factory, target, release, disposalEvent ) {
 				operate: function( call ) {
 					try {
 						var result = this.item[ call.operation ].apply( this.item, call.argList );
-						if( result && result.then ) {
+						if ( result && result.then ) {
 							result
 								.then( call.resolve )
 								.then( null, call.reject );
 						} else {
 							call.resolve( result );
 						}
-					} catch( err ) {
+					} catch (err) {
 						call.reject( err );
 					}
-				}, 
+				},
 				invalidated: function() {
 					this.transition( 'acquiring' );
 				},
-				release: function () {
+				release: function() {
 					this._release();
 					this.transition( 'released' );
 				}
 			},
 			'destroyed': {
-				_onEnter: function() {
-					
-				}
+				_onEnter: function() {}
 			},
 			'released': {
 				_onEnter: function() {
@@ -149,7 +144,7 @@ module.exports = function( factory, target, release, disposalEvent ) {
 				acquire: function() {
 					this.transition( 'acquiring' );
 				},
-				operate: function( call ) {
+				operate: function() {
 					this.deferUntilTransition( 'acquired' );
 					this.transition( 'acquiring' );
 				},
@@ -162,12 +157,12 @@ module.exports = function( factory, target, release, disposalEvent ) {
 					this.emit( 'failed', this.lastError );
 					setTimeout( function() {
 						this.transition( 'acquiring' );
-						if( ( this.waitInterval + 100 ) < this.waitMax ) {
+						if ( ( this.waitInterval + 100 ) < this.waitMax ) {
 							this.waitInterval += 100;
 						}
 					}.bind( this ), this.waitInterval );
 				},
-				operate: function( call ) {
+				operate: function() {
 					this.deferUntilTransition( 'acquired' );
 				}
 			}
@@ -177,8 +172,8 @@ module.exports = function( factory, target, release, disposalEvent ) {
 	Monologue.mixin( PromiseMachine );
 	var machine = new PromiseMachine();
 	_.each( target.prototype, function( prop, name ) {
-		if( _.isFunction( prop ) ) {
-			machine[ name ] = function() { 
+		if ( _.isFunction( prop ) ) {
+			machine[ name ] = function() {
 				var list = Array.prototype.slice.call( arguments, 0 );
 				return machine.operate( name, list );
 			}.bind( machine );
