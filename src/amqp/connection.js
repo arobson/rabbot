@@ -29,8 +29,8 @@ function split( x ) {
 	}
 }
 
-function trim ( x ) { 
-	return x.trim( ' ' ); 
+function trim ( x ) {
+	return x.trim( ' ' );
 }
 
 var Adapter = function( parameters ) {
@@ -46,6 +46,7 @@ var Adapter = function( parameters ) {
 	this.pass = getOption( parameters, 'RABBIT_PASSWORD' ) || getOption( parameters, 'pass', 'guest' );
 	this.user = getOption( parameters, 'RABBIT_USER' ) || getOption( parameters, 'user', 'guest' );
 	this.vhost = getOption( parameters, 'RABBIT_VHOST' ) || getOption( parameters, 'vhost', '%2f' );
+	var timeout = getOption( parameters, 'RABBIT_TIMEOUT' ) || getOption( parameters, 'timeout' );
 	var certPath = getOption( parameters, 'RABBIT_CERT' ) || getOption( parameters, 'certPath' );
 	var keyPath = getOption( parameters, 'RABBIT_KEY' ) || getOption( parameters, 'keyPath' );
 	var caPaths = getOption( parameters, 'RABBIT_CA' ) || getOption( parameters, 'caPath' );
@@ -53,6 +54,9 @@ var Adapter = function( parameters ) {
 	var pfxPath = getOption( parameters, 'RABBIT_PFX' ) || getOption( parameters, 'pfxPath' );
 	var useSSL = certPath || keyPath || passphrase || caPaths || pfxPath;
 	this.options = { noDelay: true };
+	if (timeout){
+		this.options.timeout = timeout;
+	}
 	if( certPath ) {
 		this.options.cert = fs.readFileSync( certPath );
 	}
@@ -67,8 +71,8 @@ var Adapter = function( parameters ) {
 	}
 	if( caPaths ) {
 		var list = caPaths.split( ',' );
-		this.options.ca = _.map( list, function( caPath ) { 
-			return fs.readFileSync( caPath ); 
+		this.options.ca = _.map( list, function( caPath ) {
+			return fs.readFileSync( caPath );
 		} );
 	}
 	if( useSSL ) {
@@ -80,7 +84,7 @@ var Adapter = function( parameters ) {
 Adapter.prototype.connect = function() {
 	return when.promise( function( resolve, reject ) {
 		var attempted = [],
-			attempt;	
+			attempt;
 		attempt = function() {
 			var nextUri = this.getNextUri();
 			if( _.indexOf( attempted, nextUri ) < 0 ) {

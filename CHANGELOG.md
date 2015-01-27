@@ -1,6 +1,10 @@
 
 ## 0.2.*
 
+### prerelease 8
+ * Add connection timeout
+ * Add @derickbailey to contributor list
+
 ### prerelease 7
  * Add demos and documentation to better explain handlers
  * Allow replies to provide a `replyType` without specifying `more` parameter

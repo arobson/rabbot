@@ -19,7 +19,7 @@ This is a very opinionated abstraction over amqplib to help simplify certain com
  * JSON as the only serialization provider
 
 ### Demos
- 
+
  * [pubsub](https://github.com/LeanKit-Labs/wascally/blob/master/demo/pubsub/README.md)
 
 # API Reference
@@ -63,7 +63,7 @@ rabbit.publish( 'log.entries', 'company.project.messages.logEntry', {
 ```
 
 ### request( exchangeName, options, [connectionName] )
-This works just like a publish except that the promise returned provides the response (or responses) from the other side. 
+This works just like a publish except that the promise returned provides the response (or responses) from the other side.
 
 ```javascript
 // when multiple responses are provided, all but the last will be provided via the .progress callback.
@@ -214,6 +214,7 @@ This example shows most of the available options described above.
 			pass: 'guest',
 			server: '127.0.0.1',
 			port: 5672,
+			timeout: 2000,
 			vhost: '%2fmyhost'
 			},
 		exchanges:[
@@ -246,8 +247,8 @@ Providing the following configuration options setting the related environment va
 
 ```javascript
 	connection: { 		// sample connection hash
-		caPath: '', 	// comma delimited paths to CA files. RABBIT_CA 
-		certPath: '', 	// path to cert file. RABBIT_CERT 
+		caPath: '', 	// comma delimited paths to CA files. RABBIT_CA
+		certPath: '', 	// path to cert file. RABBIT_CERT
 		keyPath: '',	// path to key file. RABBIT_KEY
 		passphrase: '', // passphrase associated with cert/pfx. RABBIT_PASSPHRASE
 		pfxPath: ''		// path to pfx file. RABBIT_PFX
