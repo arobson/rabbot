@@ -6,3 +6,4 @@ log/
 *.swp
 *.swo
 coverage/
+plato/
