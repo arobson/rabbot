@@ -219,7 +219,7 @@ This example shows most of the available options described above.
 			},
 		exchanges:[
 			{ name: 'config-ex.1', type: 'fanout'  },
-			{ name: 'config-ex.2', type: 'topic', alternate: 'alternate-ex.2', persistent: true }
+			{ name: 'config-ex.2', type: 'topic', alternate: 'alternate-ex.2', persistent: true },
 			{ name: 'dead-letter-ex.2', type: 'fanout' }
 			],
 		queues:[
