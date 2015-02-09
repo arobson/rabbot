@@ -399,7 +399,4 @@ describe( 'Ack Batching', function() {
 			batch.ignoreSignal();
 		} );
 	} );
-
-	describe( '', function() {} );
-
 } );

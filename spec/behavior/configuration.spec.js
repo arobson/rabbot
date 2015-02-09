@@ -197,5 +197,4 @@ describe( 'Configuration', function() {
 			connectionMock.restore();
 		} );
 	} );
-
 } );

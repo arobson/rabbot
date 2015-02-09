@@ -87,7 +87,7 @@ describe( 'Exchange FSM', function() {
 					} );
 			} );
 
-			it( 'should reject publish with an error', function() {
+			it( 'should reject check with an error', function() {
 				error.toString().should.equal( 'Error: nope' );
 			} );
 		} );

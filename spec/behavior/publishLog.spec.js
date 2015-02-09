@@ -159,6 +159,5 @@ describe( 'Publish log', function() {
 				log.count().should.equal( 1 );
 			} );
 		} );
-
 	} );
 } );

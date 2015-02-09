@@ -72,7 +72,7 @@ describe( 'Queue FSM', function() {
 					} );
 			} );
 
-			it( 'should reject publish with an error', function() {
+			it( 'should reject subscribe with an error', function() {
 				error.toString().should.equal( 'Error: nope' );
 			} );
 		} );
@@ -89,7 +89,7 @@ describe( 'Queue FSM', function() {
 					} );
 			} );
 
-			it( 'should reject publish with an error', function() {
+			it( 'should reject check with an error', function() {
 				error.toString().should.equal( 'Error: nope' );
 			} );
 		} );

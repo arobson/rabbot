@@ -74,7 +74,5 @@ describe( 'Promise Machine', function() {
 				}
 			}, 20 );
 		} );
-
-
 	} );
 } );

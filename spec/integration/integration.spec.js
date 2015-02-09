@@ -1,8 +1,6 @@
 require( 'should' );
 var _ = require( 'lodash' );
 var rabbit = require( '../../src/index.js' );
-var when = require( 'when' );
-var seq = require( 'when/sequence' );
 
 var harnessFn = function( cb, expected ) {
 	var handlers = [];
@@ -10,7 +8,7 @@ var harnessFn = function( cb, expected ) {
 	var unhandled = [];
 	expected = expected || 1;
 	var check = function() {
-		if ( received.length === expected ) {
+		if ( ( received.length + unhandled.length ) === expected ) {
 			cb();
 		}
 	};
@@ -40,7 +38,7 @@ var harnessFn = function( cb, expected ) {
 	}
 
 	rabbit.onUnhandled( function( message ) {
-		received.push( message );
+		unhandled.push( message );
 		message.ack();
 		check();
 	} );
@@ -53,7 +51,8 @@ var harnessFn = function( cb, expected ) {
 		received: received,
 		clean: clean,
 		handle: handle,
-		handlers: handlers
+		handlers: handlers,
+		unhandled: unhandled
 	};
 };
 
@@ -158,7 +157,7 @@ describe( 'Integration Test Suite', function() {
 		} );
 
 		it( 'should capture messages according to unhandled strategy', function() {
-			var results = _.map( harness.received, function( m ) {
+			var results = _.map( harness.unhandled, function( m ) {
 				return {
 					body: m.body,
 					type: m.type
@@ -193,11 +192,11 @@ describe( 'Integration Test Suite', function() {
 					key: m.fields.routingKey
 				};
 			} );
-			results.should.eql(
+			_.sortBy( results, 'body' ).should.eql(
 				[
 					{ body: 'one', key: 'empty' },
-					{ body: 'two', key: 'nothing' },
 					{ body: 'three', key: 'de.nada' },
+					{ body: 'two', key: 'nothing' },
 				] );
 		} );
 
@@ -207,6 +206,7 @@ describe( 'Integration Test Suite', function() {
 	} );
 
 	describe( 'with requests', function() {
+		this.timeout( 3000 );
 		var harness, response1, response2, response3;
 		before( function( done ) {
 			harness = harnessFn( done, 8 );
@@ -349,8 +349,6 @@ describe( 'Integration Test Suite', function() {
 			harness.clean();
 		} );
 	} );
-
-	describe( '', function() {} );
 
 	after( function( done ) {
 		rabbit.deleteExchange( 'wascally-ex.deadend' ).then( function() {

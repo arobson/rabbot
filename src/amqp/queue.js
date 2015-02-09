@@ -40,7 +40,7 @@ function define( channel, options, subscriber, connectionName ) {
 function destroy( channel, messages, released ) {
 	unsubscribe( channel );
 	return when.promise( function( resolve ) {
-		var destroy = function() {
+		var finalize = function() {
 			channel.destroy();
 			messages.ignoreSignal();
 			channel = undefined;
@@ -48,10 +48,10 @@ function destroy( channel, messages, released ) {
 		};
 		if ( channel.hasPendingMessages && !released ) {
 			messages.once( 'empty', function() {
-				destroy();
+				finalize();
 			} );
 		} else {
-			destroy();
+			finalize();
 		}
 	} );
 }

@@ -312,5 +312,3 @@ describe( 'Connection FSM', function() {
 		} );
 	} );
 } );
-
-describe( '', function() {} );
