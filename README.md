@@ -28,7 +28,7 @@ This library implements promises for many of the calls via when.js.
 ## Sending & Receiving Messages
 
 ### publish( exchangeName, options, [connectionName] )
-This syntax allows you to provide arguments via an options object, here's an example showing all of the available properties:
+This syntax uses an options object rather than arguments, here's an example showing all of the available properties:
 
 ```javascript
 rabbit.publish( 'exchange.name', {
@@ -48,7 +48,7 @@ rabbit.publish( 'exchange.name', {
 ```
 
 ### publish( exchangeName, typeName, messageBody, [routingKey], [correlationId], [connectionName] )
-Messages bodies are simple objects. You must provide a type specifier for the message which will be used to set AMQP's properties.type. If you don't provide a routing key, the type specifier will be used. If this is undesirable, you will have to provide a '' for the routing key argument/option.
+Messages bodies are simple objects. A type specifier is required for the message which will be used to set AMQP's properties.type. If no routing key is provided, the type specifier will be used. A routing key of '' will prevent the type specifier from being used.
 
 ```javascript
 // the first 3 arguments are required
@@ -81,10 +81,9 @@ rabbit.request( 'request.exchange', {
 
 ### handle( typeName, handler, [context] )
 
-> Handle calls must to happen __before__ the subscriptions have started.
+> Handle calls should happen __before__ starting subscriptions.
 
-Message handlers are registered to handle a message based on the typeName. Calling handle will return a reference to the handler that can later be removed (though it's unlikely you'll do this often). The message that is passed to the handler is the raw Rabbit payload. The body property contains the message body published. 'ack' and 'nack' methods are provided on the message as well to allow you to easily acknowledge successful handling or reject the message.
-
+Message handlers are registered to handle a message based on the typeName. Calling handle will return a reference to the handler that can later be removed. The message that is passed to the handler is the raw Rabbit payload. The body property contains the message body published. The message has `ack`, `nack` (requeue the message) and `reject` (don't requeue the message) methods control what Rabbit does with the message.
 
 #### Explicit Error Handling
 In this example, any possible error is caught in an explicit try/catch:
@@ -104,9 +103,9 @@ handler.remove();
 ```
 
 #### Automatically Nack On Error
-This example shows how to have wascally wrap all your handlers with a try catch that will:
+This example shows how to have wascally wrap all handlers with a try catch that:
 
- * nack the message
+ * nacks the message on error
  * console.log that an error has occurred in a handle
 
 ```javascript
@@ -126,7 +125,7 @@ rabbit.ignoreHandlerErrors();
 ```
 
 #### Late-bound Error Handling
-You may want to provide a strategy for handling errors to multiple handles or wish to attach an error handler after the fact.
+Provide a strategy for handling errors to multiple handles or attach an error handler after the fact.
 
 ```javascript
 var handler = rabbit.handle( 'company.project.messages.logEntry', function( message ) {
@@ -143,11 +142,39 @@ handler.catch( function( err, msg ) {
 #### !!! IMPORTANT !!! ####
 Failure to handle errors will result in silent failures and lost messages.
 
+### Unhandled Messages
+In previous versions, if a subscription was started in ack mode (the default) without a handler to process the message, the message would get lost in limbo until the connection (or channel) was closed and then the messages would be returned to the queue. This is very confusing and undesirable behavior. To help protect against this, the new default behavior is that any message received that doesn't have any elligible handlers will get `nack`'d and sent back to the queue immediately.
+
+This is _still_ problematic because it can create churn on the client and server as the message will be redelivered indefinitely.
+
+To change this behavior, use one of the following calls:
+
+> Note: only one of these strategies can be activated at a time
+
+#### onUnhandled( handler )
+```javascript
+rabbit.onUnhandled( function( message ) {
+	 // handle the message here
+} );
+```
+
+#### nackUnhandled() - default
+Sends all unhandled messages back to the queue.
+```javascript
+rabbit.nackUnhandled();
+```
+
+#### rejectUnhandled()
+Rejects unhandled messages so that will will _not_ be requeued. **DO NOT** use this unless there are dead letter exchanges for all queues.
+```javascript
+rabbit.rejectUnhandled();
+```
+
 ### startSubscription( queueName, [connectionName] )
 
-> Remember to set your handlers up before starting subscriptions
+> Recommendation: set handlers for anticipated types up before starting subscriptions.
 
-Starts a consumer on the queue specified. connectionName is optional and only required if you're subscribing to a queue on a connection other than the default one.
+Starts a consumer on the queue specified. `connectionName` is optional and only required if subscribing to a queue on a connection other than the default one.
 
 ## Message API
 Wascally defaults to (and assumes) queues are in ack mode. It batches ack and nack operations in order to improve total throughput. Ack/Nack calls do not take effect immediately.
@@ -162,7 +189,68 @@ Enqueues the message for rejection. This will re-enqueue the message.
 Rejects the message without re-queueing it. Please use with caution and consider having a dead-letter-exchange assigned to the queue before using this feature.
 
 ### message.reply( message, [more], [replyType] )
-Acknowledges the messages and sends the message back to the requestor. The `message` is only the body of the reply. Providing true to `more` will cause the message to get sent to the .progress callback of the request promise so that you can send multiple replies. The `replyType` argument allows you to set the type of the reply. (important when messaging with statically typed languages)
+Acknowledges the messages and sends the message back to the requestor. The `message` is only the body of the reply. Providing true to `more` will cause the message to get sent to the .progress callback of the request promise so that you can send multiple replies. The `replyType` argument sets the type of the reply message. (important when messaging with statically typed languages)
+
+## Reply Queues
+By default, wascally creates a unique reply queue for each connection which is automatically subscribed to and deleted on connection close. This can be modified or turned off altogether.
+
+Changing the behavior is done by passing one of three values to the `replyQueue` property on the connection hash:
+
+> !!! IMPORTANT !!! wascally cannot prevent queue naming collisions across services instances or connections when using the first two options.
+
+### Custom Name
+Only changes the name of the reply queue that wascally creates - `autoDelete` and `subscribe` will be set to `true`.
+
+```javascript
+rabbit.addConnection( {
+	name: 'default',
+	replyQueue: 'myOwnQueue',
+	user: 'guest',
+	pass: 'guest',
+	server: '127.0.0.1',
+	port: 5672,
+	timeout: 2000,
+	vhost: '%2f'
+} );
+```
+
+### Custom Behavior
+To take full control of the queue name and behavior, provide a queue definition in place of the name.
+
+> wascally provides no defaults - it will only use the definition provided
+
+```javascript
+rabbit.addConnection( {
+	name: 'default',
+	replyQueue: {
+		name: 'myOwnQueue',
+		subscribe: 'true',
+		durable: true
+	},
+	user: 'guest',
+	pass: 'guest',
+	server: '127.0.0.1',
+	port: 5672,
+	timeout: 2000,
+	vhost: '%2f'
+} );
+```
+
+### No Automatic Reply Queue
+> Only pick this option if request/response isn't in use or when providing a custom overall strategy
+
+```javascript
+rabbit.addConnection( {
+	name: 'default',
+	replyQueue: false,
+	user: 'guest',
+	pass: 'guest',
+	server: '127.0.0.1',
+	port: 5672,
+	timeout: 2000,
+	vhost: '%2f'
+} );
+```
 
 ## Managing Topology
 
@@ -189,6 +277,7 @@ Options is a hash that can contain the following:
  * exclusive		true|false		limits queue to the current connection only (danger)
  * subscribe		true|false		auto-start the subscription
  * limit 			2^16			max number of unacked messages allowed for consumer
+ * noAck			true|false 		the server will remove messages from the queue as soon as they are delivered
  * queueLimit		2^32			max number of ready messages a queue can hold
  * messageTtl		2^32			time in ms before a message expires on the queue
  * expires			2^32			time in ms before a queue with 0 consumers expires
@@ -202,9 +291,7 @@ Binds the target queue to the source exchange. Messages flow from source to targ
 
 ## Configuration via JSON
 
-> Note: if you set subscribe to true, you'll need to ensure that handlers have been
-
-> attached before calling setup.
+> Note: setting subscribe to true will result in subscriptions starting immediately upon queue creation.
 
 This example shows most of the available options described above.
 ```javascript
@@ -254,3 +341,22 @@ Providing the following configuration options setting the related environment va
 		pfxPath: ''		// path to pfx file. RABBIT_PFX
 	}
 ```
+
+## Contributing
+PRs with insufficient coverage, broken tests or deviation from the style will not be accepted.
+
+### Behavior & Integration Tests
+PRs should include modified or additional test coverage in both integration and behavioral specs. Integration tests assume RabbitMQ is running on localhost with guest/guest credentials and the consistent hash exchange plugin enabled.
+
+Running gulp will run both sets after every file change and display a coverage summary. To view a detailed report, run gulp coverage once to bring up the browser.
+
+### Style
+This project has both an `.editorconfig` and `.esformatter` file to help keep adherance to style simple. Please also take advantage of the `.jshintrc` file and avoid linter warnings.
+
+## Roadmap
+ * additional test coverage
+ * support RabbitMQ backpressure mechanisms
+ * (configurable) limits & behavior when publishing during connectivity issues
+ * ability to capture/log unpublished messages on shutdown
+ * add support for Rabbit's HTTP API
+ * enable better cluster utilization by spreading connections out over all nodes in cluster
