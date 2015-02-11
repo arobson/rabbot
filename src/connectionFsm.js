@@ -58,6 +58,10 @@ var Connection = function( options, connectionFn, channelFn ) {
 			}.bind( this ) );
 		},
 
+		lastError: function() {
+			return connection.lastError;
+		},
+
 		replay: function( ev ) {
 			return function( x ) {
 				this.emit( ev, x );

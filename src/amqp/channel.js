@@ -12,7 +12,6 @@ module.exports = {
 		var method = confirm ? 'createConfirmChannel' : 'createChannel';
 		var factory = function() {
 			if ( connection.state === 'released' ) {
-				console.trace( 'reconnecting for channel' );
 				connection.acquire();
 			}
 			return connection[ method ]();

@@ -12,14 +12,23 @@ function connectionFn() {
 
 	function raise( ev ) {
 		if ( handlers[ ev ] ) {
-			handlers[ ev ].apply( undefined, Array.prototype.slice.call( arguments, 1 ) );
+			var args = Array.prototype.slice.call( arguments, 1 );
+			_.each( handlers[ ev ], function( handler ) {
+				if ( handler ) {
+					handler.apply( undefined, args );
+				}
+			} );
 		}
 	}
 
 	function on( ev, handle ) {
-		handlers[ ev ] = handle;
-		return { unsubscribe: function() {
-				delete handlers[ ev ];
+		if ( handlers[ ev ] ) {
+			handlers[ ev ].push( handle );
+		} else {
+			handlers[ ev ] = [ handle ];
+		}
+		return { unsubscribe: function( h ) {
+				handlers[ ev ].splice( _.indexOf( handlers[ ev ], h ) );
 			} };
 	}
 
@@ -29,14 +38,26 @@ function connectionFn() {
 
 	var connection = {
 		name: 'default',
+		fail: function( err ) {
+			this.state = 'failed';
+			this.lastErr = err;
+			this.raise( 'failed', err );
+		},
+		getChannel: noOp,
 		handlers: handlers,
+		lastErr: '',
+		lastError: function() {
+			return this.lastErr;
+		},
 		on: on,
 		once: on,
 		raise: raise,
 		resetHandlers: reset,
-		getChannel: noOp,
-		reset: noOp
+		reset: noOp,
+		state: ''
 	};
+
+	_.bindAll( connection );
 
 	return {
 		instance: connection,
@@ -494,6 +515,76 @@ describe( 'Topology', function() {
 			topology.definitions.bindings[ 'from->to' ].should.eql(
 				{ source: 'from', target: 'to', keys: [ 'a.*', 'b.*' ], queue: true }
 			);
+		} );
+	} );
+
+	describe( 'when a connection to rabbit cannot be established', function() {
+		describe( 'when attempting to create an exchange', function() {
+			var topology, conn, error, ex, q;
+
+			before( function( done ) {
+				ex = emitter();
+				q = emitter();
+				var Exchange = function() {
+					return ex;
+				};
+				var Queue = function() {
+					return q;
+				};
+				conn = connectionFn();
+				topology = topologyFn( conn.instance, {}, undefined, Exchange, Queue );
+				topology.createExchange( { name: 'delayed.ex' } )
+					.then( null, function( err ) {
+						error = err;
+						done();
+					} );
+				process.nextTick( function() {
+					conn.instance.fail( new Error( 'no such server!' ) );
+				} );
+			} );
+
+			it( 'should reject exchange promise with connection error', function() {
+				error.toString().should.equal(
+					'Error: Failed to create exchange \'delayed.ex\' on connection \'default\' with \'no such server!\'' );
+			} );
+
+			it( 'should keep exchange definition', function() {
+				should.exist( topology.channels[ 'exchange:delayed.ex' ] );
+			} );
+		} );
+
+		describe( 'when attempting to create an queue', function() {
+			var topology, conn, error, ex, q;
+
+			before( function( done ) {
+				ex = emitter();
+				q = emitter();
+				var Exchange = function() {
+					return ex;
+				};
+				var Queue = function() {
+					return q;
+				};
+				conn = connectionFn();
+				topology = topologyFn( conn.instance, {}, undefined, Exchange, Queue );
+				topology.createQueue( { name: 'delayed.q' } )
+					.then( null, function( err ) {
+						error = err;
+						done();
+					} );
+				process.nextTick( function() {
+					conn.instance.fail( new Error( 'no such server!' ) );
+				} );
+			} );
+
+			it( 'should reject queue promise with connection error', function() {
+				error.toString().should.equal(
+					'Error: Failed to create queue \'delayed.q\' on connection \'default\' with \'no such server!\'' );
+			} );
+
+			it( 'should keep queue definition', function() {
+				should.exist( topology.channels[ 'queue:delayed.q' ] );
+			} );
 		} );
 	} );
 } );

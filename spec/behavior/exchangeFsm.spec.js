@@ -209,8 +209,8 @@ describe( 'Exchange FSM', function() {
 			} );
 
 			it( 'should remove handlers from topology and connection', function() {
-				_.keys( connection.handlers ).length.should.equal( 0 );
-				_.keys( topology.handlers ).length.should.equal( 0 );
+				_.flatten( _.values( connection.handlers ) ).length.should.equal( 0 );
+				_.flatten( _.values( topology.handlers ) ).length.should.equal( 0 );
 			} );
 
 			it( 'should release channel instance', function() {

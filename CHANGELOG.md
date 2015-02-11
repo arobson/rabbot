@@ -17,6 +17,7 @@
  * Reject publish and subscribe calls on failed exchanges and queues
  * Bug fix - closing a connection didn't reliably clean up channels, exchanges and queues
  * Bug fix - a failed connection that had been closed would continue to attempt reconnecting in the background
+ * Bug fix - configure doesn't reject the promise if a connection cannot be established
 
 ### prerelease 8
  * Add connection timeout

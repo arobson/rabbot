@@ -4,7 +4,6 @@ var machina = require( 'machina' )( _ );
 var Monologue = require( 'monologue.js' )( _ );
 var publishLog = require( './publishLog' );
 var exLog = require( './log.js' )( 'wascally:exchange' );
-var topLog = require( './log.js' )( 'wascally:topology' );
 
 var Channel = function( options, connection, topology, channelFn ) {
 

@@ -128,40 +128,46 @@ Topology.prototype.createBinding = function( options ) {
 		} ) );
 };
 
-Topology.prototype.createExchange = function( options ) {
-	this.definitions.exchanges[ options.name ] = options;
-	var channelName = 'exchange:' + options.name;
-	return when.promise( function( resolve, reject ) {
-		var exchange = this.channels[ channelName ] = new Exchange( options, this.connection, this );
-		exchange.once( 'defined', function() {
-			resolve( exchange );
-		} );
-		exchange.once( 'failed', function( err ) {
-			delete this.definitions.exchanges[ options.name ];
-			delete this.channels[ channelName ];
-			reject( new Error( 'Failed to create exchange \'' + options.name +
+Topology.prototype.createPrimitive = function( Primitive, primitiveType, options ) {
+	var errorFn = function( err ) {
+		return new Error( 'Failed to create ' + primitiveType + ' \'' + options.name +
 			'\' on connection \'' + this.connection.name +
-			'\' with \'' + ( err.message || err ) + '\'' ) );
+			'\' with \'' + ( err.message || err ) + '\'' );
+	}.bind( this );
+	return when.promise( function( resolve, reject ) {
+		var definitions = primitiveType === 'exchange' ? this.definitions.exchanges : this.definitions.queues;
+		definitions[ options.name ] = options;
+		var channelName = [ primitiveType, options.name ].join( ':' );
+		var primitive = this.channels[ channelName ] = new Primitive( options, this.connection, this );
+		var onConnectionFailed = function( connectionError ) {
+			reject( errorFn( connectionError ) );
+		};
+		if ( this.connection.state === 'failed' ) {
+			onConnectionFailed( this.connection.lastError() );
+		} else {
+			var onFailed = this.connection.on( 'failed', function( err ) {
+				onConnectionFailed( err );
+			} );
+			primitive.once( 'defined', function() {
+				onFailed.unsubscribe();
+				resolve( primitive );
+			} );
+		}
+		primitive.once( 'failed', function( err ) {
+			delete definitions[ options.name ];
+			delete this.channels[ channelName ];
+			reject( errorFn( err ) );
 		}.bind( this ) );
 	}.bind( this ) );
 };
 
+Topology.prototype.createExchange = function( options ) {
+	return this.createPrimitive( Exchange, 'exchange', options );
+
+};
+
 Topology.prototype.createQueue = function( options ) {
-	this.definitions.queues[ options.name ] = options;
-	var channelName = 'queue:' + options.name;
-	return when.promise( function( resolve, reject ) {
-		var queue = this.channels[ channelName ] = new Queue( options, this.connection, this );
-		queue.once( 'defined', function() {
-			resolve( queue );
-		} );
-		queue.once( 'failed', function( err ) {
-			delete this.definitions.queues[ options.name ];
-			delete this.channels[ channelName ];
-			reject( new Error( 'Failed to create queue \'' + options.name +
-			'\' on connection \'' + this.connection.name +
-			'\' with \'' + ( err.message || err ) + '\'' ) );
-		}.bind( this ) );
-	}.bind( this ) );
+	return this.createPrimitive( Queue, 'queue', options );
 };
 
 Topology.prototype.createReplyQueue = function() {

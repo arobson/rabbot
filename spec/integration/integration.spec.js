@@ -66,28 +66,98 @@ describe( 'Integration Test Suite', function() {
 	} );
 
 	describe( 'with invalid connection criteria', function() {
-		var error;
-		before( function( done ) {
-			rabbit.once( 'silly.connection.failed', function( err ) {
-				error = err;
-				done();
-			} );
-
-			rabbit.addConnection( {
-				name: 'silly',
-				server: 'shfifty-five.gov'
-			} );
-		} );
-
-		it( 'should fail to connect', function() {
-			error.should.equal( 'No endpoints could be reached' );
-		} );
-
-		after( function( done ) {
-			rabbit.close( 'silly' )
-				.then( function() {
+		describe( 'when attempting a connection', function() {
+			var error;
+			before( function( done ) {
+				rabbit.once( 'silly.connection.failed', function( err ) {
+					error = err;
 					done();
 				} );
+
+				rabbit.addConnection( {
+					name: 'silly',
+					server: 'shfifty-five.gov'
+				} );
+			} );
+
+			it( 'should fail to connect', function() {
+				error.should.equal( 'No endpoints could be reached' );
+			} );
+
+			after( function( done ) {
+				rabbit.close( 'silly' )
+					.then( function() {
+						done();
+					} );
+			} );
+		} );
+
+		describe( 'when configuring against a bad connection', function() {
+			var error;
+			before( function( done ) {
+				rabbit.configure( {
+					connection: {
+						name: 'silly2',
+						server: 'beanpaste.org'
+					},
+					exchanges: [
+						{
+							name: 'wascally-ex.direct',
+							type: 'direct',
+							autoDelete: true
+						},
+						{
+							name: 'wascally-ex.topic',
+							type: 'topic',
+							alternate: 'wascally-ex.alternate',
+							autoDelete: true
+						}
+					],
+					queues: [
+						{
+							name: 'wascally-q.direct',
+							autoDelete: true,
+							subscribe: true
+						},
+						{
+							name: 'wascally-q.topic',
+							autoDelete: true,
+							subscribe: true,
+							deadletter: 'wascally-ex.deadletter'
+						}
+					],
+					bindings: [
+						{
+							exchange: 'wascally-ex.direct',
+							target: 'wascally-q.direct',
+							keys: ''
+						},
+						{
+							exchange: 'wascally-ex.topic',
+							target: 'wascally-q.topic',
+							keys: '#'
+						}
+					]
+				} )
+					.then( function() {
+						console.log( 'YAY I AM STILL DUM!' );
+					} )
+					.then( null, function( err ) {
+						error = err;
+						done();
+					} );
+			} );
+
+			it( 'should fail to connect', function() {
+				error.message.should.equal( 'Failed to create exchange \'wascally-ex.direct\' on connection \'silly2\' with \'No endpoints could be reached\'' );
+			} );
+
+			after( function( done ) {
+				rabbit.close( 'silly2' )
+					.then( function() {
+						done();
+					} );
+			} );
 		} );
 	} );
 
