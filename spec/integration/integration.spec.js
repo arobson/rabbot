@@ -84,7 +84,7 @@ describe( 'Integration Test Suite', function() {
 		} );
 
 		after( function( done ) {
-			rabbit.close( 'silly', true )
+			rabbit.close( 'silly' )
 				.then( function() {
 					done();
 				} );
@@ -315,7 +315,7 @@ describe( 'Integration Test Suite', function() {
 	describe( 'with consistent hash exchange', function() {
 		var harness, limit;
 		before( function( done ) {
-			this.timeout( 60000 );
+			this.timeout( 4000 );
 			limit = 1000;
 			harness = harnessFn( done, limit );
 			harness.handle( 'balanced' );
@@ -351,12 +351,11 @@ describe( 'Integration Test Suite', function() {
 	} );
 
 	after( function( done ) {
-		rabbit.deleteExchange( 'wascally-ex.deadend' ).then( function() {
-			rabbit.close( 'default', true )
-				.then( function() {
-					done();
-				} );
-		} );
+		rabbit.deleteExchange( 'wascally-ex.deadend' ).then( function() {} );
+		rabbit.closeAll()
+			.then( function() {
+				done();
+			} );
 	} );
 
 } );

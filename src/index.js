@@ -44,7 +44,7 @@ Broker.prototype.addConnection = function( options ) {
 		connection.on( 'failed', function( err ) {
 			this.emit( name + '.connection.failed', err );
 		}.bind( this ) );
-		this.connections[ connection.name ] = topology;
+		this.connections[ name ] = topology;
 		return topology;
 	} else {
 		return this.connections[ name ];
@@ -97,7 +97,7 @@ Broker.prototype.closeAll = function( reset ) {
 	// COFFEE IS FOR CLOSERS
 	var closers = _.map( this.connections, function( connection ) {
 		return this.close( connection.name, reset );
-	}, this );
+	}.bind( this ) );
 	return when.all( closers );
 };
 
@@ -105,10 +105,7 @@ Broker.prototype.close = function( connectionName, reset ) {
 	connectionName = connectionName || 'default';
 	var connection = this.connections[ connectionName ].connection;
 	if ( !_.isUndefined( connection ) ) {
-		if ( reset ) {
-			this.connections[ connectionName ].reset();
-		}
-		return connection.close();
+		return connection.close( reset );
 	} else {
 		return when( true );
 	}

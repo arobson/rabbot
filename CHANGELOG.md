@@ -15,6 +15,8 @@
  * Refactor of exchange and queue implementation into channel behavior and FSM
  * Reject exchange and queue creation promises on failure
  * Reject publish and subscribe calls on failed exchanges and queues
+ * Bug fix - closing a connection didn't reliably clean up channels, exchanges and queues
+ * Bug fix - a failed connection that had been closed would continue to attempt reconnecting in the background
 
 ### prerelease 8
  * Add connection timeout

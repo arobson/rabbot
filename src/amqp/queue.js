@@ -24,7 +24,8 @@ function define( channel, options, subscriber, connectionName ) {
 		deadletter: 'deadLetterExchange',
 		deadLetter: 'deadLetterExchange'
 	}, 'subscribe', 'limit' );
-	topLog.info( 'Declaring queue \'%s\' on connection \'%s\' with the options: %s', options.name, connectionName, JSON.stringify( _.omit( options, [ 'name' ] ) ) );
+	topLog.info( 'Declaring queue \'%s\' on connection \'%s\' with the options: %s',
+		options.name, connectionName, JSON.stringify( _.omit( options, [ 'name' ] ) ) );
 	return channel.assertQueue( options.name, valid )
 		.then( function( q ) {
 			if ( options.limit ) {
@@ -37,8 +38,9 @@ function define( channel, options, subscriber, connectionName ) {
 		} );
 }
 
-function destroy( channel, messages, released ) {
+function destroy( channel, options, messages, released ) {
 	unsubscribe( channel );
+
 	return when.promise( function( resolve ) {
 		var finalize = function() {
 			channel.destroy();
@@ -46,7 +48,8 @@ function destroy( channel, messages, released ) {
 			channel = undefined;
 			resolve();
 		};
-		if ( channel.hasPendingMessages && !released ) {
+		unsubscribe( channel );
+		if ( messages.messages.length && !released ) {
 			messages.once( 'empty', function() {
 				finalize();
 			} );
@@ -142,9 +145,8 @@ function resolveTags( channel, queue, connection ) {
 			case 'reject':
 				log.debug( 'Rejecting tag %d on %s - %s', data.tag, queue, connection );
 				return channel.nack( { fields: { deliveryTag: data.tag } }, data.inclusive, false );
-			case 'empty':
-				channel.hasPendingMessages = false;
-				break;
+			default:
+				return when( true );
 		}
 	};
 }
@@ -168,7 +170,7 @@ function subscribe( channelName, channel, topology, messages, options ) {
 		} else {
 			dispatch.publish( raw.type, raw, function( data ) {
 				if ( data.activated && !ops.noAck ) {
-					channel.hasPendingMessages = true;
+					;
 					messages.addMessage( ops.message );
 				} else {
 					unhandledLog.warn( 'Message of %s on queue %s - %s was not processed by any registered handlers',
@@ -198,7 +200,7 @@ module.exports = function( options, topology ) {
 		channel: channel,
 		messages: messages,
 		define: define.bind( undefined, channel, options, subscriber, topology.connection.name ),
-		destroy: destroy.bind( undefined, channel, messages ),
+		destroy: destroy.bind( undefined, channel, options, messages ),
 		getMessageCount: getCount.bind( undefined, messages ),
 		subscribe: subscriber,
 		unsubscribe: unsubscribe.bind( undefined, channel, messages )

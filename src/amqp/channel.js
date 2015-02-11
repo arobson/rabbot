@@ -2,7 +2,9 @@ var AmqpChannel = require( 'amqplib/lib/callback_model' ).Channel;
 var promiserFn = require( './promiseMachine.js' );
 
 function close( channel ) {
-	channel.close();
+	if ( channel.close ) {
+		channel.close();
+	}
 }
 
 module.exports = {
@@ -10,6 +12,7 @@ module.exports = {
 		var method = confirm ? 'createConfirmChannel' : 'createChannel';
 		var factory = function() {
 			if ( connection.state === 'released' ) {
+				console.trace( 'reconnecting for channel' );
 				connection.acquire();
 			}
 			return connection[ method ]();

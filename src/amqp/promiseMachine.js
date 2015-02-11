@@ -42,27 +42,30 @@ module.exports = function( factory, target, release, disposalEvent ) {
 					this.handle( 'failed' );
 				} );
 		},
-		_release: function() {
-			try {
-				if ( this.item ) {
+		_dispose: function() {
+			if ( this.item ) {
+				if ( this.item.removeAllListeners ) {
 					this.item.removeAllListeners();
-					this.emit( 'releasing' );
-					if ( !this.item ) {
-						return;
-					}
-					if ( release ) {
-						release( this.item );
-					} else {
-						this.item.close();
-					}
 				}
-			} catch (err) {}
+				if ( !this.item ) {
+					return;
+				}
+				if ( release ) {
+					release( this.item );
+				} else {
+					this.item.close();
+				}
+				this.item = undefined;
+			}
 		},
 		acquire: function() {
 			this.handle( 'acquire' );
 			return this;
 		},
 		destroy: function() {
+			if ( this.retry ) {
+				clearTimeout( this.retry );
+			}
 			this.handle( 'destroy' );
 		},
 		operate: function( call, args ) {
@@ -75,6 +78,9 @@ module.exports = function( factory, target, release, disposalEvent ) {
 			return promise;
 		},
 		release: function() {
+			if ( this.retry ) {
+				clearTimeout( this.retry );
+			}
 			this.handle( 'release' );
 		},
 		states: {
@@ -91,12 +97,11 @@ module.exports = function( factory, target, release, disposalEvent ) {
 					}.bind( this ), this.waitInterval );
 				},
 				destroy: function() {
-					this._release();
-					this.item = undefined;
+					this._dispose();
 					this.transition( 'destroyed' );
 				},
 				release: function() {
-					this._release();
+					this._dispose();
 					this.transition( 'released' );
 				},
 				operate: function( call ) {
@@ -108,8 +113,8 @@ module.exports = function( factory, target, release, disposalEvent ) {
 					this.emit( 'acquired' );
 				},
 				destroy: function() {
-					this._release();
-					this.item = undefined;
+					this._dispose();
+
 					this.transition( 'destroyed' );
 				},
 				operate: function( call ) {
@@ -130,12 +135,14 @@ module.exports = function( factory, target, release, disposalEvent ) {
 					this.transition( 'acquiring' );
 				},
 				release: function() {
-					this._release();
+					this._dispose();
 					this.transition( 'released' );
 				}
 			},
 			'destroyed': {
-				_onEnter: function() {}
+				_onEnter: function() {
+					this.emit( 'destroyed', this.id );
+				}
 			},
 			'released': {
 				_onEnter: function() {
@@ -155,12 +162,16 @@ module.exports = function( factory, target, release, disposalEvent ) {
 			'failed': {
 				_onEnter: function() {
 					this.emit( 'failed', this.lastError );
-					setTimeout( function() {
+					this.retry = setTimeout( function() {
 						this.transition( 'acquiring' );
 						if ( ( this.waitInterval + 100 ) < this.waitMax ) {
 							this.waitInterval += 100;
 						}
 					}.bind( this ), this.waitInterval );
+				},
+				destroy: function() {
+					this._dispose();
+					this.transition( 'destroyed' );
 				},
 				operate: function() {
 					this.deferUntilTransition( 'acquired' );

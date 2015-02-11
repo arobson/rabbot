@@ -7,7 +7,6 @@ module.exports = function( Broker ) {
 		// convenience method to add connection and build up using specified configuration
 		// normally, the approach here might be a bit pedantic, but it's preferable
 		// to the pyramid of doom callbacks
-		this.config = config;
 		require( './log' )( config.logging || {} );
 		var connection;
 		var emit = this.emit;

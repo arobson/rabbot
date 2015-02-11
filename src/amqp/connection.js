@@ -30,7 +30,7 @@ function split( x ) {
 	}
 }
 
-function trim ( x ) {
+function trim( x ) {
 	return x.trim( ' ' );
 }
 
@@ -55,10 +55,10 @@ var Adapter = function( parameters ) {
 	var pfxPath = getOption( parameters, 'RABBIT_PFX' ) || getOption( parameters, 'pfxPath' );
 	var useSSL = certPath || keyPath || passphrase || caPaths || pfxPath;
 	this.options = { noDelay: true };
-	if (timeout){
+	if ( timeout ) {
 		this.options.timeout = timeout;
 	}
-	if( certPath ) {
+	if ( certPath ) {
 		this.options.cert = fs.readFileSync( certPath );
 	}
 	if ( keyPath ) {
@@ -84,8 +84,8 @@ var Adapter = function( parameters ) {
 
 Adapter.prototype.connect = function() {
 	return when.promise( function( resolve, reject ) {
-		var attempted = [],
-			attempt;
+		var attempted = [];
+		var attempt;
 		attempt = function() {
 			var nextUri = this.getNextUri();
 			log.info( 'Attempting connection to %s (%s)', this.name, nextUri );

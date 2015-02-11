@@ -31,9 +31,15 @@ var Connection = function( options, connectionFn, channelFn ) {
 			exchanges.push( exchange );
 		},
 
-		close: function() {
+		close: function( reset ) {
 			return when.promise( function( resolve ) {
-				this.once( 'closed', resolve );
+				this.once( 'closed', function() {
+					if ( reset ) {
+						queues = [];
+						exchanges = [];
+					}
+					resolve();
+				}.bind( this ) );
 				this.handle( 'close' );
 			}.bind( this ) );
 		},
@@ -57,11 +63,6 @@ var Connection = function( options, connectionFn, channelFn ) {
 				this.emit( ev, x );
 				this.handle( ev, x );
 			}.bind( this );
-		},
-
-		reset: function() {
-			queues = [];
-			exchanges = [];
 		},
 
 		states: {
@@ -167,6 +168,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 
 			'failed': {
 				'close': function() {
+					connection.destroy();
 					this.emit( 'closed' );
 				},
 				'connect': function() {
