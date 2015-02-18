@@ -1,6 +1,6 @@
 {
   "name": "wascally",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Abstractions to simplify working with the wascally wabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/leankit-labs/wascally",
@@ -35,11 +35,7 @@
   "license": "MIT License - http://opensource.org/licenses/MIT",
   "devDependencies": {
     "gulp": "~3.8.1",
-    "gulp-istanbul": "^0.5.0",
-    "gulp-mocha": "~0.4.1",
-    "istanbul": "^0.3.5",
-    "open": "0.0.5",
-    "processhost": "~0.1.6",
+    "biggulp": "0.*.*",
     "should": "~3.1.3",
     "sinon": "^1.12.2"
   },
@@ -50,8 +46,8 @@
     "machina": "^0.3.6",
     "monologue.js": "~0.1.4",
     "node-uuid": "^1.4.1",
-    "postal": "1.0.0",
+    "postal": "1.0.*",
     "when": "~3.0.0",
-    "whistlepunk": "0.0.1"
+    "whistlepunk": "0.2.0"
   }
 }

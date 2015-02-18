@@ -38,21 +38,16 @@ var Channel = function( options, connection, topology, channelFn ) {
 		},
 
 		subscribe: function() {
-			var deferred = when.defer();
-			var op = function() {
-				return this.channel.subscribe()
-					.then( function() {
-						deferred.resolve();
-					} )
-					.then( null, function( e ) {
-						deferred.reject( e );
-					} );
-			}.bind( this );
-			this.on( 'failed', function( err ) {
-				deferred.reject( err );
-			} ).once();
-			this.handle( 'subscribe', op );
-			return deferred.promise;
+			return when.promise( function( resolve, reject ) {
+				var op = function() {
+					return this.channel.subscribe()
+						.then( resolve, reject );
+				}.bind( this );
+				this.on( 'failed', function( err ) {
+					reject( err );
+				} ).once();
+				this.handle( 'subscribe', op );
+			}.bind( this ) );
 		},
 
 		initialState: 'initializing',
@@ -91,14 +86,15 @@ var Channel = function( options, connection, topology, channelFn ) {
 			'initializing': {
 				_onEnter: function() {
 					this.channel = channelFn( options, topology );
+					var onError = function( err ) {
+						this.failedWith = err;
+						this.transition( 'failed' );
+					}.bind( this );
+					var onDefined = function() {
+						this.transition( 'ready' );
+					}.bind( this );
 					this.channel.define()
-						.then( function() {
-							this.transition( 'ready' );
-						}.bind( this ) )
-						.then( null, function( err ) {
-							this.failedWith = err;
-							this.transition( 'failed' );
-						}.bind( this ) );
+						.then( onDefined, onError );
 					this.handlers.push( this.channel.channel.on( 'released', function() {
 						this.handle( 'released' );
 					}.bind( this ) ) );

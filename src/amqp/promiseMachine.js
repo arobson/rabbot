@@ -16,31 +16,33 @@ module.exports = function( factory, target, release, disposalEvent ) {
 		waitMax: 5000,
 		_acquire: function() {
 			this.emit( 'acquiring' );
+			function onAcquisitionError( err ) {
+				log.debug( 'Resource acquisition failed with \'%s\'', err );
+				this.emit( 'failed', err );
+				this.handle( 'failed' );
+			}
+			function onAcquired( o ) {
+				this.item = o;
+				this.waitInterval = 0;
+				if ( this.item.on ) {
+					this.disposeHandle = this.item.once( disposalEvent, function( /* err */ ) {
+						this.emit( 'lost' );
+						this.transition( 'released' );
+					}.bind( this ) );
+					this.item.once( 'error', function( /* err */ ) {
+						this.transition( 'failed' );
+					}.bind( this ) );
+				}
+				this.transition( 'acquired' );
+			}
+			function onException( ex ) {
+				log.debug( 'Resource acquisition failed with \'%s\'', ex );
+				this.emit( 'failed', ex );
+				this.handle( 'failed' );
+			}
 			factory()
-				.then( function( o ) {
-					this.item = o;
-					this.waitInterval = 0;
-					if ( this.item.on ) {
-						this.disposeHandle = this.item.once( disposalEvent, function( /* err */ ) {
-							this.emit( 'lost' );
-							this.transition( 'released' );
-						}.bind( this ) );
-						this.item.once( 'error', function( /* err */ ) {
-							this.transition( 'failed' );
-						}.bind( this ) );
-					}
-					this.transition( 'acquired' );
-				}.bind( this ) )
-				.then( null, function( err ) {
-					log.debug( 'Resource acquisition failed with \'%s\'', err );
-					this.emit( 'failed', err );
-					this.handle( 'failed' );
-				}.bind( this ) )
-				.catch( function( ex ) {
-					log.debug( 'Resource acquisition failed with \'%s\'', ex );
-					this.emit( 'failed', ex );
-					this.handle( 'failed' );
-				} );
+				.then( onAcquired.bind( this ), onAcquisitionError.bind( this ) )
+				.catch( onException.bind( this ) );
 		},
 		_dispose: function() {
 			if ( this.item ) {

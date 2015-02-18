@@ -15,17 +15,19 @@ var Channel = function( options, connection, topology, channelFn ) {
 		type: options.type,
 		channel: undefined,
 		handlers: [],
+		deferred: [],
 		published: publishLog(),
 
 		_define: function( stateOnDefined ) {
+			function onDefinitionError( err ) {
+				this.failedWith = err;
+				this.transition( 'failed' );
+			}
+			function onDefined() {
+				this.transition( stateOnDefined );
+			}
 			this.channel.define()
-				.then( function() {
-					this.transition( stateOnDefined );
-				}.bind( this ) )
-				.then( null, function( err ) {
-					this.failedWith = err;
-					this.transition( 'failed' );
-				}.bind( this ) );
+				.then( onDefined.bind( this ), onDefinitionError.bind( this ) );
 		},
 
 		_listen: function() {
@@ -35,6 +37,19 @@ var Channel = function( options, connection, topology, channelFn ) {
 			this.handlers.push( connection.on( 'reconnected', function() {
 				this.transition( 'reconnecting' );
 			}.bind( this ) ) );
+			this.handlers.push( this.on( 'failed', function( err ) {
+				_.each( this.deferred, function( x ) {
+					x( err );
+				} );
+				this.deferred = [];
+			}.bind( this ) ) );
+		},
+
+		_removeDeferred: function( reject ) {
+			var index = _.indexOf( this.deferred, reject );
+			if ( index >= 0 ) {
+				this.deferred.splice( index, 1 );
+			}
 		},
 
 		check: function() {
@@ -59,22 +74,23 @@ var Channel = function( options, connection, topology, channelFn ) {
 		},
 
 		publish: function( message ) {
-			var deferred = when.defer();
 			exLog.info( 'Publish called in state', this.state );
-			var op = function() {
-				return this.channel.publish( message )
-					.then( function() {
-						deferred.resolve();
-					} )
-					.then( null, function( e ) {
-						deferred.reject( e );
-					} );
-			}.bind( this );
-			this.on( 'failed', function( err ) {
-				deferred.reject( err );
-			} ).once();
-			this.handle( 'publish', op );
-			return deferred.promise;
+			return when.promise( function( resolve, reject ) {
+				function onPublished() {
+					resolve();
+					this._removeDeferred( reject );
+				}
+				function onRejected( err ) {
+					reject( err );
+					this._removeDeferred( reject );
+				}
+				var op = function() {
+					return this.channel.publish( message )
+						.then( onPublished.bind( this ), onRejected.bind( this ) );
+				}.bind( this );
+				this.deferred.push( reject );
+				this.handle( 'publish', op );
+			}.bind( this ) );
 		},
 
 		republish: function() {
@@ -190,18 +206,19 @@ var Channel = function( options, connection, topology, channelFn ) {
 					this.emit( 'defined' );
 				},
 				'bindings-completed': function() {
+					var onRepublished = function() {
+						this.transition( 'ready' );
+					}.bind( this );
+					var onRepublishFailed = function( err ) {
+						exLog.error( 'Failed to republish %d messages on %s exchange, %s - %s with: %s',
+							this.published.count(),
+							this.type,
+							this.name,
+							connection.name,
+							err );
+					}.bind( this );
 					this.republish()
-						.then( function() {
-							this.transition( 'ready' );
-						}.bind( this ) )
-						.then( null, function( err ) {
-							exLog.error( 'Failed to republish %d messages on %s exchange, %s - %s with: %s',
-								this.published.count(),
-								this.type,
-								this.name,
-								connection.name,
-								err );
-						}.bind( this ) );
+						.then( onRepublished, onRepublishFailed );
 				},
 				check: function() {
 					this.deferUntilTransition( 'ready' );
