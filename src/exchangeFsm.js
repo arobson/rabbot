@@ -15,6 +15,7 @@ var Channel = function( options, connection, topology, channelFn ) {
 		type: options.type,
 		channel: undefined,
 		handlers: [],
+		deferred: [],
 		published: publishLog(),
 
 		_define: function( stateOnDefined ) {
@@ -35,6 +36,12 @@ var Channel = function( options, connection, topology, channelFn ) {
 			}.bind( this ) ) );
 			this.handlers.push( connection.on( 'reconnected', function() {
 				this.transition( 'reconnecting' );
+			}.bind( this ) ) );
+			this.handlers.push( this.on( 'failed', function( err ) {
+				_.each( this.deferred, function( x ) {
+					x( err );
+				} );
+				this.deferred = [];
 			}.bind( this ) ) );
 		},
 
@@ -62,13 +69,19 @@ var Channel = function( options, connection, topology, channelFn ) {
 		publish: function( message ) {
 			exLog.info( 'Publish called in state', this.state );
 			return when.promise( function( resolve, reject ) {
+				var onPublished = function() {
+					resolve();
+					var index = _.indexOf( this.deferred, reject );
+					if ( index >= 0 ) {
+						this.deferred.splice( index, 1 );
+					}
+				}.bind( this );
 				var op = function() {
 					return this.channel.publish( message )
-						.then( resolve, reject );
+						.then( onPublished, reject );
 				}.bind( this );
-				this.on( 'failed', function( err ) {
-					reject( err );
-				} ).once();
+
+				this.deferred.push( reject );
 				this.handle( 'publish', op );
 			}.bind( this ) );
 		},
