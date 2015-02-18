@@ -1,5 +1,8 @@
 ## 0.2.*
 
+### 0.2.2
+Bug fix - `bindExchanges` flat out broken. Thanks to @leobispo for the catch & fix.
+
 ### 0.2.1
 
 Special thanks to @neverfox for finding and reportig #38 & #39 - both serious problems and very difficult to find/reproduce in any kind of automated test.
