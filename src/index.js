@@ -78,7 +78,7 @@ Broker.prototype.batchAck = function() {
 
 Broker.prototype.bindExchange = function( source, target, keys, connectionName ) {
 	connectionName = connectionName || 'default';
-	return this[ connectionName ].createBinding( { source: source, target: target, keys: keys } );
+	return this.connections[ connectionName ].createBinding( { source: source, target: target, keys: keys } );
 };
 
 Broker.prototype.bindQueue = function( source, target, keys, connectionName ) {
