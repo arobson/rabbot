@@ -75,13 +75,9 @@ describe( 'Configuration', function() {
 				.withArgs( config.exchanges )
 				.returns( when.reject( new Error( 'Not feelin\' it today' ) ) );
 			connectionMock.expects( 'configureQueues' )
-				.once()
-				.withArgs( config.queues )
-				.returns( when( true ) );
+				.never();
 			connectionMock.expects( 'configureBindings' )
-				.once()
-				.withArgs( config.bindings, 'test' )
-				.returns( when( true ) );
+				.never();
 			require( '../../src/config' )( Broker );
 
 			var broker = new Broker( connection );
@@ -125,9 +121,7 @@ describe( 'Configuration', function() {
 				.withArgs( config.queues )
 				.returns( when.reject( new Error( 'Not feelin\' it today' ) ) );
 			connectionMock.expects( 'configureBindings' )
-				.once()
-				.withArgs( config.bindings, 'test' )
-				.returns( when( true ) );
+				.never();
 			require( '../../src/config' )( Broker );
 
 			var broker = new Broker( connection );

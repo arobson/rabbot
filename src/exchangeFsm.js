@@ -18,14 +18,15 @@ var Channel = function( options, connection, topology, channelFn ) {
 		published: publishLog(),
 
 		_define: function( stateOnDefined ) {
+			var onDefinitionError = function( err ) {
+				this.failedWith = err;
+				this.transition( 'failed' );
+			}.bind( this );
+			var onDefined = function() {
+				this.transition( stateOnDefined );
+			}.bind( this );
 			this.channel.define()
-				.then( function() {
-					this.transition( stateOnDefined );
-				}.bind( this ) )
-				.then( null, function( err ) {
-					this.failedWith = err;
-					this.transition( 'failed' );
-				}.bind( this ) );
+				.then( onDefined, onDefinitionError );
 		},
 
 		_listen: function() {
@@ -59,22 +60,17 @@ var Channel = function( options, connection, topology, channelFn ) {
 		},
 
 		publish: function( message ) {
-			var deferred = when.defer();
 			exLog.info( 'Publish called in state', this.state );
-			var op = function() {
-				return this.channel.publish( message )
-					.then( function() {
-						deferred.resolve();
-					} )
-					.then( null, function( e ) {
-						deferred.reject( e );
-					} );
-			}.bind( this );
-			this.on( 'failed', function( err ) {
-				deferred.reject( err );
-			} ).once();
-			this.handle( 'publish', op );
-			return deferred.promise;
+			return when.promise( function( resolve, reject ) {
+				var op = function() {
+					return this.channel.publish( message )
+						.then( resolve, reject );
+				}.bind( this );
+				this.on( 'failed', function( err ) {
+					reject( err );
+				} ).once();
+				this.handle( 'publish', op );
+			}.bind( this ) );
 		},
 
 		republish: function() {
@@ -190,18 +186,19 @@ var Channel = function( options, connection, topology, channelFn ) {
 					this.emit( 'defined' );
 				},
 				'bindings-completed': function() {
+					var onRepublished = function() {
+						this.transition( 'ready' );
+					}.bind( this );
+					var onRepublishFailed = function( err ) {
+						exLog.error( 'Failed to republish %d messages on %s exchange, %s - %s with: %s',
+							this.published.count(),
+							this.type,
+							this.name,
+							connection.name,
+							err );
+					}.bind( this );
 					this.republish()
-						.then( function() {
-							this.transition( 'ready' );
-						}.bind( this ) )
-						.then( null, function( err ) {
-							exLog.error( 'Failed to republish %d messages on %s exchange, %s - %s with: %s',
-								this.published.count(),
-								this.type,
-								this.name,
-								connection.name,
-								err );
-						}.bind( this ) );
+						.then( onRepublished, onRepublishFailed );
 				},
 				check: function() {
 					this.deferUntilTransition( 'ready' );

@@ -139,9 +139,6 @@ describe( 'Integration Test Suite', function() {
 						}
 					]
 				} )
-					.then( function() {
-						console.log( 'YAY I AM STILL DUM!' );
-					} )
 					.then( null, function( err ) {
 						error = err;
 						done();

@@ -170,7 +170,6 @@ function subscribe( channelName, channel, topology, messages, options ) {
 		} else {
 			dispatch.publish( raw.type, raw, function( data ) {
 				if ( data.activated && !ops.noAck ) {
-					;
 					messages.addMessage( ops.message );
 				} else {
 					unhandledLog.warn( 'Message of %s on queue %s - %s was not processed by any registered handlers',
