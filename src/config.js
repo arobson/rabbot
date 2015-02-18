@@ -12,37 +12,41 @@ module.exports = function( Broker ) {
 		var emit = this.emit;
 		return when.promise( function( resolve, reject ) {
 
-			var onExchangeError = function( err ) {
+			function onExchangeError( err ) {
 				log.error( 'Configuration of %s failed due to an error in one or more exchange settings: %s', connection.name, err );
 				reject( err );
-			}.bind( this );
-			var createExchanges = function() {
-				connection.configureExchanges( config.exchanges )
-					.then( createQueues, onExchangeError );
-			}.bind( this );
+			}
 
-			var onQueueError = function( err ) {
+			function onQueueError( err ) {
 				log.error( 'Configuration of %s failed due to an error in one or more queue settings: %s', connection.name, err );
 				reject( err );
-			}.bind( this );
-			var createQueues = function() {
-				connection.configureQueues( config.queues )
-					.then( createBindings, onQueueError );
-			}.bind( this );
+			}
 
-			var onBindingError = function( err ) {
+			function onBindingError( err ) {
 				log.error( 'Configuration of %s failed due to an error in one or more bindings: %s', connection.name, err );
 				reject( err );
-			}.bind( this );
-			var createBindings = function() {
+			}
+
+			function createExchanges() {
+				connection.configureExchanges( config.exchanges )
+					.then( createQueues, onExchangeError );
+			}
+
+			function createQueues() {
+				connection.configureQueues( config.queues )
+					.then( createBindings, onQueueError );
+			}
+
+			function createBindings() {
 				connection.configureBindings( config.bindings, connection.name )
 					.then( finish, onBindingError );
-			}.bind( this );
+			}
 
-			var finish = function() {
+			function finish() {
 				emit( connection.name + '.connection.configured', connection );
 				resolve();
-			};
+			}
+
 			connection = this.addConnection( config.connection );
 			createExchanges();
 		}.bind( this ) );

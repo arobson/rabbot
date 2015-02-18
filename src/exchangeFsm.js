@@ -19,15 +19,15 @@ var Channel = function( options, connection, topology, channelFn ) {
 		published: publishLog(),
 
 		_define: function( stateOnDefined ) {
-			var onDefinitionError = function( err ) {
+			function onDefinitionError( err ) {
 				this.failedWith = err;
 				this.transition( 'failed' );
-			}.bind( this );
-			var onDefined = function() {
+			}
+			function onDefined() {
 				this.transition( stateOnDefined );
-			}.bind( this );
+			}
 			this.channel.define()
-				.then( onDefined, onDefinitionError );
+				.then( onDefined.bind( this ), onDefinitionError.bind( this ) );
 		},
 
 		_listen: function() {
@@ -43,6 +43,13 @@ var Channel = function( options, connection, topology, channelFn ) {
 				} );
 				this.deferred = [];
 			}.bind( this ) ) );
+		},
+
+		_removeDeferred: function( reject ) {
+			var index = _.indexOf( this.deferred, reject );
+			if ( index >= 0 ) {
+				this.deferred.splice( index, 1 );
+			}
 		},
 
 		check: function() {
@@ -69,18 +76,18 @@ var Channel = function( options, connection, topology, channelFn ) {
 		publish: function( message ) {
 			exLog.info( 'Publish called in state', this.state );
 			return when.promise( function( resolve, reject ) {
-				var onPublished = function() {
+				function onPublished() {
 					resolve();
-					var index = _.indexOf( this.deferred, reject );
-					if ( index >= 0 ) {
-						this.deferred.splice( index, 1 );
-					}
-				}.bind( this );
+					this._removeDeferred( reject );
+				}
+				function onRejected( err ) {
+					reject( err );
+					this._removeDeferred( reject );
+				}
 				var op = function() {
 					return this.channel.publish( message )
-						.then( onPublished, reject );
+						.then( onPublished.bind( this ), onRejected.bind( this ) );
 				}.bind( this );
-
 				this.deferred.push( reject );
 				this.handle( 'publish', op );
 			}.bind( this ) );

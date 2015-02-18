@@ -89,19 +89,19 @@ Adapter.prototype.connect = function() {
 		attempt = function() {
 			var nextUri = this.getNextUri();
 			log.info( 'Attempting connection to %s (%s)', this.name, nextUri );
+			function onConnection( connection ) {
+				log.info( 'Connected to %s (%s)', this.name, nextUri );
+				resolve( connection );
+			}
+			function onConnectionError( err ) {
+				log.info( 'Failed to connect to %s (%s) with', this.name, nextUri, err );
+				attempted.push( nextUri );
+				this.bumpIndex();
+				attempt( err );
+			}
 			if ( _.indexOf( attempted, nextUri ) < 0 ) {
-				var onConnection = function( connection ) {
-					log.info( 'Connected to %s (%s)', this.name, nextUri );
-					resolve( connection );
-				}.bind( this );
-				var onConnectionError = function( err ) {
-					log.info( 'Failed to connect to %s (%s) with', this.name, nextUri, err );
-					attempted.push( nextUri );
-					this.bumpIndex();
-					attempt( err );
-				}.bind( this );
 				amqp.connect( nextUri, this.options )
-					.then( onConnection, onConnectionError );
+					.then( onConnection.bind( this ), onConnectionError.bind( this ) );
 			} else {
 				log.info( 'Cannot connect to %s - all endpoints failed', this.name );
 				reject( 'No endpoints could be reached' );

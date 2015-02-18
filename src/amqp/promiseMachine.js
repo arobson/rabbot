@@ -16,12 +16,12 @@ module.exports = function( factory, target, release, disposalEvent ) {
 		waitMax: 5000,
 		_acquire: function() {
 			this.emit( 'acquiring' );
-			var onAcquisitionError = function( err ) {
+			function onAcquisitionError( err ) {
 				log.debug( 'Resource acquisition failed with \'%s\'', err );
 				this.emit( 'failed', err );
 				this.handle( 'failed' );
-			}.bind( this );
-			var onAcquired = function( o ) {
+			}
+			function onAcquired( o ) {
 				this.item = o;
 				this.waitInterval = 0;
 				if ( this.item.on ) {
@@ -34,15 +34,15 @@ module.exports = function( factory, target, release, disposalEvent ) {
 					}.bind( this ) );
 				}
 				this.transition( 'acquired' );
-			}.bind( this );
-			var onException = function( ex ) {
+			}
+			function onException( ex ) {
 				log.debug( 'Resource acquisition failed with \'%s\'', ex );
 				this.emit( 'failed', ex );
 				this.handle( 'failed' );
-			};
+			}
 			factory()
-				.then( onAcquired, onAcquisitionError )
-				.catch( onException );
+				.then( onAcquired.bind( this ), onAcquisitionError.bind( this ) )
+				.catch( onException.bind( this ) );
 		},
 		_dispose: function() {
 			if ( this.item ) {
