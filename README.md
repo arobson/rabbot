@@ -329,6 +329,17 @@ To establish a connection with all settings in place and ready to go call config
 	} );
 ```
 
+## Closing Connections
+Wascally will attempt to resolve all outstanding publishes and recieved messages (ack/nack/reject) before closing the channels and connection. If you would like to defer certain actions until after everything has been safely resolved, then use the promise returned from either close call.
+
+> !!! CAUTION !!! - using reset is dangerous. All topology associated with the connection will be removed meaning wasclly will not be able to re-establish it all should you decide to reconnect.
+
+### close( [connectionName], [reset] )
+Closes the connection, optionall resetting all previously defined topology for the connection. The `connectionName` uses `default` if one is not provided.
+
+### closeAll( [reset] )
+Closes __all__ connections, optionally resetting the topology for all of them.
+
 ## AMQPS, SSL/TLS Support
 Providing the following configuration options setting the related environment varibles will cause wascally to attempt connecting via AMQPS. For more details about which settings perform what role, refer to the amqplib's page on [SSL](http://www.squaremobius.net/amqp.node/doc/ssl.html).
 

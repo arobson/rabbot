@@ -1,5 +1,19 @@
 ## 0.2.*
 
+### 0.2.1
+
+Special thanks to @neverfox for finding and reportig #38 & #39 - both serious problems and very difficult to find/reproduce in any kind of automated test.
+
+ * #38, #39 - I/O getting blocked when publishing at high frequencies (think for/while loops).
+ 	* Removed one-time `failed` event handler from publish call
+ 	* Cache reject callbacks from publish
+ 	* On publish confirmation, remove reject from deferred array
+ 	* On exchange connection failure, invoke all rejects in deferred array
+ * #37 - document use of close and closeAll calls
+ * Correct improper use of .then( null, ... ) which was creating additional promises.
+ * Update whistlepunk version
+ * Include biggulp to simplify the gulpfile (yay?)
+
 ### 0.2.0
 
  * Add logging support via whistlepunk
