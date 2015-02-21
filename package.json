@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "repository": "https://github.com/leankit-labs/wascally",
   "scripts": {
-    "test": "gulp test"
+    "test": "gulp coverage"
   },
   "author": "LeanKit",
   "contributors": [
