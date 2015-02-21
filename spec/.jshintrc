@@ -91,7 +91,9 @@
 		"after",
 		"afterEach",
 		"it",
-		"require"
+		"require",
+		"sinon",
+		"should"
 	],
 
 	// LEGACY

@@ -1,5 +1,4 @@
-var should = require( 'should' );
-var sinon = require( 'sinon' );
+require( '../setup.js' );
 var _ = require( 'lodash' );
 var when = require( 'when' );
 var exchangeFsm = require( '../../src/exchangeFsm' );
@@ -59,36 +58,14 @@ describe( 'Exchange FSM', function() {
 		} );
 
 		describe( 'when publishing in failed state', function() {
-			before( function( done ) {
-				exchange.publish( {} )
-					.then( function() {
-						done();
-					} )
-					.then( null, function( err ) {
-						error = err;
-						done();
-					} );
-			} );
-
 			it( 'should reject publish with an error', function() {
-				error.toString().should.equal( 'Error: nope' );
+				return exchange.publish( {} ).should.be.rejectedWith( 'nope' );
 			} );
 		} );
 
 		describe( 'when checking in failed state', function() {
-			before( function( done ) {
-				exchange.check()
-					.then( function() {
-						done();
-					} )
-					.then( null, function( err ) {
-						error = err;
-						done();
-					} );
-			} );
-
 			it( 'should reject check with an error', function() {
-				error.toString().should.equal( 'Error: nope' );
+				return exchange.check().should.be.rejectedWith( 'nope' );
 			} );
 		} );
 	} );
@@ -128,41 +105,21 @@ describe( 'Exchange FSM', function() {
 		} );
 
 		describe( 'when publishing in ready state', function() {
-			before( function( done ) {
+			before( function() {
 				channelMock
 					.expects( 'publish' )
 					.once()
 					.returns( when( true ) );
-
-				exchange.publish( {} )
-					.then( function() {
-						done();
-					} )
-					.then( null, function( err ) {
-						error = err;
-						done();
-					} );
 			} );
 
 			it( 'should resolve publish without error', function() {
-				should.not.exist( error );
+				return exchange.publish( {} ).should.be.fulfilled;
 			} );
 		} );
 
 		describe( 'when checking in ready state', function() {
-			before( function( done ) {
-				exchange.check()
-					.then( function() {
-						done();
-					} )
-					.then( null, function( err ) {
-						error = err;
-						done();
-					} );
-			} );
-
 			it( 'should resolve check without error', function() {
-				should.not.exist( error );
+				exchange.check().should.be.fulfilled;
 			} );
 		} );
 
@@ -192,7 +149,7 @@ describe( 'Exchange FSM', function() {
 
 		describe( 'when destroying', function() {
 
-			before( function( done ) {
+			before( function() {
 				exchange.published.add( {} );
 				exchange.published.add( {} );
 				exchange.published.add( {} );
@@ -202,10 +159,7 @@ describe( 'Exchange FSM', function() {
 					.once()
 					.returns( when.resolve() );
 
-				exchange.destroy()
-					.then( function() {
-						done();
-					} );
+				return exchange.destroy();
 			} );
 
 			it( 'should remove handlers from topology and connection', function() {
@@ -219,7 +173,7 @@ describe( 'Exchange FSM', function() {
 
 			describe( 'when publishing to a destroyed channel', function() {
 
-				before( function( done ) {
+				before( function() {
 					channelMock
 						.expects( 'define' )
 						.once()
@@ -234,10 +188,7 @@ describe( 'Exchange FSM', function() {
 						topology.raise( 'bindings-completed' );
 					} );
 
-					exchange.publish( {} )
-						.then( function() {
-							done();
-						} );
+					return exchange.publish( {} );
 				} );
 
 				it( 'should republish previous messages', function() {} );

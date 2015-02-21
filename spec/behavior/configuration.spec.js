@@ -1,5 +1,4 @@
-var should = require( 'should' );
-var sinon = require( 'sinon' );
+require( '../setup.js' );
 var when = require( 'when' );
 
 describe( 'Configuration', function() {
@@ -27,7 +26,7 @@ describe( 'Configuration', function() {
 			bindings: [ {} ]
 		};
 		var connectionMock;
-		before( function( done ) {
+		before( function() {
 			connectionMock = sinon.mock( connection );
 			connectionMock.expects( 'configureExchanges' )
 				.once()
@@ -45,10 +44,7 @@ describe( 'Configuration', function() {
 
 			var broker = new Broker( connection );
 
-			broker.configure( config )
-				.then( function() {
-					done();
-				} );
+			return broker.configure( config );
 		} );
 
 		it( 'should make expected calls', function() {
@@ -68,7 +64,7 @@ describe( 'Configuration', function() {
 		};
 		var connectionMock;
 		var error;
-		before( function( done ) {
+		before( function() {
 			connectionMock = sinon.mock( connection );
 			connectionMock.expects( 'configureExchanges' )
 				.once()
@@ -82,10 +78,9 @@ describe( 'Configuration', function() {
 
 			var broker = new Broker( connection );
 
-			broker.configure( config )
+			return broker.configure( config )
 				.then( null, function( err ) {
 					error = err;
-					done();
 				} );
 		} );
 
@@ -110,7 +105,7 @@ describe( 'Configuration', function() {
 		};
 		var connectionMock;
 		var error;
-		before( function( done ) {
+		before( function() {
 			connectionMock = sinon.mock( connection );
 			connectionMock.expects( 'configureExchanges' )
 				.once()
@@ -126,10 +121,9 @@ describe( 'Configuration', function() {
 
 			var broker = new Broker( connection );
 
-			broker.configure( config )
+			return broker.configure( config )
 				.then( null, function( err ) {
 					error = err;
-					done();
 				} );
 		} );
 
@@ -154,7 +148,7 @@ describe( 'Configuration', function() {
 		};
 		var connectionMock;
 		var error;
-		before( function( done ) {
+		before( function() {
 			connectionMock = sinon.mock( connection );
 			connectionMock.expects( 'configureExchanges' )
 				.once()
@@ -172,10 +166,9 @@ describe( 'Configuration', function() {
 
 			var broker = new Broker( connection );
 
-			broker.configure( config )
+			return broker.configure( config )
 				.then( null, function( err ) {
 					error = err;
-					done();
 				} );
 		} );
 

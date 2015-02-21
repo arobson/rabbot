@@ -1,5 +1,4 @@
-var should = require( 'should' );
-var sinon = require( 'sinon' );
+require( '../setup.js' );
 var _ = require( 'lodash' );
 var when = require( 'when' );
 var queueFsm = require( '../../src/queueFsm' );
@@ -60,37 +59,15 @@ describe( 'Queue FSM', function() {
 			queue.state.should.equal( 'failed' );
 		} );
 
-		describe( 'when susbcribing in failed state', function() {
-			before( function( done ) {
-				queue.subscribe()
-					.then( function() {
-						done();
-					} )
-					.then( null, function( err ) {
-						error = err;
-						done();
-					} );
-			} );
-
+		describe( 'when subscribing in failed state', function() {
 			it( 'should reject subscribe with an error', function() {
-				error.toString().should.equal( 'Error: nope' );
+				return queue.subscribe().should.be.rejectedWith( /nope/ );
 			} );
 		} );
 
 		describe( 'when checking in failed state', function() {
-			before( function( done ) {
-				queue.check()
-					.then( function() {
-						done();
-					} )
-					.then( null, function( err ) {
-						error = err;
-						done();
-					} );
-			} );
-
 			it( 'should reject check with an error', function() {
-				error.toString().should.equal( 'Error: nope' );
+				return queue.check().should.be.rejectedWith( /nope/ );
 			} );
 		} );
 
@@ -131,41 +108,21 @@ describe( 'Queue FSM', function() {
 		} );
 
 		describe( 'when subscribing in ready state', function() {
-			before( function( done ) {
+			before( function() {
 				channelMock
 					.expects( 'subscribe' )
 					.once()
 					.returns( when( true ) );
-
-				queue.subscribe( {} )
-					.then( function() {
-						done();
-					} )
-					.then( null, function( err ) {
-						error = err;
-						done();
-					} );
 			} );
 
-			it( 'should resolve susbcribe without error', function() {
-				should.not.exist( error );
+			it( 'should resolve subscribe without error', function() {
+				return queue.subscribe( {} ).should.be.fulfilled;
 			} );
 		} );
 
 		describe( 'when checking in ready state', function() {
-			before( function( done ) {
-				queue.check()
-					.then( function() {
-						done();
-					} )
-					.then( null, function( err ) {
-						error = err;
-						done();
-					} );
-			} );
-
 			it( 'should resolve check without error', function() {
-				should.not.exist( error );
+				return queue.check().should.be.fulfilled;
 			} );
 		} );
 
@@ -195,16 +152,13 @@ describe( 'Queue FSM', function() {
 
 		describe( 'when destroying', function() {
 
-			before( function( done ) {
+			before( function() {
 				channelMock
 					.expects( 'destroy' )
 					.once()
 					.returns( when.resolve() );
 
-				queue.destroy()
-					.then( function() {
-						done();
-					} );
+				return queue.destroy();
 			} );
 
 			it( 'should remove handlers from topology and connection', function() {
@@ -218,24 +172,15 @@ describe( 'Queue FSM', function() {
 
 			describe( 'when checking a destroyed channel', function() {
 
-				before( function( done ) {
+				before( function() {
 					channelMock
 						.expects( 'define' )
 						.once()
 						.returns( when.resolve() );
-
-					queue.check()
-						.then( function() {
-							done();
-						} )
-						.then( null, function( err ) {
-							error = err;
-							done();
-						} );
 				} );
 
 				it( 'should redefine queue without errors', function() {
-					should.not.exist( error );
+					return queue.check().should.be.fulfilled;
 				} );
 			} );
 		} );

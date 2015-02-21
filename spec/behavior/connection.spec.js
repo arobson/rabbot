@@ -1,5 +1,4 @@
-var should = require( 'should' );
-var sinon = require( 'sinon' );
+require( '../setup.js' );
 var when = require( 'when' );
 var connectionFn = require( '../../src/connectionFsm.js' );
 var noOp = function() {};
@@ -154,7 +153,7 @@ describe( 'Connection FSM', function() {
 			} );
 
 			it( 'should not emit reconnected', function() {
-				should( badEvent ).be.undefined;
+				should.not.exist( badEvent );
 			} );
 		} );
 
@@ -199,7 +198,7 @@ describe( 'Connection FSM', function() {
 			} );
 
 			it( 'should not emit reconnected', function() {
-				should( badEvent ).be.undefined;
+				should.not.exist( badEvent );
 			} );
 
 			describe( 'when acquiring a channel', function() {
@@ -225,7 +224,7 @@ describe( 'Connection FSM', function() {
 			describe( 'when closing with queues', function() {
 				var queueMock;
 				var queue = { destroy: noOp };
-				before( function( done ) {
+				before( function() {
 					queueMock = sinon.mock( queue );
 					queueMock.expects( 'destroy' ).exactly( 5 ).returns( when( true ) );
 					connection.addQueue( queue );
@@ -240,11 +239,8 @@ describe( 'Connection FSM', function() {
 						return when( true );
 					};
 
-					connection
-						.close()
-						.then( function() {
-							done();
-						} );
+					return connection
+						.close();
 				} );
 
 				it( 'should have destroyed all queues before closing', function() {
@@ -260,7 +256,7 @@ describe( 'Connection FSM', function() {
 			describe( 'when closing with queues after lost connection', function() {
 				var queueMock;
 				var queue = { destroy: noOp };
-				before( function( done ) {
+				before( function() {
 					queueMock = sinon.mock( queue );
 					queueMock.expects( 'destroy' ).never();
 					connection.addQueue( queue );
@@ -271,11 +267,8 @@ describe( 'Connection FSM', function() {
 
 					monad.raise( 'lost' );
 
-					connection
-						.close()
-						.then( function() {
-							done();
-						} );
+					return connection
+						.close();
 				} );
 
 				it( 'should not attempt to destroy queues', function() {
@@ -286,15 +279,14 @@ describe( 'Connection FSM', function() {
 
 			describe( 'when connection is lost', function() {
 				var onAcquired;
-				before( function( done ) {
+				before( function() {
 					onAcquired = connection.on( 'acquiring', function() {
 						monad.raise( 'acquired' );
 					} );
-					connection.connect().then( function() {
+					return connection.connect().then( function() {
 						connection.addQueue( {} );
 						connection.addQueue( {} );
 						connection.addQueue( {} );
-						done();
 					} );
 				} );
 

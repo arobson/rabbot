@@ -1,4 +1,4 @@
-var should = require( 'should' );
+require( '../setup.js' );
 var publishLog = require( '../../src/publishLog' );
 var _ = require( 'lodash' );
 
@@ -18,7 +18,7 @@ describe( 'Publish log', function() {
 			log.add( three );
 		} );
 
-		it( 'should keept a valid count', function() {
+		it( 'should keep a valid count', function() {
 			log.count().should.equal( 4 );
 		} );
 
