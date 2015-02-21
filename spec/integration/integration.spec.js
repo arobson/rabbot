@@ -1,4 +1,4 @@
-require( 'should' );
+require( '../setup.js' );
 var _ = require( 'lodash' );
 var rabbit = require( '../../src/index.js' );
 
@@ -25,7 +25,7 @@ var harnessFn = function( cb, expected ) {
 		};
 	}
 
-	function handle( type, handle ) {
+	function handleFn( type, handle ) {
 		handlers.push( rabbit.handle( type, wrap( handle || defaultHandle ) ) );
 	}
 
@@ -50,7 +50,7 @@ var harnessFn = function( cb, expected ) {
 		},
 		received: received,
 		clean: clean,
-		handle: handle,
+		handle: handleFn,
 		handlers: handlers,
 		unhandled: unhandled
 	};
@@ -58,11 +58,8 @@ var harnessFn = function( cb, expected ) {
 
 describe( 'Integration Test Suite', function() {
 
-	before( function( done ) {
-		rabbit.configure( require( './configuration.js' ) )
-			.then( function() {
-				done();
-			} );
+	before( function() {
+		return rabbit.configure( require( './configuration.js' ) );
 	} );
 
 	describe( 'with invalid connection criteria', function() {
@@ -84,18 +81,15 @@ describe( 'Integration Test Suite', function() {
 				error.should.equal( 'No endpoints could be reached' );
 			} );
 
-			after( function( done ) {
-				rabbit.close( 'silly' )
-					.then( function() {
-						done();
-					} );
+			after( function() {
+				return rabbit.close( 'silly' );
 			} );
 		} );
 
 		describe( 'when configuring against a bad connection', function() {
-			var error;
-			before( function( done ) {
-				rabbit.configure( {
+			var config;
+			before( function() {
+				config = {
 					connection: {
 						name: 'silly2',
 						server: 'beanpaste.org'
@@ -138,22 +132,18 @@ describe( 'Integration Test Suite', function() {
 							keys: '#'
 						}
 					]
-				} )
-					.then( null, function( err ) {
-						error = err;
-						done();
-					} );
+				};
 			} );
 
 			it( 'should fail to connect', function() {
-				error.message.should.equal( 'Failed to create exchange \'wascally-ex.direct\' on connection \'silly2\' with \'No endpoints could be reached\'' );
+				return rabbit.configure( config )
+					.should.be.rejectedWith(
+					'Failed to create exchange \'wascally-ex.direct\' on connection \'silly2\' with \'No endpoints could be reached\''
+				);
 			} );
 
-			after( function( done ) {
-				rabbit.close( 'silly2' )
-					.then( function() {
-						done();
-					} );
+			after( function() {
+				rabbit.close( 'silly2' );
 			} );
 		} );
 	} );
@@ -405,7 +395,7 @@ describe( 'Integration Test Suite', function() {
 			var margin = quarter / 4;
 			var counts = _.values( consumers );
 			_.each( counts, function( count ) {
-				count.should.be.approximately( quarter, margin );
+				count.should.be.closeTo( quarter, margin );
 			} );
 			_.reduce( counts, function( acc, x ) {
 				return acc + x;
@@ -417,12 +407,9 @@ describe( 'Integration Test Suite', function() {
 		} );
 	} );
 
-	after( function( done ) {
+	after( function() {
 		rabbit.deleteExchange( 'wascally-ex.deadend' ).then( function() {} );
-		rabbit.closeAll()
-			.then( function() {
-				done();
-			} );
+		return rabbit.closeAll();
 	} );
 
 } );

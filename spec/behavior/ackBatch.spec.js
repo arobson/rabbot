@@ -1,5 +1,4 @@
-var should = require( 'should' );
-var sinon = require( 'sinon' );
+require( '../setup.js' );
 var when = require( 'when' );
 var postal = require( 'postal' );
 var signal = postal.channel( 'rabbit.ack' );

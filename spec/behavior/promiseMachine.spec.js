@@ -1,5 +1,4 @@
-require( 'should' );
-
+require( '../setup.js' );
 var when = require( 'when' );
 var Promy = require( '../../src/amqp/promiseMachine.js' );
 
@@ -26,12 +25,9 @@ describe( 'Promise Machine', function() {
 
 		var machine = new Promy( factory, Test );
 
-		it( 'should resolve the Test sayHi call', function( done ) {
-			machine.sayHi( 'Alex', 'Robson', 'Murfreesboro' )
-				.then( function( message ) {
-					message.should.eql( 'Hello, Alex Robson of Murfreesboro' );
-					done();
-				} );
+		it( 'should resolve the Test sayHi call', function() {
+			return machine.sayHi( 'Alex', 'Robson', 'Murfreesboro' )
+				.should.eventually.equal( 'Hello, Alex Robson of Murfreesboro' );
 		} );
 
 	} );
