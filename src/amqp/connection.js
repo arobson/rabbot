@@ -36,7 +36,7 @@ function trim( x ) {
 
 var Adapter = function( parameters ) {
 	var serverList = getOption( parameters, 'RABBIT_BROKER' ) || getOption( parameters, 'server', 'localhost' );
-	var portList = getOption( parameters, 'RABBIT_PORT', 5672 );
+	var portList = getOption( parameters, 'RABBIT_PORT' ) || getOption( parameters, 'port', 5672 );
 
 	this.name = parameters ? ( parameters.name || 'default' ) : 'default';
 	this.connectionIndex = 0;
