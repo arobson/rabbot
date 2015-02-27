@@ -412,11 +412,11 @@ describe( 'Integration Test Suite', function() {
 
 		before( function( done ) {
 			this.timeout( 3000 );
+
 			messagesToSend = 10;
-
 			harness = harnessFn( done, messagesToSend );
-
 			var messageCount = 0;
+
 			harness.handle( 'no.batch', function(message){
 				if ( messageCount > 0 ) {
 					message.ack();

@@ -125,6 +125,7 @@ module.exports = {
 			name: 'wascally-q.no-batch',
 			autoDelete: true,
 			subscribe: true,
+			noBatch: true,
 			limit: 5
 		}
 	],

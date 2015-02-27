@@ -23,7 +23,7 @@ function define( channel, options, subscriber, connectionName ) {
 		queueLimit: 'maxLength',
 		deadletter: 'deadLetterExchange',
 		deadLetter: 'deadLetterExchange'
-	}, 'subscribe', 'limit' );
+	}, 'subscribe', 'limit', 'noBatch' );
 	topLog.info( 'Declaring queue \'%s\' on connection \'%s\' with the options: %s',
 		options.name, connectionName, JSON.stringify( _.omit( options, [ 'name' ] ) ) );
 	return channel.assertQueue( options.name, valid )
@@ -133,6 +133,33 @@ function getUntrackedOps( channel, raw, messages ) {
 	};
 }
 
+function getNoBatchOps( channel, raw, messages, noAck ) {
+	messages.receivedCount += 1;
+
+	var ack;
+
+	if (noAck) {
+		ack = noOp;
+	} else {
+		ack = function(){
+			log.debug( 'Acking tag %d on %s - %s', raw.fields.deliveryTag, messages.name, messages.connectionName );
+			channel.ack( { fields: { deliveryTag: raw.fields.deliveryTag } }, false );
+		};
+	}
+
+	return {
+		ack: ack,
+		nack: function() {
+			log.debug( 'Nacking tag %d on %s - %s', raw.fields.deliveryTag, messages.name, messages.connectionName );
+			channel.nack( { fields: { deliveryTag: raw.fields.deliveryTag } }, false );
+		},
+		reject: function() {
+			log.debug( 'Rejecting tag %d on %s - %s', raw.fields.deliveryTag, messages.name, messages.connectionName );
+			channel.nack( { fields: { deliveryTag: raw.fields.deliveryTag } }, false, false );
+		}
+	};
+}
+
 function resolveTags( channel, queue, connection ) {
 	return function( op, data ) {
 		switch (op) {
@@ -152,14 +179,27 @@ function resolveTags( channel, queue, connection ) {
 }
 
 function subscribe( channelName, channel, topology, messages, options ) {
-	if ( !options.noAck ) {
+	var shouldAck = !options.noAck;
+	var shouldBatch = !options.noBatch;
+
+	console.log("-------------------------------------");
+	console.log("-------------------------------------");
+	console.log("should ack?", shouldAck);
+	console.log("should batch?", shouldBatch);
+	console.log("-------------------------------------");
+	console.log("-------------------------------------");
+
+	if ( shouldAck && shouldBatch ) {
 		messages.listenForSignal();
 	}
+
 	log.info( 'Starting subscription %s - %s', channelName, topology.connection.name );
 	return channel.consume( channelName, function( raw ) {
 		var correlationId = raw.properties.correlationId;
 		raw.body = JSON.parse( raw.content.toString( 'utf8' ) );
-		var ops = options.noAck ? getUntrackedOps( channel, raw, messages ) : getTrackedOps( raw, messages );
+
+		var ops = getResolutionOperations( channel, raw, messages, options );
+
 		raw.ack = ops.ack;
 		raw.nack = ops.nack;
 		raw.reject = ops.reject;
@@ -182,6 +222,19 @@ function subscribe( channelName, channel, topology, messages, options ) {
 			} );
 		}
 	}, options );
+}
+
+
+function getResolutionOperations( channel, raw, messages, options ){
+	if ( options.noBatch ) {
+		return getNoBatchOps( channel, raw, messages, options.noAck);
+	}
+
+	if ( options.noAck ){
+		return getUntrackedOps( channel, raw, messages );
+	}
+
+	return getTrackedOps( raw, messages );
 }
 
 function unsubscribe( channel ) {
