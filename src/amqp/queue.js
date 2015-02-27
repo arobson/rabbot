@@ -137,7 +137,6 @@ function getNoBatchOps( channel, raw, messages, noAck ) {
 	messages.receivedCount += 1;
 
 	var ack;
-
 	if (noAck) {
 		ack = noOp;
 	} else {
@@ -202,9 +201,17 @@ function subscribe( channelName, channel, topology, messages, options ) {
 			responses.publish( correlationId, raw );
 		} else {
 			dispatch.publish( raw.type, raw, function( data ) {
-				if ( data.activated && !ops.noAck ) {
+				var handled;
+				if ( data.activated && (shouldAck && shouldBatch) ) {
 					messages.addMessage( ops.message );
-				} else {
+					handled = true;
+				}
+
+				if (data.activated && !shouldBatch){
+					handled = true;
+				}
+
+				if (!handled){
 					unhandledLog.warn( 'Message of %s on queue %s - %s was not processed by any registered handlers',
 						raw.type,
 						channelName,
@@ -223,7 +230,7 @@ function getResolutionOperations( channel, raw, messages, options ){
 		return getNoBatchOps( channel, raw, messages, options.noAck);
 	}
 
-	if ( options.noAck ){
+	if ( options.noAck || options.noBatch){
 		return getUntrackedOps( channel, raw, messages );
 	}
 
