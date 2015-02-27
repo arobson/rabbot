@@ -182,13 +182,6 @@ function subscribe( channelName, channel, topology, messages, options ) {
 	var shouldAck = !options.noAck;
 	var shouldBatch = !options.noBatch;
 
-	console.log("-------------------------------------");
-	console.log("-------------------------------------");
-	console.log("should ack?", shouldAck);
-	console.log("should batch?", shouldBatch);
-	console.log("-------------------------------------");
-	console.log("-------------------------------------");
-
 	if ( shouldAck && shouldBatch ) {
 		messages.listenForSignal();
 	}
