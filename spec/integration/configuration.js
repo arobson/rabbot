@@ -54,6 +54,12 @@ module.exports = {
 			arguments: {
 				'hash-header': 'CorrelationId'
 			}
+		},
+		{
+			name: 'wascally-ex.no-batch',
+			type: 'direct',
+			autoDelete: true,
+			limit: 5
 		}
 	],
 
@@ -115,6 +121,11 @@ module.exports = {
 			name: 'wascally-q.hashed4',
 			autoDelete: true,
 			subscribe: true
+		},
+		{
+			name: 'wascally-q.no-batch',
+			autoDelete: true,
+			subscribe: true
 		}
 	],
 
@@ -173,6 +184,10 @@ module.exports = {
 			exchange: 'wascally-ex.consistent-hash',
 			target: 'wascally-q.hashed4',
 			keys: '100'
+		},
+		{
+			exchange: 'wascally-ex.no-batch',
+			target: 'wascally-q.no-batch'
 		}
 	]
 };
