@@ -58,8 +58,7 @@ module.exports = {
 		{
 			name: 'wascally-ex.no-batch',
 			type: 'direct',
-			autoDelete: true,
-			limit: 5
+			autoDelete: true
 		}
 	],
 
@@ -125,7 +124,8 @@ module.exports = {
 		{
 			name: 'wascally-q.no-batch',
 			autoDelete: true,
-			subscribe: true
+			subscribe: true,
+			limit: 5
 		}
 	],
 
