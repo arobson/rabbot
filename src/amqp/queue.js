@@ -202,13 +202,12 @@ function subscribe( channelName, channel, topology, messages, options ) {
 		} else {
 			dispatch.publish( raw.type, raw, function( data ) {
 				var handled;
-				if ( data.activated && (shouldAck && shouldBatch) ) {
-					messages.addMessage( ops.message );
-					handled = true;
-				}
 
-				if (data.activated && !shouldBatch){
+				if( data.activated ) {
 					handled = true;
+					if( shouldAck && shouldBatch ) {
+						messages.addMessage( ops.message );
+					}
 				}
 
 				if (!handled){
