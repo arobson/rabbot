@@ -407,6 +407,37 @@ describe( 'Integration Test Suite', function() {
 		} );
 	} );
 
+	describe( 'with noBatch enabled', function() {
+		var messagesToSend, harness;
+
+		before( function( done ) {
+			this.timeout( 6000 );
+
+			messagesToSend = 10;
+			harness = harnessFn( done, messagesToSend );
+			var messageCount = 0;
+
+			harness.handle( 'no.batch', function(message){
+				if ( messageCount > 0 ) {
+					message.ack();
+				}
+				messageCount += 1;
+			});
+
+			for(var i=0; i< messagesToSend; i++){
+				rabbit.publish( 'wascally-ex.no-batch', {
+					type: 'no.batch',
+					body: 'message ' + i,
+					routingKey: ''
+				} );
+			};
+		} );
+
+		it( 'should receive all messages', function() {
+			harness.received.length.should.equal(messagesToSend);
+		} );
+	} );
+
 	after( function() {
 		rabbit.deleteExchange( 'wascally-ex.deadend' ).then( function() {} );
 		return rabbit.closeAll();
