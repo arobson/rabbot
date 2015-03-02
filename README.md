@@ -191,6 +191,9 @@ Rejects the message without re-queueing it. Please use with caution and consider
 ### message.reply( message, [more], [replyType] )
 Acknowledges the messages and sends the message back to the requestor. The `message` is only the body of the reply. Providing true to `more` will cause the message to get sent to the .progress callback of the request promise so that you can send multiple replies. The `replyType` argument sets the type of the reply message. (important when messaging with statically typed languages)
 
+### Queues in `noBatch` mode
+Wascally now supports the ability to put queues into non-batching behavior. This causes ack, nack and reject calls to take place against the channel immediately. This feature is ideal when processing messages are long-running and consumer limits are in place. Be aware that this feature does have a significant impact on message throughput.
+
 ## Reply Queues
 By default, wascally creates a unique reply queue for each connection which is automatically subscribed to and deleted on connection close. This can be modified or turned off altogether.
 
@@ -278,6 +281,7 @@ Options is a hash that can contain the following:
  * subscribe		true|false		auto-start the subscription
  * limit 			2^16			max number of unacked messages allowed for consumer
  * noAck			true|false 		the server will remove messages from the queue as soon as they are delivered
+ * noBatch			true|false 		causes ack, nack & reject to take place immediately
  * queueLimit		2^32			max number of ready messages a queue can hold
  * messageTtl		2^32			time in ms before a message expires on the queue
  * expires			2^32			time in ms before a queue with 0 consumers expires

@@ -1,5 +1,9 @@
 ## 0.2.*
 
+### 0.2.3
+ * #47 - Added support for `noBatch` to queues, thanks @derickbailey!
+ * #45 - Bug fix: port option was being ignored, thanks @esatterwhite
+
 ### 0.2.2
 Bug fix - `bindExchanges` flat out broken. Thanks to @leobispo for the catch & fix.
 
