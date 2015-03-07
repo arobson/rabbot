@@ -357,6 +357,31 @@ Providing the following configuration options setting the related environment va
 	}
 ```
 
+## Channel Prefetch Limits
+
+Wascally mostly hides the notion of a channel behind the scenes, but still allows you to specify channel options such as the channel prefetch limit. Rather than specifying
+this on a channel object, however, it is specified as a `limit` on a queue defintion.
+
+```js
+queues: [{
+  // ...
+
+  limit: 5
+}]
+
+// or
+
+rabbit.addQueue("some.q", {
+  // ...
+
+  limit: 5
+});
+```
+
+This queue configuration will set a prefetch limit of 5 on the channel that is used for consuming this queue.
+
+**Note:** The queue `limit` is not the same as the `queueLimit` option - the latter of which sets the maximum number of messages allowed in the queue.
+
 ## Contributing
 PRs with insufficient coverage, broken tests or deviation from the style will not be accepted.
 
