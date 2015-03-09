@@ -22,7 +22,8 @@ function define( channel, options, subscriber, connectionName ) {
 		queuelimit: 'maxLength',
 		queueLimit: 'maxLength',
 		deadletter: 'deadLetterExchange',
-		deadLetter: 'deadLetterExchange'
+		deadLetter: 'deadLetterExchange',
+		deadLetterRoutingKey: 'deadLetterRoutingKey'
 	}, 'subscribe', 'limit', 'noBatch' );
 	topLog.info( 'Declaring queue \'%s\' on connection \'%s\' with the options: %s',
 		options.name, connectionName, JSON.stringify( _.omit( options, [ 'name' ] ) ) );
