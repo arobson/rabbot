@@ -283,16 +283,19 @@ describe( 'Integration Test Suite', function() {
 				.then( function( response ) {
 					response1 = response.body;
 					harness.add( response );
+					response.ack();
 				} );
 
 			rabbit.request( 'wascally-ex.request', { type: 'rude', body: 'why so dumb?' } )
 				.then( function( response ) {
 					response2 = response.body;
 					harness.add( response );
+					response.ack();
 				} );
 
 			function onPart( part ) {
 				response3 = ( response3 || '' ) + part.body;
+				part.ack();
 				harness.add( part );
 			}
 			rabbit.request( 'wascally-ex.request', { type: 'crazy', body: 'do you like my yak-hair-shirt?' } )
@@ -411,34 +414,36 @@ describe( 'Integration Test Suite', function() {
 		var messagesToSend, harness;
 
 		before( function( done ) {
-			this.timeout( 6000 );
+			this.timeout( 2000 );
 
 			messagesToSend = 10;
 			harness = harnessFn( done, messagesToSend );
 			var messageCount = 0;
 
-			harness.handle( 'no.batch', function(message){
+			harness.handle( 'no.batch', function( message ) {
 				if ( messageCount > 0 ) {
 					message.ack();
 				}
 				messageCount += 1;
-			});
+			} );
 
-			for(var i=0; i< messagesToSend; i++){
+			for (var i = 0; i < messagesToSend; i++) {
 				rabbit.publish( 'wascally-ex.no-batch', {
 					type: 'no.batch',
 					body: 'message ' + i,
 					routingKey: ''
 				} );
-			};
+			}
+			;
 		} );
 
 		it( 'should receive all messages', function() {
-			harness.received.length.should.equal(messagesToSend);
+			harness.received.length.should.equal( messagesToSend );
 		} );
 	} );
 
 	after( function() {
+		this.timeout( 5000 );
 		rabbit.deleteExchange( 'wascally-ex.deadend' ).then( function() {} );
 		return rabbit.closeAll();
 	} );

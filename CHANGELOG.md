@@ -1,5 +1,13 @@
 ## 0.2.*
 
+### 0.2.4
+Thanks to @dvideby0 and @neverfox for identifying and providing code to help reproduce bugs #39 and #57.
+
+ * #39, #57 - Bug fix: acking responses did not resolve them causing them to pile up in a response queue
+ * Bug fix: setting replyQueue to false throws exceptions
+ * Bug fix: replying from a service with replyQueue set to false fails
+ * Spec update - request spec in integration tests failed to ack messages causing closeAll to hang
+
 ### 0.2.3
  * #47 - Added support for `noBatch` to queues, thanks @derickbailey!
  * #45 - Bug fix: port option was being ignored, thanks @esatterwhite

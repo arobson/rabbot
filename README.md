@@ -382,11 +382,28 @@ This queue configuration will set a prefetch limit of 5 on the channel that is u
 
 **Note:** The queue `limit` is not the same as the `queueLimit` option - the latter of which sets the maximum number of messages allowed in the queue.
 
+## Additional Learning Resources
+
+### Watch Me Code
+Thanks to Derick Bailey's input, the API and documentation for wascally have improved a lot. You can learn from Derick's hands-on experience in his [Watch Me Code](https://sub.watchmecode.net/categories/rabbitmq/) series.
+
+### RabbitMQ In Action
+Alvaro Vidella and Jason Williams literally wrote the book on [RabbitMQ](http://www.manning.com/videla/).
+
+### Enterprise Integration Patterns
+Gregor Hophe and Bobby Woolf's definitive work on messaging. The [site](http://www.enterpriseintegrationpatterns.com/) provides basic descriptions of the patterns and the [book](http://www.amazon.com/Enterprise-Integration-Patterns-Designing-Deploying/dp/0321200683) goes into a lot of detail.
+
+I can't recommend this book highly enough; understanding the patterns will provide you with the conceptual tools need to be successful.
+
 ## Contributing
 PRs with insufficient coverage, broken tests or deviation from the style will not be accepted.
 
 ### Behavior & Integration Tests
-PRs should include modified or additional test coverage in both integration and behavioral specs. Integration tests assume RabbitMQ is running on localhost with guest/guest credentials and the consistent hash exchange plugin enabled.
+PRs should include modified or additional test coverage in both integration and behavioral specs. Integration tests assume RabbitMQ is running on localhost with guest/guest credentials and the consistent hash exchange plugin enabled. You can enable the plugin with the following command:
+
+```bash
+rabbit-plugins enable rabbitmq_consistent_hash_exchange
+```
 
 Running gulp will run both sets after every file change and display a coverage summary. To view a detailed report, run gulp coverage once to bring up the browser.
 
