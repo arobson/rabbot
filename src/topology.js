@@ -40,20 +40,25 @@ var Topology = function( connection, options, unhandledStrategies ) {
 		exchanges: {},
 		queues: {}
 	};
+	this.replyQueue = { name: false };
 	this.onUnhandled = function( message ) {
 		return unhandledStrategies.onUnhandled( message );
 	};
 	var replyQueueName = '';
-	if ( options.replyQueue ) {
+
+	if ( _.has( options, 'replyQueue' ) ) {
 		replyQueueName = options.replyQueue.name || options.replyQueue;
-	}
-	if ( replyQueueName.toLowerCase() === 'rabbitmq' ) {
-		this.replyQueue = rabbitReplyTo;
-	} else if ( _.has( options, 'replyQueue' ) ) {
-		this.replyQueue = userReplyTo;
+		if ( replyQueueName === false ) {
+			this.replyQueue = { name: false };
+		} else if ( replyQueueName ) {
+			this.replyQueue = userReplyTo;
+		} else if ( replyQueueName === 'rabbitmq' ) {
+			this.replyQueue = rabbitReplyTo;
+		}
 	} else {
 		this.replyQueue = autoReplyTo;
 	}
+
 	connection.on( 'reconnected', function() {
 		this.createReplyQueue();
 		this.onReconnect();

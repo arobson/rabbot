@@ -88,7 +88,7 @@ function getReply( channel, raw, replyQueue, connectionName ) {
 					contentType: 'application/json',
 					contentEncoding: 'utf8',
 					correlationId: raw.properties.messageId,
-					replyTo: replyQueue,
+					replyTo: replyQueue === false ? undefined : replyQueue,
 					headers: {}
 				};
 			if ( !more ) {
@@ -98,7 +98,7 @@ function getReply( channel, raw, replyQueue, connectionName ) {
 			}
 			log.debug( 'Replying to message %s on %s - %s with type %s',
 				raw.properties.messageId,
-				replyQueue,
+				replyTo,
 				connectionName,
 				publishOptions.type );
 			if ( raw.properties.headers[ 'direct-reply-to' ] ) {
@@ -138,10 +138,10 @@ function getNoBatchOps( channel, raw, messages, noAck ) {
 	messages.receivedCount += 1;
 
 	var ack;
-	if (noAck) {
+	if ( noAck ) {
 		ack = noOp;
 	} else {
-		ack = function(){
+		ack = function() {
 			log.debug( 'Acking tag %d on %s - %s', raw.fields.deliveryTag, messages.name, messages.connectionName );
 			channel.ack( { fields: { deliveryTag: raw.fields.deliveryTag } }, false );
 		};
@@ -198,39 +198,42 @@ function subscribe( channelName, channel, topology, messages, options ) {
 		raw.reject = ops.reject;
 		raw.reply = getReply( channel, raw, topology.replyQueue.name, topology.connection.name );
 		raw.type = raw.properties.type;
+
+		var onPublish = function( data ) {
+			var handled;
+
+			if ( data.activated ) {
+				handled = true;
+				if ( shouldAck && shouldBatch ) {
+					messages.addMessage( ops.message );
+				}
+			}
+
+			if ( !handled ) {
+				unhandledLog.warn( 'Message of %s on queue %s - %s was not processed by any registered handlers',
+					raw.type,
+					channelName,
+					topology.connection.name
+				);
+				topology.onUnhandled( raw );
+			}
+		}
+
 		if ( raw.fields.routingKey === topology.replyQueue.name ) {
-			responses.publish( correlationId, raw );
+			responses.publish( correlationId, raw, onPublish );
 		} else {
-			dispatch.publish( raw.type, raw, function( data ) {
-				var handled;
-
-				if( data.activated ) {
-					handled = true;
-					if( shouldAck && shouldBatch ) {
-						messages.addMessage( ops.message );
-					}
-				}
-
-				if (!handled){
-					unhandledLog.warn( 'Message of %s on queue %s - %s was not processed by any registered handlers',
-						raw.type,
-						channelName,
-						topology.connection.name
-					);
-					topology.onUnhandled( raw );
-				}
-			} );
+			dispatch.publish( raw.type, raw, onPublish );
 		}
 	}, options );
 }
 
 
-function getResolutionOperations( channel, raw, messages, options ){
+function getResolutionOperations( channel, raw, messages, options ) {
 	if ( options.noBatch ) {
-		return getNoBatchOps( channel, raw, messages, options.noAck);
+		return getNoBatchOps( channel, raw, messages, options.noAck );
 	}
 
-	if ( options.noAck || options.noBatch){
+	if ( options.noAck || options.noBatch ) {
 		return getUntrackedOps( channel, raw, messages );
 	}
 

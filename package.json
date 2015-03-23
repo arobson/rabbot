@@ -1,11 +1,14 @@
 {
   "name": "wascally",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Abstractions to simplify working with the wascally wabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/leankit-labs/wascally",
   "scripts": {
     "test": "gulp coverage"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
   },
   "author": "LeanKit",
   "contributors": [
