@@ -77,7 +77,7 @@ var Adapter = function( parameters ) {
 		} );
 	}
 	if ( useSSL ) {
-		this.protocol = 'amqps';
+		this.protocol = 'amqps://';
 	}
 	this.limit = _.max( [ this.servers.length, this.ports.length ] );
 };
