@@ -54,6 +54,9 @@ var Connection = function( options, connectionFn, channelFn ) {
 				this.once( 'connected', function() {
 					resolve();
 				} );
+				this.once( 'already-connected', function() {
+					resolve();
+				} );
 				this.handle( 'connect' );
 			}.bind( this ) );
 		},
@@ -120,7 +123,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 						this.emit( 'reconnected' );
 					}
 					this.reconnected = true;
-					this.emit( 'connected' );
+					this.emit( 'connected', connection );
 				},
 				'failed': function( err ) {
 					this.emit( 'failed', err );
@@ -133,7 +136,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 					this.transition( 'closing' );
 				},
 				'connect': function() {
-					this.emit( 'connected' );
+					this.emit( 'already-connected', connection );
 				}
 			},
 			'closed': {

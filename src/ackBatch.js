@@ -51,7 +51,7 @@ AckBatch.prototype._ackOrNackSequence = function() {
 				this[ call ]( sequenceEnd, true );
 			}
 		}
-	} catch (err) {
+	} catch ( err ) {
 		log.error( 'An exception occurred while trying to resolve ack/nack sequence on %s - %s: %s', this.name, this.connectionName, err.stack );
 	}
 };

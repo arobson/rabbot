@@ -34,7 +34,8 @@ Broker.prototype.addConnection = function( options ) {
 	if ( !this.connections[ name ] ) {
 		var connection = connectionFn( options || {} );
 		var topology = topologyFn( connection, options || {}, unhandledStrategies );
-		connection.on( 'connected', function() {
+		connection.on( 'connected', function( state ) {
+			connection.uri = state.item.uri;
 			this.emit( 'connected', connection );
 			this.emit( connection.name + '.connection.opened', connection );
 		}.bind( this ) );
@@ -204,6 +205,10 @@ Broker.prototype.request = function( exchangeName, options, connectionName ) {
 		} );
 		this.publish( exchangeName, options );
 	}.bind( this ) );
+};
+
+Broker.prototype.reset = function() {
+	this.connections = {};
 };
 
 Broker.prototype.setAckInterval = function( interval ) {
