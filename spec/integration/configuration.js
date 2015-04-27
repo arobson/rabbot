@@ -4,7 +4,7 @@ module.exports = {
 		user: 'guest',
 		pass: 'guest',
 		server: '127.0.0.1',
-		port: 5673,
+		port: 5672,
 		vhost: '%2f',
 		replyQueue: 'customReplyQueue'
 	},
