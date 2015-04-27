@@ -40,24 +40,28 @@ function define( channel, options, subscriber, connectionName ) {
 }
 
 function destroy( channel, options, messages, released ) {
-	unsubscribe( channel );
+	function finalize() {
+		messages.ignoreSignal();
+		channel.destroy();
+		channel = undefined;
+	}
 
-	return when.promise( function( resolve ) {
-		var finalize = function() {
-			channel.destroy();
-			messages.ignoreSignal();
-			channel = undefined;
-			resolve();
-		};
-		unsubscribe( channel );
-		if ( messages.messages.length && !released ) {
-			messages.once( 'empty', function() {
+	function onUnsubscribed() {
+		return when.promise( function( resolve ) {
+			if ( messages.messages.length && !released ) {
+				messages.once( 'empty', function() {
+					finalize();
+					resolve();
+				} );
+			} else {
 				finalize();
-			} );
-		} else {
-			finalize();
-		}
-	} );
+				resolve();
+			}
+		} );
+	}
+
+	return unsubscribe( channel, options )
+		.then( onUnsubscribed, onUnsubscribed );
 }
 
 function getChannel( connection ) {
@@ -217,14 +221,18 @@ function subscribe( channelName, channel, topology, messages, options ) {
 				);
 				topology.onUnhandled( raw );
 			}
-		}
+		};
 
 		if ( raw.fields.routingKey === topology.replyQueue.name ) {
 			responses.publish( correlationId, raw, onPublish );
 		} else {
 			dispatch.publish( raw.type, raw, onPublish );
 		}
-	}, options );
+	}, options )
+		.then( function( result ) {
+			channel.tag = result.consumerTag;
+			return result;
+		} );
 }
 
 
@@ -240,9 +248,12 @@ function getResolutionOperations( channel, raw, messages, options ) {
 	return getTrackedOps( raw, messages );
 }
 
-function unsubscribe( channel ) {
+function unsubscribe( channel, options ) {
 	if ( channel.tag ) {
+		log.info( 'Unsubscribing from queue %s with tag %s', options.name, channel.tag );
 		return channel.cancel( channel.tag );
+	} else {
+		return when.resolve();
 	}
 }
 
@@ -258,6 +269,6 @@ module.exports = function( options, topology ) {
 		destroy: destroy.bind( undefined, channel, options, messages ),
 		getMessageCount: getCount.bind( undefined, messages ),
 		subscribe: subscriber,
-		unsubscribe: unsubscribe.bind( undefined, channel, messages )
+		unsubscribe: unsubscribe.bind( undefined, channel, options, messages )
 	};
 };

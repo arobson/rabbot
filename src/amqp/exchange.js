@@ -41,7 +41,7 @@ function publish( channel, options, topology, log, message ) {
 		contentType: 'application/json',
 		contentEncoding: 'utf8',
 		correlationId: message.correlationId || '',
-		replyTo: message.replyTo || topology.replyQueue.name,
+		replyTo: message.replyTo || topology.replyQueue.name || '',
 		messageId: message.messageId || message.id || '',
 		timestamp: message.timestamp,
 		appId: message.appId || '',

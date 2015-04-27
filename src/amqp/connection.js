@@ -90,6 +90,7 @@ Adapter.prototype.connect = function() {
 			var nextUri = this.getNextUri();
 			log.info( 'Attempting connection to %s (%s)', this.name, nextUri );
 			function onConnection( connection ) {
+				connection.uri = nextUri;
 				log.info( 'Connected to %s (%s)', this.name, nextUri );
 				resolve( connection );
 			}

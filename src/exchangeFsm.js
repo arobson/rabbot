@@ -67,10 +67,15 @@ var Channel = function( options, connection, topology, channelFn ) {
 		destroy: function() {
 			exLog.debug( 'Destroy called on exchange %s - %s (%d messages pending)', this.name, connection.name, this.published.count() );
 			this.transition( 'destroying' );
-			return this.channel.destroy()
-				.then( function() {
-					this.transition( 'destroyed' );
-				}.bind( this ) );
+			if ( this.channel ) {
+				return this.channel.destroy()
+					.then( function() {
+						this.transition( 'destroyed' );
+					}.bind( this ) );
+			} else {
+				this.transition( 'destroyed' );
+				return when.resolve();
+			}
 		},
 
 		publish: function( message ) {

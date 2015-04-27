@@ -1,8 +1,7 @@
 require( '../setup.js' );
 var _ = require( 'lodash' );
-var rabbit = require( '../../src/index.js' );
 
-var harnessFn = function( cb, expected ) {
+var harnessFactory = function( rabbit, cb, expected ) {
 	var handlers = [];
 	var received = [];
 	var unhandled = [];
@@ -57,8 +56,10 @@ var harnessFn = function( cb, expected ) {
 };
 
 describe( 'Integration Test Suite', function() {
-
+	var rabbit, harnessFn;
 	before( function() {
+		rabbit = require( '../../src/index.js' );
+		harnessFn = harnessFactory.bind( undefined, rabbit );
 		return rabbit.configure( require( './configuration.js' ) );
 	} );
 
@@ -414,7 +415,7 @@ describe( 'Integration Test Suite', function() {
 		var messagesToSend, harness;
 
 		before( function( done ) {
-			this.timeout( 2000 );
+			this.timeout( 5000 );
 
 			messagesToSend = 10;
 			harness = harnessFn( done, messagesToSend );
@@ -434,7 +435,6 @@ describe( 'Integration Test Suite', function() {
 					routingKey: ''
 				} );
 			}
-			;
 		} );
 
 		it( 'should receive all messages', function() {
@@ -445,7 +445,49 @@ describe( 'Integration Test Suite', function() {
 	after( function() {
 		this.timeout( 5000 );
 		rabbit.deleteExchange( 'wascally-ex.deadend' ).then( function() {} );
-		return rabbit.closeAll();
+		return rabbit.closeAll().then( function() {
+			rabbit.reset();
+		} );
 	} );
 
+} );
+
+describe( 'Integration Test Suite - Alternate Configuration', function() {
+	var rabbit, harnessFn;
+	before( function() {
+		rabbit = require( '../../src/index.js' );
+		harnessFn = harnessFactory.bind( undefined, rabbit );
+		return rabbit.configure( require( './alt-configuration.js' ) );
+	} );
+
+	describe( 'with no replyQueue', function() {
+		var harness, messagesToSend;
+
+		before( function( done ) {
+			messagesToSend = 3;
+			harness = harnessFn( done, messagesToSend );
+
+			harness.handle( 'no.replyQueue', function( message ) {
+				message.ack();
+			} );
+
+			for (var i = 0; i < messagesToSend; i++) {
+				rabbit.publish( 'noreply-ex.direct', {
+					type: 'no.replyQueue',
+					body: 'message ' + i,
+					routingKey: ''
+				} );
+			}
+		} );
+
+		it( 'should receive all messages', function() {
+			harness.received.length.should.equal( messagesToSend );
+		} );
+	} );
+
+	after( function() {
+		return rabbit.closeAll().then( function() {
+			rabbit.reset();
+		} );
+	} );
 } );

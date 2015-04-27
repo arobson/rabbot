@@ -1,5 +1,13 @@
 ## 0.2.*
 
+### 0.2.5
+
+ * #65 - Bug Fix: setting replyQueue to false caused publish to fail silently.
+ * #63 - Add `uri` property to connection object emitted for 'connected' event.
+ * #61 - Bug Fix: correct SSL URIs - thanks, @longplay
+ * Improvements to connection clean up (specifically around resolving outstanding messages on queues)
+ * ConnectionFSM - Only emit 'connected' when establishing a new connection, use 'already-connected' otherwise.
+
 ### 0.2.4
 Thanks to @dvideby0 and @neverfox for identifying and providing code to help reproduce bugs #39 and #57.
 
