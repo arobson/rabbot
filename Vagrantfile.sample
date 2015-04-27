@@ -1,0 +1,29 @@
+Vagrant.configure(2) do |config|
+
+  config.vm.box = "phusion/ubuntu-14.04-amd64"
+  config.vm.box_url = "https://oss-binaries.phusionpassenger.com/vagrant/boxes/latest/ubuntu-14.04-amd64-vmwarefusion.box"
+  config.vm.hostname = "rabbitmq.wascally.local"
+
+  config.vm.provider "vmware_fusion" do |v|
+    v.vmx["memsize"] = "1024"
+    v.vmx["numvcpus"] = "1"
+  end
+
+  config.vm.provision :docker do |d|
+    d.build_image "/vagrant/.docker",
+      args: "-t rabbitmq-hashing"
+
+  	d.run "rabbitmq",
+  		image: "rabbitmq-hashing",
+  		args: "-e RABBITMQ_NODENAME=wascally -p 5672:5672 -p 15672:15672"
+  end
+
+  config.vm.provision "shell", run: "always", inline: <<-SHELL
+     docker start rabbitmq
+  SHELL
+
+  config.vm.network "forwarded_port", guest: 5672, host: 5672
+  config.vm.network "forwarded_port", guest: 15672, host: 15672
+
+  config.vm.network "private_network", ip: "192.168.33.11"
+end
