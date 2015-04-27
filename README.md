@@ -407,6 +407,46 @@ rabbit-plugins enable rabbitmq_consistent_hash_exchange
 
 Running gulp will run both sets after every file change and display a coverage summary. To view a detailed report, run gulp coverage once to bring up the browser.
 
+### Vagrant
+
+Wascally now provides a sample `Vagrantfile` that will set up a virtual machine that runs RabbitMQ. Under the hood, it uses the official RabbitMQ Docker image. It will forward RabbitMQ's default ports to `localhost`.
+
+**First, you will need to copy the sample file to a usable file:**
+
+```bash
+$ cp Vagrantfile.sample Vagrantfile
+```
+
+Adjust any necessary settings. Then, from the root of the project, run:
+
+```bash
+$ vagrant up
+```
+
+This will create your box. Right now, it only supports the `vmware_fusion` plugin. To access the box, run:
+
+```bash
+$ vagrant ssh
+```
+
+Once inside, you can view the RabbitMQ logs by executing:
+
+```bash
+$ docker logs rabbitmq
+```
+
+When the Vagrant box is running, RabbitMQ can be accessed at `localhost:5673` and the management console at `http://localhost:15673`. This project uses non-standard ports to avoid conflicting with an existing RabbitMQ install.
+
+Click here for more information on [Vagrant](http://vagrantup.com), [Docker](http://docker.com), and [official RabbitMQ Docker image](https://registry.hub.docker.com/_/rabbitmq/).
+
+*To run tests using Vagrant:*
+
+Execute from the **host machine:**
+
+```bash
+$ vagrant up
+$ gulp
+```
 ### Style
 This project has both an `.editorconfig` and `.esformatter` file to help keep adherance to style simple. Please also take advantage of the `.jshintrc` file and avoid linter warnings.
 

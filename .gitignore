@@ -7,3 +7,5 @@ log/
 *.swo
 coverage/
 plato/
+.vagrant/
+/Vagrantfile
