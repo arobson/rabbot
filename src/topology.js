@@ -1,7 +1,7 @@
 var when = require( 'when' );
 var _ = require( 'lodash' );
 var uuid = require( 'node-uuid' );
-var Monologue = require( 'monologue.js' )( _ );
+var Monologue = require( 'monologue.js' );
 var log = require( './log.js' )( 'wascally:topology' );
 var Exchange, Queue;
 var replyId;
@@ -137,7 +137,7 @@ Topology.prototype.createPrimitive = function( Primitive, primitiveType, options
 	var errorFn = function( err ) {
 		return new Error( 'Failed to create ' + primitiveType + ' \'' + options.name +
 			'\' on connection \'' + this.connection.name +
-			'\' with \'' + ( err.message || err ) + '\'' );
+			'\' with \'' + ( err ? ( err.message || err ) : 'N/A' ) + '\'' );
 	}.bind( this );
 	return when.promise( function( resolve, reject ) {
 		var definitions = primitiveType === 'exchange' ? this.definitions.exchanges : this.definitions.queues;
@@ -256,7 +256,7 @@ Topology.prototype.reset = function() {
 	};
 };
 
-Monologue.mixin( Topology );
+Monologue.mixInto( Topology );
 
 module.exports = function( connection, options, unhandledStrategies, exchangeFsm, queueFsm, defaultId ) {
 	// allows us to optionally provide mocks and control the default queue name

@@ -48,7 +48,7 @@ describe( 'Queue FSM', function() {
 			queue.on( 'failed', function( err ) {
 				error = err;
 				done();
-			} );
+			} ).once();
 		} );
 
 		it( 'should have failed with an error', function() {
@@ -93,10 +93,10 @@ describe( 'Queue FSM', function() {
 			queue.on( 'failed', function( err ) {
 				error = err;
 				done();
-			} );
+			} ).once();
 			queue.on( 'defined', function() {
 				done();
-			} );
+			} ).once();
 		} );
 
 		it( 'should not have failed', function() {
@@ -121,6 +121,10 @@ describe( 'Queue FSM', function() {
 		} );
 
 		describe( 'when checking in ready state', function() {
+			it( 'should be in ready state', function() {
+				return queue.state.should.equal( 'ready' );
+			} );
+
 			it( 'should resolve check without error', function() {
 				return queue.check().should.be.fulfilled;
 			} );
@@ -132,7 +136,7 @@ describe( 'Queue FSM', function() {
 				channelMock
 					.expects( 'define' )
 					.once()
-					.returns( when.resolve() );
+					.resolves();
 
 				queue.on( 'failed', function( err ) {
 					error = err;
@@ -140,7 +144,7 @@ describe( 'Queue FSM', function() {
 				} );
 				queue.on( 'defined', function() {
 					done();
-				} );
+				} ).once();
 
 				ch.factory().channel.raise( 'released' );
 			} );
@@ -156,7 +160,7 @@ describe( 'Queue FSM', function() {
 				channelMock
 					.expects( 'destroy' )
 					.once()
-					.returns( when.resolve() );
+					.resolves();
 
 				return queue.destroy();
 			} );
@@ -176,10 +180,15 @@ describe( 'Queue FSM', function() {
 					channelMock
 						.expects( 'define' )
 						.once()
-						.returns( when.resolve() );
+						.resolves();
+				} );
+
+				it( 'should be destroyed', function() {
+					return queue.state.should.equal( 'destroyed' );
 				} );
 
 				it( 'should redefine queue without errors', function() {
+					this.timeout( 3000 );
 					return queue.check().should.be.fulfilled;
 				} );
 			} );

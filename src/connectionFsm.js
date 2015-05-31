@@ -1,7 +1,7 @@
 var _ = require( 'lodash' );
-var Monologue = require( 'monologue.js' )( _ );
+var Monologue = require( 'monologue.js' );
 var when = require( 'when' );
-var machina = require( 'machina' )( _ );
+var machina = require( 'machina' );
 var log = require( './log.js' )( 'wascally:connection' );
 
 var Connection = function( options, connectionFn, channelFn ) {
@@ -32,16 +32,14 @@ var Connection = function( options, connectionFn, channelFn ) {
 		},
 
 		close: function( reset ) {
-			return when.promise( function( resolve ) {
-				this.once( 'closed', function() {
-					if ( reset ) {
-						queues = [];
-						exchanges = [];
-					}
-					resolve();
-				}.bind( this ) );
-				this.handle( 'close' );
-			}.bind( this ) );
+			var deferred = when.defer();
+			this.handle( 'close', deferred );
+			return deferred.promise.then( function() {
+				if( reset ) {
+					queues = [];
+					exchanges = [];
+				}
+			} );
 		},
 
 		createChannel: function( confirm ) {
@@ -50,15 +48,9 @@ var Connection = function( options, connectionFn, channelFn ) {
 		},
 
 		connect: function() {
-			return when.promise( function( resolve ) {
-				this.once( 'connected', function() {
-					resolve();
-				} );
-				this.once( 'already-connected', function() {
-					resolve();
-				} );
-				this.handle( 'connect' );
-			}.bind( this ) );
+			var deferred = when.defer();
+			this.handle( 'connect', deferred );
+			return deferred.promise;
 		},
 
 		lastError: function() {
@@ -88,10 +80,11 @@ var Connection = function( options, connectionFn, channelFn ) {
 					this.transition( 'connected' );
 				},
 				'close': function() {
-					this.transition( 'closed' );
-					connection.release();
+					this.deferUntilTransition( 'connected' );
+					this.transition( 'connected' );
 				},
 				'connect': function() {
+					this.deferUntilTransition( 'connected' );
 					this.transition( 'connecting' );
 				},
 				'failed': function( err ) {
@@ -109,8 +102,11 @@ var Connection = function( options, connectionFn, channelFn ) {
 					this.transition( 'connected' );
 				},
 				'close': function() {
-					this.transition( 'closed' );
-					connection.release();
+					this.deferUntilTransition( 'connected' );
+					this.transition( 'connected' );
+				},
+				'connect': function() {
+					this.deferUntilTransition( 'connected' );
 				},
 				'failed': function( err ) {
 					this.transition( 'failed' );
@@ -133,9 +129,11 @@ var Connection = function( options, connectionFn, channelFn ) {
 					this.transition( 'connecting' );
 				},
 				'close': function() {
+					this.deferUntilTransition( 'closed' );
 					this.transition( 'closing' );
 				},
-				'connect': function() {
+				'connect': function( deferred ) {
+					deferred.resolve();
 					this.emit( 'already-connected', connection );
 				}
 			},
@@ -147,11 +145,13 @@ var Connection = function( options, connectionFn, channelFn ) {
 				'acquiring': function() {
 					this.transition( 'connecting' );
 				},
-				'close': function() {
+				'close': function( deferred ) {
+					deferred.resolve();
 					connection.release();
 					this.emit( 'closed' );
 				},
 				'connect': function() {
+					this.deferUntilTransition( 'connected' );
 					this.transition( 'connecting' );
 				},
 				'failed': function( err ) {
@@ -170,22 +170,29 @@ var Connection = function( options, connectionFn, channelFn ) {
 					} else {
 						this._closer();
 					}
+				},
+				'connect': function() {
+					this.deferUntilTransition( 'closed' );
+				},
+				close: function() {
+					this.deferUntilTransition( 'closed' );
 				}
 			},
-
 			'failed': {
-				'close': function() {
+				'close': function( deferred ) {
+					deferred.resolve();
 					connection.destroy();
 					this.emit( 'closed' );
 				},
 				'connect': function() {
+					this.deferUntilTransition( 'connected' );
 					this.transition( 'connecting' );
 				}
 			}
 		}
 	} );
 
-	Monologue.mixin( Fsm );
+	Monologue.mixInto( Fsm );
 	return new Fsm();
 };
 

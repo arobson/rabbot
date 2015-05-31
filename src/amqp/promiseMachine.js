@@ -1,7 +1,7 @@
 var _ = require( 'lodash' );
-var Monologue = require( 'monologue.js' )( _ );
+var Monologue = require( 'monologue.js' );
 var when = require( 'when' );
-var machina = require( 'machina' )( _ );
+var machina = require( 'machina' );
 var log = require( '../log.js' )( 'wascally:iomonad' );
 
 var staticId = 0;
@@ -182,7 +182,7 @@ module.exports = function( factory, target, release, disposalEvent ) {
 		}
 	} );
 
-	Monologue.mixin( PromiseMachine );
+	Monologue.mixInto( PromiseMachine );
 	var machine = new PromiseMachine();
 	_.each( target.prototype, function( prop, name ) {
 		if ( _.isFunction( prop ) ) {

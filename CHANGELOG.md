@@ -1,5 +1,10 @@
 ## 0.2.*
 
+### 0.2.6
+ * Bug fix - calling destroy on a queue or exchange should defer until they are in ready state.
+ * Update machine and monologue versions
+ * Remove when.promise and event handles in favor of deferred promises and transitions
+
 ### 0.2.5
 
  * #65 - Bug Fix: setting replyQueue to false caused publish to fail silently.
