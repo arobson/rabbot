@@ -96,7 +96,7 @@ describe( 'Connection FSM', function() {
 				before( function( done ) {
 					connection.on( 'failed', function() {
 						done();
-					} );
+					} ).once();
 					connection.on( 'acquiring', function() {
 						monad.raise( 'failed', new Error( 'bummer' ) );
 					} );

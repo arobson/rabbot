@@ -46,7 +46,7 @@ describe( 'Exchange FSM', function() {
 			exchange.on( 'failed', function( err ) {
 				error = err;
 				done();
-			} );
+			} ).once();
 		} );
 
 		it( 'should have failed with an error', function() {
@@ -90,10 +90,10 @@ describe( 'Exchange FSM', function() {
 			exchange.on( 'failed', function( err ) {
 				error = err;
 				done();
-			} );
+			} ).once();
 			exchange.on( 'defined', function() {
 				done();
-			} );
+			} ).once();
 		} );
 
 		it( 'should not have failed', function() {
@@ -134,10 +134,10 @@ describe( 'Exchange FSM', function() {
 				exchange.on( 'failed', function( err ) {
 					error = err;
 					done();
-				} );
+				} ).once();
 				exchange.on( 'defined', function() {
 					done();
-				} );
+				} ).once();
 
 				ch.factory().channel.raise( 'released' );
 			} );
@@ -186,7 +186,7 @@ describe( 'Exchange FSM', function() {
 
 					exchange.on( 'defined', function() {
 						topology.raise( 'bindings-completed' );
-					} );
+					} ).once();
 
 					return exchange.publish( {} );
 				} );

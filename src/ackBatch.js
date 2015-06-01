@@ -1,6 +1,6 @@
 var _ = require( 'lodash' );
 var postal = require( 'postal' );
-var Monologue = require( 'monologue.js' )( _ );
+var Monologue = require( 'monologue.js' );
 var signal = postal.channel( 'rabbit.ack' );
 var log = require( './log.js' )( 'wascally:acknack' );
 
@@ -223,6 +223,6 @@ AckBatch.prototype.listenForSignal = function() {
 	}
 };
 
-Monologue.mixin( AckBatch );
+Monologue.mixInto( AckBatch );
 
 module.exports = AckBatch;

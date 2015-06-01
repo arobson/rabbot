@@ -1,5 +1,5 @@
 var _ = require( 'lodash' );
-var Monologue = require( 'monologue.js' )( _ );
+var Monologue = require( 'monologue.js' );
 var when = require( 'when' );
 var connectionFn = require( './connectionFsm.js' );
 var topologyFn = require( './topology.js' );
@@ -234,7 +234,7 @@ Broker.prototype.startSubscription = function( queueName, connectionName ) {
 
 require( './config.js' )( Broker );
 
-Monologue.mixin( Broker );
+Monologue.mixInto( Broker );
 
 var broker = new Broker();
 

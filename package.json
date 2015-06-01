@@ -1,11 +1,11 @@
 {
   "name": "wascally",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Abstractions to simplify working with the wascally wabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/leankit-labs/wascally",
   "scripts": {
-    "test": "gulp coverage"
+    "test": "gulp test-and-exit"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
@@ -46,20 +46,21 @@
       "url": "http://blog.bispooliveira.de"
     }
   ],
-  "license": "MIT License - http://opensource.org/licenses/MIT",
+  "license": "MIT",
   "devDependencies": {
-    "gulp": "~3.8.1",
     "biggulp": "0.*.*",
     "chai": "^2.0.0",
     "chai-as-promised": "^4.2.0",
-    "sinon": "^1.12.2"
+    "gulp": "~3.8.1",
+    "sinon": "^1.12.2",
+    "sinon-as-promised": "^3.0.0"
   },
   "dependencies": {
     "amqplib": "~0.3.0",
     "debug": "^2.1.1",
     "lodash": "~2.4.1",
-    "machina": "^0.3.6",
-    "monologue.js": "~0.1.4",
+    "machina": "~1.0.1",
+    "monologue.js": "~0.3.3",
     "node-uuid": "^1.4.1",
     "postal": "1.0.*",
     "when": "~3.0.0",

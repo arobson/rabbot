@@ -1,7 +1,8 @@
 var _ = require( 'lodash' );
 var when = require( 'when' );
-var machina = require( 'machina' )( _ );
-var Monologue = require( 'monologue.js' )( _ );
+var machina = require( 'machina' );
+var Monologue = require( 'monologue.js' );
+Monologue.mixInto( machina.Fsm );
 var log = require( './log.js' )( 'wascally:queue' );
 
 var Channel = function( options, connection, topology, channelFn ) {
@@ -17,24 +18,20 @@ var Channel = function( options, connection, topology, channelFn ) {
 		handlers: [],
 
 		check: function() {
-			return when.promise( function( resolve, reject ) {
-				this.on( 'defined', function() {
-					resolve();
-				} ).once();
-				this.on( 'failed', function( err ) {
-					reject( err );
-				} ).once();
-				this.handle( 'check' );
-			}.bind( this ) );
+			var deferred = when.defer();
+			this.handle( 'check', deferred );
+			return deferred.promise;
 		},
 
 		destroy: function() {
-			log.debug( 'Destroy called on queue %s - %s (%d messages pending)',
-				this.name, connection.name, this.channel.getMessageCount() );
-			return this.channel.destroy()
-				.then( function() {
-					this.transition( 'destroyed' );
-				}.bind( this ) );
+			return when.promise( function( resolve ) {
+				log.debug( 'Destroy called on queue %s - %s (%d messages pending)',
+					this.name, connection.name, this.channel.getMessageCount() );
+				this.on( 'destroyed', function() {
+					resolve();
+				} ).once();
+				this.handle( 'destroy' );
+			}.bind( this ) );
 		},
 
 		subscribe: function() {
@@ -63,12 +60,18 @@ var Channel = function( options, connection, topology, channelFn ) {
 					_.each( this.handlers, function( handle ) {
 						handle.unsubscribe();
 					} );
-					this.channel = undefined;
+					this.channel.destroy()
+						.then( function() {
+							this.channel = undefined;
+							this.emit( 'destroyed' );
+						}.bind( this ) );
+				},
+				destroy: function() {
 					this.emit( 'destroyed' );
 				},
 				check: function() {
-					this.transition( 'initializing' );
 					this.deferUntilTransition( 'ready' );
+					this.transition( 'initializing' );
 				},
 			},
 			'failed': {
@@ -76,8 +79,13 @@ var Channel = function( options, connection, topology, channelFn ) {
 					this.emit( 'failed', this.failedWith );
 					this.channel = undefined;
 				},
-				check: function() {
-					this.emit( 'failed', this.failedWith );
+				check: function( deferred ) {
+					if( deferred ) {
+						deferred.reject( this.failedWith );
+					}
+				},
+				destroy: function() {
+					this.deferUntilTransition( 'ready' );
 				},
 				subscribe: function() {
 					this.emit( 'failed', this.failedWith );
@@ -102,6 +110,9 @@ var Channel = function( options, connection, topology, channelFn ) {
 				check: function() {
 					this.deferUntilTransition( 'ready' );
 				},
+				destroy: function() {
+					this.deferUntilTransition( 'ready' );
+				},
 				released: function() {
 					this.channel.destroy( true );
 					this.transition( 'initializing' );
@@ -114,8 +125,11 @@ var Channel = function( options, connection, topology, channelFn ) {
 				_onEnter: function() {
 					this.emit( 'defined' );
 				},
-				check: function() {
-					this.emit( 'defined' );
+				check: function( deferred ) {
+					deferred.resolve();
+				},
+				destroy: function() {
+					this.transition( 'destroyed' );
 				},
 				released: function() {
 					this.channel.destroy( true );
@@ -135,7 +149,6 @@ var Channel = function( options, connection, topology, channelFn ) {
 		}
 	} );
 
-	Monologue.mixin( Fsm );
 	var fsm = new Fsm();
 	fsm.receivedMessages = fsm.channel.messages;
 	connection.addQueue( fsm );
