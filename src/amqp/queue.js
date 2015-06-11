@@ -224,7 +224,16 @@ function subscribe( channelName, channel, topology, messages, options ) {
 		};
 
 		if ( raw.fields.routingKey === topology.replyQueue.name ) {
-			responses.publish( correlationId, raw, onPublish );
+			responses.publish(
+				{
+					topic: correlationId,
+					headers: {
+						resolverNoCache: true
+					},
+					data: raw
+				},
+				onPublish
+			);
 		} else {
 			dispatch.publish( raw.type, raw, onPublish );
 		}
