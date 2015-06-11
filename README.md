@@ -402,7 +402,7 @@ PRs with insufficient coverage, broken tests or deviation from the style will no
 PRs should include modified or additional test coverage in both integration and behavioral specs. Integration tests assume RabbitMQ is running on localhost with guest/guest credentials and the consistent hash exchange plugin enabled. You can enable the plugin with the following command:
 
 ```bash
-rabbit-plugins enable rabbitmq_consistent_hash_exchange
+rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
 ```
 
 Running gulp will run both sets after every file change and display a coverage summary. To view a detailed report, run gulp coverage once to bring up the browser.
