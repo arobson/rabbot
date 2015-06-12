@@ -1,5 +1,8 @@
 ## 0.2.*
 
+### 0.2.7
+ * Bug fix - correct memory leak in req/res by leveraging new postal feature
+
 ### 0.2.6
  * Bug fix - calling destroy on a queue or exchange should defer until they are in ready state.
  * Update machine and monologue versions
