@@ -42,6 +42,20 @@ var connectionMonadFn = function() {
 
 describe( 'Connection FSM', function() {
 
+	describe( 'when configuration has getter', function() {
+		it( 'should not throw exception', function() {
+			expect( function() {
+				connectionFn( { get: function( property ) {
+					var value = this[ property ];
+					if (value === undefined) {
+						throw new Error('Configuration property "' + property + '" is not defined');
+					}
+					return value;
+				} } );
+			} ).to.not.throw( Error );
+		} );
+	} );
+
 	describe( 'when connection is unavailable (failed)', function() {
 
 		describe( 'when connecting', function() {

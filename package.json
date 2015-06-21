@@ -1,6 +1,6 @@
 {
   "name": "wascally",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Abstractions to simplify working with the wascally wabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/leankit-labs/wascally",

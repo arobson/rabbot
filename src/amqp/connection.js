@@ -6,8 +6,15 @@ var AmqpConnection = require( 'amqplib/lib/callback_model' ).CallbackModel;
 var promiseFn = require( './promiseMachine.js' );
 var log = require( '../log.js' )( 'wascally:amqp-connection' );
 
+function getArgs( fn ) {
+	var fnString = fn.toString();
+	return _.map( /[(]([^)]*)[)]/.exec( fnString )[ 1 ].split( ',' ), function( x ) {
+		return String.prototype.trim.bind( x )();
+	} );
+}
+
 function getOption( opts, key, alt ) {
-	if ( opts.get ) {
+	if ( opts.get && supportsDefaults( opts.get ) ) {
 		return opts.get( key, alt );
 	} else {
 		return opts[ key ] || alt;
@@ -28,6 +35,10 @@ function split( x ) {
 	} else {
 		return x.split( ',' ).map( trim );
 	}
+}
+
+function supportsDefaults( opts ) {
+	return opts.get && getArgs( opts.get ).length > 1;
 }
 
 function trim( x ) {

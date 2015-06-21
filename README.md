@@ -27,6 +27,11 @@ This library implements promises for many of the calls via when.js.
 
 ## Sending & Receiving Messages
 
+### Publish
+The publish call returns a promise that is only resolved once the broker has accepted responsibility for the message (see [Publisher Acknowledgments](https://www.rabbitmq.com/confirms.html) for more details). In the rare event that the broker rejects the message, the promise will be rejected. More commonly, the connection to the broker could be lost before the message is confirmed and you end up with a message in "limbo". Wascally keeps a list of unconfirmed messages that have been published _in memory only_. Once a connection is re-established and the topology is in place, Wascally will prioritize re-sending these messages before sending anything else.
+
+In the event of a disconnect, all publish promises that have not been resolved are rejected. __This behavior is a problematic over-simplification and subject to change in a future release.__
+
 ### publish( exchangeName, options, [connectionName] )
 This syntax uses an options object rather than arguments, here's an example showing all of the available properties:
 
