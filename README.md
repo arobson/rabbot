@@ -181,6 +181,35 @@ rabbit.rejectUnhandled();
 
 Starts a consumer on the queue specified. `connectionName` is optional and only required if subscribing to a queue on a connection other than the default one.
 
+## Message Format
+The following structure shows and briefly explains the format of the message that is passed to the handle callback:
+
+```javascript
+{
+	// metadata specific to routing & delivery
+	fields: {
+		consumerTag: "", // identifies the consumer to rabbit
+		deliveryTag: #, // identifies the message delivered for rabbit
+		redelivered: true|false, // indicates if the message was previously nacked or returned to the queue
+		exchange: "" // name of exchange the message was published to,
+		routingKey: "" // the routing key (if any) used when published
+	},
+	properties:{
+		contentType: "application/json", // wascally's default
+		contentEncoding: "utf8", // wascally's default
+		headers: {}, // any user provided headers
+		correlationId: "", // the correlation id if provided
+		replyTo: "", // the reply queue would go here
+		messageId: "", // message id if provided
+		type: "", // the type of the message published
+		appId: "" // not used by wascally
+	},
+	content: { "type": "Buffer", "data": [ ... ] }, // raw buffer of message body
+	body: , // this could be an object, string, etc - whatever was published
+	type: "" // this also contains the type of the message published
+}
+```
+
 ## Message API
 Wascally defaults to (and assumes) queues are in ack mode. It batches ack and nack operations in order to improve total throughput. Ack/Nack calls do not take effect immediately.
 
