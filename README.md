@@ -27,6 +27,11 @@ This library implements promises for many of the calls via when.js.
 
 ## Sending & Receiving Messages
 
+### Publish
+The publish call returns a promise that is only resolved once the broker has accepted responsibility for the message (see [Publisher Acknowledgments](https://www.rabbitmq.com/confirms.html) for more details). In the rare event that the broker rejects the message, the promise will be rejected. More commonly, the connection to the broker could be lost before the message is confirmed and you end up with a message in "limbo". Wascally keeps a list of unconfirmed messages that have been published _in memory only_. Once a connection is re-established and the topology is in place, Wascally will prioritize re-sending these messages before sending anything else.
+
+In the event of a disconnect, all publish promises that have not been resolved are rejected. __This behavior is a problematic over-simplification and subject to change in a future release.__
+
 ### publish( exchangeName, options, [connectionName] )
 This syntax uses an options object rather than arguments, here's an example showing all of the available properties:
 
@@ -175,6 +180,35 @@ rabbit.rejectUnhandled();
 > Recommendation: set handlers for anticipated types up before starting subscriptions.
 
 Starts a consumer on the queue specified. `connectionName` is optional and only required if subscribing to a queue on a connection other than the default one.
+
+## Message Format
+The following structure shows and briefly explains the format of the message that is passed to the handle callback:
+
+```javascript
+{
+	// metadata specific to routing & delivery
+	fields: {
+		consumerTag: "", // identifies the consumer to rabbit
+		deliveryTag: #, // identifies the message delivered for rabbit
+		redelivered: true|false, // indicates if the message was previously nacked or returned to the queue
+		exchange: "" // name of exchange the message was published to,
+		routingKey: "" // the routing key (if any) used when published
+	},
+	properties:{
+		contentType: "application/json", // wascally's default
+		contentEncoding: "utf8", // wascally's default
+		headers: {}, // any user provided headers
+		correlationId: "", // the correlation id if provided
+		replyTo: "", // the reply queue would go here
+		messageId: "", // message id if provided
+		type: "", // the type of the message published
+		appId: "" // not used by wascally
+	},
+	content: { "type": "Buffer", "data": [ ... ] }, // raw buffer of message body
+	body: , // this could be an object, string, etc - whatever was published
+	type: "" // this also contains the type of the message published
+}
+```
 
 ## Message API
 Wascally defaults to (and assumes) queues are in ack mode. It batches ack and nack operations in order to improve total throughput. Ack/Nack calls do not take effect immediately.
