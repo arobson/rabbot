@@ -201,7 +201,7 @@ function subscribe( channelName, channel, topology, messages, options ) {
 		raw.nack = ops.nack;
 		raw.reject = ops.reject;
 		raw.reply = getReply( channel, raw, topology.replyQueue.name, topology.connection.name );
-		raw.type = raw.properties.type;
+		raw.type = _.isEmpty( raw.properties.type ) ? raw.fields.routingKey : raw.properties.type;
 
 		var onPublish = function( data ) {
 			var handled;

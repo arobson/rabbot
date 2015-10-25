@@ -103,7 +103,9 @@ rabbit.request( 'request.exchange', {
 
 ### handle( typeName, handler, [context] )
 
-> Handle calls should happen __before__ starting subscriptions.
+> Notes:
+> * Handle calls should happen __before__ starting subscriptions.
+> * The message's routing key will be used if the type is missing or empty on incoming messages
 
 Message handlers are registered to handle a message based on the typeName. Calling handle will return a reference to the handler that can later be removed. The message that is passed to the handler is the raw Rabbit payload. The body property contains the message body published. The message has `ack`, `nack` (requeue the message) and `reject` (don't requeue the message) methods control what Rabbit does with the message.
 

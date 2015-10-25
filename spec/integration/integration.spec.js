@@ -478,6 +478,33 @@ describe( 'Integration Test Suite', function() {
 		} );
 	} );
 
+	describe( 'with no type present', function() {
+		var harness;
+		before( function( done ) {
+			harness = harnessFn( done, 1 );
+			harness.handle( '#.typeless' );
+			rabbit.publish( 'wascally-ex.topic', { type: '', routingKey: 'this.is.typeless', body: 'one' } );
+		} );
+
+		it( 'should handle based on topic', function() {
+			var results = _.map( harness.received, function( m ) {
+				return {
+					body: m.body,
+					key: m.fields.routingKey
+				};
+			} );
+			_.sortBy( results, 'body' ).should.eql(
+				[
+					{ body: 'one', key: 'this.is.typeless' }
+				] );
+		} );
+
+		after( function() {
+			harness.clean();
+		} );
+	} );
+
+
 
 	after( function() {
 		this.timeout( 5000 );

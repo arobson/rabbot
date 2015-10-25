@@ -1,7 +1,11 @@
 ## 0.2.*
 
 ### Next
+ * Fall back to routing key if no type is provided for routing
  * Update amqplib dependnecy to 0.4.0 to support Node 4
+ * Add explanation of connection events
+ * Add test coverage for wildcards in handle
+ * Change log namespaces to use '.' delimiter instead of ':'
 
 ### 0.2.8
  * Bug fix - Resolve issue #64 working with node-config no longer throws exceptions by avoiding `get` call
