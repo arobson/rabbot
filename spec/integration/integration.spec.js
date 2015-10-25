@@ -442,6 +442,43 @@ describe( 'Integration Test Suite', function() {
 		} );
 	} );
 
+	describe( 'with wild card type handling', function() {
+		var harness;
+		before( function( done ) {
+			harness = harnessFn( done, 3 );
+			harness.handle( '#.a' );
+			rabbit.publish( 'wascally-ex.topic', { type: 'one.a', routingKey: 'this.is.one', body: 'one' } );
+			rabbit.publish( 'wascally-ex.topic', { type: 'two.i.a', routingKey: 'this.is.two', body: 'two' } );
+			rabbit.publish( 'wascally-ex.topic', { type: 'three-b.a', routingKey: 'this.is.three', body: 'three' } );
+			rabbit.publish( 'wascally-ex.topic', { type: 'a.four', routingKey: 'this.is.four', body: 'four' } );
+		} );
+
+		it( 'should handle all message types ending in "a"', function() {
+			var results = _.map( harness.received, function( m ) {
+				return {
+					body: m.body,
+					key: m.fields.routingKey
+				};
+			} );
+			_.sortBy( results, 'body' ).should.eql(
+				[
+					{ body: 'one', key: 'this.is.one' },
+					{ body: 'three', key: 'this.is.three' },
+					{ body: 'two', key: 'this.is.two' }
+				] );
+		} );
+
+		it( 'should not handle message types that don\'t match the pattern', function() {
+			harness.unhandled.length.should.equal( 1 );
+			harness.unhandled[ 0 ].body.should.eql( 'four' );
+		} );
+
+		after( function() {
+			harness.clean();
+		} );
+	} );
+
+
 	after( function() {
 		this.timeout( 5000 );
 		rabbit.deleteExchange( 'wascally-ex.deadend' ).then( function() {} );
