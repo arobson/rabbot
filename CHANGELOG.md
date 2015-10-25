@@ -1,6 +1,7 @@
 ## 0.2.*
 
 ### Next
+ * No-op duplicate exchange, queue and binding declarations
  * Fall back to routing key if no type is provided for routing
  * Update amqplib dependnecy to 0.4.0 to support Node 4
  * Add explanation of connection events
