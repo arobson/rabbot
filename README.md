@@ -25,6 +25,23 @@ This is a very opinionated abstraction over amqplib to help simplify certain com
 # API Reference
 This library implements promises for many of the calls via when.js.
 
+## Connectivity Events
+Wascally emits both generic and specific connectivity events that you can bind to in order to handle various states:
+
+* Any Connection
+ * `connected`
+ * `closed`
+ * `failed`
+* Specific Connection
+ * `[connectionName].connected.opened`
+ * `[connectionName].connected.closed`
+ * `[connectionName].connected.failed`
+
+The connection object is passed to the event handler for each event. Use the `name` property of the connection object to determine which connection the generic events fired for.
+
+> !IMPORTANT! - wascally handles connectivity for you, mucking about with the connection directly isn't supported (don't do it).
+
+
 ## Sending & Receiving Messages
 
 ### Publish
