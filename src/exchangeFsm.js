@@ -3,7 +3,7 @@ var when = require( 'when' );
 var machina = require( 'machina' );
 var Monologue = require( 'monologue.js' );
 var publishLog = require( './publishLog' );
-var exLog = require( './log.js' )( 'wascally:exchange' );
+var exLog = require( './log.js' )( 'wascally.exchange' );
 
 var Channel = function( options, connection, topology, channelFn ) {
 

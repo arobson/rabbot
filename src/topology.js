@@ -2,7 +2,7 @@ var when = require( 'when' );
 var _ = require( 'lodash' );
 var uuid = require( 'node-uuid' );
 var Monologue = require( 'monologue.js' );
-var log = require( './log.js' )( 'wascally:topology' );
+var log = require( './log.js' )( 'wascally.topology' );
 var Exchange, Queue;
 var replyId;
 

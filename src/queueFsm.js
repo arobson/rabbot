@@ -3,7 +3,7 @@ var when = require( 'when' );
 var machina = require( 'machina' );
 var Monologue = require( 'monologue.js' );
 Monologue.mixInto( machina.Fsm );
-var log = require( './log.js' )( 'wascally:queue' );
+var log = require( './log.js' )( 'wascally.queue' );
 
 var Channel = function( options, connection, topology, channelFn ) {
 

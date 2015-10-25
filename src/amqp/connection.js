@@ -4,7 +4,7 @@ var fs = require( 'fs' );
 var when = require( 'when' );
 var AmqpConnection = require( 'amqplib/lib/callback_model' ).CallbackModel;
 var promiseFn = require( './promiseMachine.js' );
-var log = require( '../log.js' )( 'wascally:amqp-connection' );
+var log = require( '../log.js' )( 'wascally.amqp-connection' );
 
 function getArgs( fn ) {
 	var fnString = fn.toString();

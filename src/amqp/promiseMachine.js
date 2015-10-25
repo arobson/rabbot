@@ -2,7 +2,7 @@ var _ = require( 'lodash' );
 var Monologue = require( 'monologue.js' );
 var when = require( 'when' );
 var machina = require( 'machina' );
-var log = require( '../log.js' )( 'wascally:iomonad' );
+var log = require( '../log.js' )( 'wascally.iomonad' );
 
 var staticId = 0;
 

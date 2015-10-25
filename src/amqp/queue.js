@@ -4,9 +4,9 @@ var postal = require( 'postal' );
 var dispatch = postal.channel( 'rabbit.dispatch' );
 var responses = postal.channel( 'rabbit.responses' );
 var when = require( 'when' );
-var log = require( '../log.js' )( 'wascally:amqp-queue' );
-var topLog = require( '../log.js' )( 'wascally:topology' );
-var unhandledLog = require( '../log.js' )( 'wascally:unhandled' );
+var log = require( '../log.js' )( 'wascally.amqp-queue' );
+var topLog = require( '../log.js' )( 'wascally.topology' );
+var unhandledLog = require( '../log.js' )( 'wascally.unhandled' );
 var noOp = function() {};
 
 function aliasOptions( options, aliases ) {

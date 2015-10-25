@@ -2,7 +2,7 @@ var _ = require( 'lodash' );
 var postal = require( 'postal' );
 var Monologue = require( 'monologue.js' );
 var signal = postal.channel( 'rabbit.ack' );
-var log = require( './log.js' )( 'wascally:acknack' );
+var log = require( './log.js' )( 'wascally.acknack' );
 
 var calls = {
 	ack: '_ack',

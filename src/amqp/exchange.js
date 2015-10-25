@@ -1,7 +1,7 @@
 var _ = require( 'lodash' );
 var when = require( 'when' );
-var exLog = require( '../log.js' )( 'wascally:exchange' );
-var topLog = require( '../log.js' )( 'wascally:topology' );
+var exLog = require( '../log.js' )( 'wascally.exchange' );
+var topLog = require( '../log.js' )( 'wascally.topology' );
 
 function aliasOptions( options, aliases ) {
 	var aliased = _.transform( options, function( result, value, key ) {
