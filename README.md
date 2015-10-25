@@ -320,6 +320,7 @@ Options is a hash that can contain the following:
  * messageTtl		2^32			time in ms before a message expires on the queue
  * expires			2^32			time in ms before a queue with 0 consumers expires
  * deadLetter 		'dlx.exchange'	the exchange to dead-letter messages to
+ * maxPriority		2^8				the highest priority this queue supports
 
 ### bindExchange( sourceExchange, targetExchange, [routingKeys], [connectionName] )
 Binds the target exchange to the source exchange. Messages flow from source to target.

@@ -60,7 +60,7 @@
     "sinon-as-promised": "^3.0.0"
   },
   "dependencies": {
-    "amqplib": "~0.3.0",
+    "amqplib": "~0.4.0",
     "debug": "^2.1.1",
     "lodash": "~2.4.1",
     "machina": "~1.0.1",

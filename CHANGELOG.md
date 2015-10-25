@@ -1,5 +1,8 @@
 ## 0.2.*
 
+### Next
+ * Update amqplib dependnecy to 0.4.0 to support Node 4
+
 ### 0.2.8
  * Bug fix - Resolve issue #64 working with node-config no longer throws exceptions by avoiding `get` call
  * Minor improvement to README to better explain publish promises
