@@ -45,9 +45,11 @@ The connection object is passed to the event handler for each event. Use the `na
 ## Sending & Receiving Messages
 
 ### Publish
-The publish call returns a promise that is only resolved once the broker has accepted responsibility for the message (see [Publisher Acknowledgments](https://www.rabbitmq.com/confirms.html) for more details). In the rare event that the broker rejects the message, the promise will be rejected. More commonly, the connection to the broker could be lost before the message is confirmed and you end up with a message in "limbo". Wascally keeps a list of unconfirmed messages that have been published _in memory only_. Once a connection is re-established and the topology is in place, Wascally will prioritize re-sending these messages before sending anything else.
+The publish call returns a promise that is only resolved once the broker has accepted responsibility for the message (see [Publisher Acknowledgments](https://www.rabbitmq.com/confirms.html) for more details). If a configured timeout is reached, or in the rare event that the broker rejects the message, the promise will be rejected. More commonly, the connection to the broker could be lost before the message is confirmed and you end up with a message in "limbo". Wascally keeps a list of unconfirmed messages that have been published _in memory only_. Once a connection is re-established and the topology is in place, Wascally will prioritize re-sending these messages before sending anything else.
 
 In the event of a disconnect, all publish promises that have not been resolved are rejected. __This behavior is a problematic over-simplification and subject to change in a future release.__
+
+Publish timeouts can be set per message, per exchange or per connection. The most specific value overrides any set at a higher level. There are no default timeouts set at any level. The timer is started as soon as publish is called and only cancelled once wascally is able to make the publish call on the actual exchange's channel. The timeout is cancelled once publish is called and will not result in a rejected promise due to time spent waiting on a confirmation.
 
 ### publish( exchangeName, options, [connectionName] )
 This syntax uses an options object rather than arguments, here's an example showing all of the available properties:
@@ -63,7 +65,8 @@ rabbit.publish( 'exchange.name', {
 		timestamp: // posix timestamp (long)
 		headers: {
 			'random': 'application specific value'
-		}
+		},
+		timeout: // ms to wait before cancelling the publish and rejecting the promise
 	},
 	connectionName: '' // another optional way to provide connection name if needed
 );
@@ -266,7 +269,8 @@ rabbit.addConnection( {
 	server: '127.0.0.1',
 	port: 5672,
 	timeout: 2000,
-	vhost: '%2f'
+	vhost: '%2f',
+	publishTimeout: undefined // the default timeout in milliseconds for a publish call
 } );
 ```
 
@@ -323,6 +327,7 @@ Options is a hash that can contain the following:
  * durable 			true|false		survive broker restarts
  * persistent 		true|false		a.k.a. persistent delivery, messages saved to disk
  * alternate 		'alt.exchange'	define an alternate exchange
+ * publishTimeout	2^32			timeout in milliseconds for publish calls to this exchange
 
 ### addQueue( queueName, [options], [connectionName] )
 The call returns a promise that can be used to determine when the queue has been created on the server.
@@ -363,7 +368,7 @@ This example shows most of the available options described above.
 			vhost: '%2fmyhost'
 			},
 		exchanges:[
-			{ name: 'config-ex.1', type: 'fanout'  },
+			{ name: 'config-ex.1', type: 'fanout', publishTimeout: 1000 },
 			{ name: 'config-ex.2', type: 'topic', alternate: 'alternate-ex.2', persistent: true },
 			{ name: 'dead-letter-ex.2', type: 'fanout' }
 			],

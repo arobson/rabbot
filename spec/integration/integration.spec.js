@@ -74,12 +74,22 @@ describe( 'Integration Test Suite', function() {
 
 				rabbit.addConnection( {
 					name: 'silly',
-					server: 'shfifty-five.gov'
+					server: 'shfifty-five.gov',
+					publishTimeout: 50
 				} );
+
+				rabbit.addExchange( { name: 'silly-ex' }, 'silly' );
 			} );
 
 			it( 'should fail to connect', function() {
 				error.should.equal( 'No endpoints could be reached' );
+			} );
+
+			it( 'should reject publish after timeout', function() {
+				return rabbit.publish( 'silly-ex', { body: 'test' }, 'silly' )
+					.then( null, function( err ) {
+						console.log( err );
+					} );
 			} );
 
 			after( function() {
@@ -503,8 +513,6 @@ describe( 'Integration Test Suite', function() {
 			harness.clean();
 		} );
 	} );
-
-
 
 	after( function() {
 		this.timeout( 5000 );

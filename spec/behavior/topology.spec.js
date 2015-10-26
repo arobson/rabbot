@@ -588,7 +588,7 @@ describe( 'Topology', function() {
 			} );
 		} );
 
-		describe( 'when attempting to create an queue', function() {
+		describe( 'when attempting to create a queue', function() {
 			var topology, conn, error, ex, q;
 
 			before( function() {

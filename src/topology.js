@@ -41,6 +41,7 @@ var Topology = function( connection, options, unhandledStrategies ) {
 		exchanges: {},
 		queues: {}
 	};
+	this.options = options;
 	this.replyQueue = { name: false };
 	this.onUnhandled = function( message ) {
 		return unhandledStrategies.onUnhandled( message );

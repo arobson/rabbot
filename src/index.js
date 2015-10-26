@@ -187,6 +187,10 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 			connectionName: connectionName
 		};
 	}
+	var connection = this.connections[ connectionName ].options;
+	if( connection.publishTimeout ) {
+		options.connectionPublishTimeout = connection.publishTimeout;
+	}
 	return this.getExchange( exchangeName, connectionName )
 		.publish( options );
 };
