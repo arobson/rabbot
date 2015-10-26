@@ -1,5 +1,9 @@
 ## 0.2.*
 
+### 0.2.8
+ * Bug fix - Resolve issue #64 working with node-config no longer throws exceptions by avoiding `get` call
+ * Minor improvement to README to better explain publish promises
+
 ### 0.2.7
  * Bug fix - correct memory leak in req/res by leveraging new postal feature
 
