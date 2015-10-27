@@ -469,7 +469,7 @@ Once inside, you can view the RabbitMQ logs by executing:
 $ docker logs rabbitmq
 ```
 
-When the Vagrant box is running, RabbitMQ can be accessed at `localhost:5673` and the management console at `http://localhost:15673`. This project uses non-standard ports to avoid conflicting with an existing RabbitMQ install.
+When the Vagrant box is running, RabbitMQ can be accessed at `localhost:5672` and the management console at `http://localhost:15672`.
 
 Click here for more information on [Vagrant](http://vagrantup.com), [Docker](http://docker.com), and [official RabbitMQ Docker image](https://registry.hub.docker.com/_/rabbitmq/).
 
