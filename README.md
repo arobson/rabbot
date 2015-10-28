@@ -338,6 +338,8 @@ This example shows most of the available options described above.
 			user: 'guest',
 			pass: 'guest',
 			server: '127.0.0.1',
+			// server: '127.0.0.1, 194.66.82.11',
+			// server: ['127.0.0.1', '194.66.82.11'],
 			port: 5672,
 			timeout: 2000,
 			vhost: '%2fmyhost'
