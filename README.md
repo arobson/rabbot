@@ -262,15 +262,8 @@ Only changes the name of the reply queue that wascally creates - `autoDelete` an
 
 ```javascript
 rabbit.addConnection( {
-	name: 'default',
-	replyQueue: 'myOwnQueue',
-	user: 'guest',
-	pass: 'guest',
-	server: '127.0.0.1',
-	port: 5672,
-	timeout: 2000,
-	vhost: '%2f',
-	publishTimeout: undefined // the default timeout in milliseconds for a publish call
+	// ...
+	replyQueue: 'myOwnQueue'
 } );
 ```
 
@@ -281,18 +274,12 @@ To take full control of the queue name and behavior, provide a queue definition 
 
 ```javascript
 rabbit.addConnection( {
-	name: 'default',
+	// ...
 	replyQueue: {
 		name: 'myOwnQueue',
 		subscribe: 'true',
 		durable: true
-	},
-	user: 'guest',
-	pass: 'guest',
-	server: '127.0.0.1',
-	port: 5672,
-	timeout: 2000,
-	vhost: '%2f'
+	}
 } );
 ```
 
@@ -301,14 +288,42 @@ rabbit.addConnection( {
 
 ```javascript
 rabbit.addConnection( {
-	name: 'default',
-	replyQueue: false,
-	user: 'guest',
-	pass: 'guest',
-	server: '127.0.0.1',
+	// ...
+	replyQueue: false
+} );
+```
+
+## Managing Connections
+
+### addConnection ( options )
+
+The call returns a promise that can be used to determine when the connection to the server has been established.
+
+Options is a hash that can contain the following:
+ * name		String		the name of this connection. Defaults to "default" when not supplied.
+ * server	String		the IP address or DNS name of the RabbitMQ server. Defaults to "localhost"
+ * port		String		the TCP/IP port on which RabbitMQ is listening. Defaults to 5672
+ * vhost	String		the named vhost to use in RabbitMQ. Defaults to the root vhost, '%2f' ("/")
+ * protocol	String		the connection protocol to use. Defaults to 'amqp://'
+ * user		String		the username used for authentication / authorization with this connection. Defaults to 'guest'
+ * pass		String		the password for the specified user. Defaults to 'guest'
+ * timeout	number		how long to wait for a connection to be established. No default value
+ * heartbeat	number	how often the client and server check to see if they can still reach each other, specified in seconds. Defaults to 30 (seconds)
+ * replyQueue	String	the name of the reply queue to use (see above)
+ * publishTimeout	number	the default timeout in milliseconds for a publish call
+
+Note that the "default" connection (by name) is used when any method is called
+without a connection name supplied.
+
+```javascript
+rabbit.addConnection( {
+	user: 'someUser',
+	pass: 'sup3rs3cr3t',
+	server: 'my-rqm.server',
 	port: 5672,
 	timeout: 2000,
-	vhost: '%2f'
+	vhost: '%2f',
+	heartbeat: 10
 } );
 ```
 
