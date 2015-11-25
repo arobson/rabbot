@@ -40,9 +40,11 @@ Broker.prototype.addConnection = function( options ) {
 			this.emit( connection.name + '.connection.opened', connection );
 		}.bind( this ) );
 		connection.on( 'closed', function() {
+			this.emit( 'closed', connection );
 			this.emit( connection.name + '.connection.closed', connection );
 		}.bind( this ) );
 		connection.on( 'failed', function( err ) {
+			this.emit( 'failed', connection );
 			this.emit( name + '.connection.failed', err );
 		}.bind( this ) );
 		this.connections[ name ] = topology;
@@ -184,6 +186,10 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 			headers: {},
 			connectionName: connectionName
 		};
+	}
+	var connection = this.connections[ connectionName ].options;
+	if( connection.publishTimeout ) {
+		options.connectionPublishTimeout = connection.publishTimeout;
 	}
 	return this.getExchange( exchangeName, connectionName )
 		.publish( options );

@@ -2,7 +2,7 @@ var _ = require( 'lodash' );
 var Monologue = require( 'monologue.js' );
 var when = require( 'when' );
 var machina = require( 'machina' );
-var log = require( './log.js' )( 'wascally:connection' );
+var log = require( './log.js' )( 'wascally.connection' );
 
 var Connection = function( options, connectionFn, channelFn ) {
 	channelFn = channelFn || require( './amqp/channel' );

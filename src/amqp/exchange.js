@@ -1,7 +1,7 @@
 var _ = require( 'lodash' );
 var when = require( 'when' );
-var exLog = require( '../log.js' )( 'wascally:exchange' );
-var topLog = require( '../log.js' )( 'wascally:topology' );
+var exLog = require( '../log.js' )( 'wascally.exchange' );
+var topLog = require( '../log.js' )( 'wascally.topology' );
 
 function aliasOptions( options, aliases ) {
 	var aliased = _.transform( options, function( result, value, key ) {
@@ -14,7 +14,7 @@ function aliasOptions( options, aliases ) {
 function define( channel, options, connectionName ) {
 	var valid = aliasOptions( options, {
 		alternate: 'alternateExchange'
-	}, 'persistent' );
+	}, 'persistent', 'publishTimeout' );
 	topLog.info( 'Declaring %s exchange \'%s\' on connection \'%s\' with the options: %s',
 		options.type,
 		options.name,
@@ -69,20 +69,23 @@ function publish( channel, options, topology, log, message ) {
 		channelName,
 		topology.connection.name );
 
-	return channel.publish(
-		channelName,
-		effectiveKey,
-		payload,
-		publishOptions
-		)
-		.then( function() {
-			log.remove( message );
-		} );
+	function remove( x ) {
+		log.remove( message );
+		return x;
+	}
+
+	return when.promise( function( resolve, reject ) {
+		channel.publish(
+			channelName,
+			effectiveKey,
+			payload,
+			publishOptions
+		).then( resolve, reject );
+	} ).then( remove, remove );
 }
 
 module.exports = function( options, topology, publishLog ) {
 	var channel = getChannel( topology.connection );
-
 	return {
 		channel: channel,
 		define: define.bind( undefined, channel, options, topology.connection.name ),

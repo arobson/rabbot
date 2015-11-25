@@ -267,6 +267,50 @@ describe( 'Topology', function() {
 		} );
 	} );
 
+	describe( 'when creating a duplicate exchange', function() {
+		var topology, conn, exchange, ex, q;
+		var calls = 0;
+
+		before( function( done ) {
+			ex = emitter();
+			q = emitter();
+			ex.check = function() {
+				ex.raise( 'defined' );
+				return when.resolve();
+			};
+			var Exchange = function() {
+				calls = calls + 1;
+				return ex;
+			};
+			var Queue = function() {
+				return q;
+			};
+			conn = connectionFn();
+			topology = topologyFn( conn.instance, {}, undefined, Exchange, Queue );
+			topology.createExchange( { name: 'noice' } );
+			topology.createExchange( { name: 'noice' } )
+				.then( function( created ) {
+					exchange = created;
+					done();
+				} );
+			process.nextTick( function() {
+				ex.raise( 'defined' );
+			} );
+		} );
+
+		it( 'should create exchange', function() {
+			exchange.should.eql( ex );
+		} );
+
+		it( 'should not create duplicate exchanges', function() {
+			calls.should.equal( 1 );
+		} );
+
+		it( 'should add exchange to channels', function() {
+			should.exist( topology.channels[ 'exchange:noice' ] );
+		} );
+	} );
+
 	describe( 'when creating invalid exchange', function() {
 		var topology, conn, error, ex, q;
 
@@ -544,7 +588,7 @@ describe( 'Topology', function() {
 			} );
 		} );
 
-		describe( 'when attempting to create an queue', function() {
+		describe( 'when attempting to create a queue', function() {
 			var topology, conn, error, ex, q;
 
 			before( function() {

@@ -4,9 +4,9 @@ var postal = require( 'postal' );
 var dispatch = postal.channel( 'rabbit.dispatch' );
 var responses = postal.channel( 'rabbit.responses' );
 var when = require( 'when' );
-var log = require( '../log.js' )( 'wascally:amqp-queue' );
-var topLog = require( '../log.js' )( 'wascally:topology' );
-var unhandledLog = require( '../log.js' )( 'wascally:unhandled' );
+var log = require( '../log.js' )( 'wascally.amqp-queue' );
+var topLog = require( '../log.js' )( 'wascally.topology' );
+var unhandledLog = require( '../log.js' )( 'wascally.unhandled' );
 var noOp = function() {};
 
 function aliasOptions( options, aliases ) {
@@ -201,7 +201,7 @@ function subscribe( channelName, channel, topology, messages, options ) {
 		raw.nack = ops.nack;
 		raw.reject = ops.reject;
 		raw.reply = getReply( channel, raw, topology.replyQueue.name, topology.connection.name );
-		raw.type = raw.properties.type;
+		raw.type = _.isEmpty( raw.properties.type ) ? raw.fields.routingKey : raw.properties.type;
 
 		var onPublish = function( data ) {
 			var handled;

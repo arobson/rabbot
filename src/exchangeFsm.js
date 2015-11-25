@@ -3,7 +3,7 @@ var when = require( 'when' );
 var machina = require( 'machina' );
 var Monologue = require( 'monologue.js' );
 var publishLog = require( './publishLog' );
-var exLog = require( './log.js' )( 'wascally:exchange' );
+var exLog = require( './log.js' )( 'wascally.exchange' );
 
 var Channel = function( options, connection, topology, channelFn ) {
 
@@ -67,7 +67,16 @@ var Channel = function( options, connection, topology, channelFn ) {
 
 		publish: function( message ) {
 			exLog.info( 'Publish called in state', this.state );
+			var publishTimeout = message.timeout || options.publishTimeout || message.connectionPublishTimeout || 0;
 			return when.promise( function( resolve, reject ) {
+				var timeout, timedOut;
+				if( publishTimeout > 0 ) {
+					timeout = setTimeout( function() {
+						timedOut = true;
+						reject( new Error( 'Publish took longer than configured timeout' ) );
+						this._removeDeferred( reject );
+					}.bind( this ), publishTimeout );
+				}
 				function onPublished() {
 					resolve();
 					this._removeDeferred( reject );
@@ -77,8 +86,14 @@ var Channel = function( options, connection, topology, channelFn ) {
 					this._removeDeferred( reject );
 				}
 				var op = function() {
-					return this.channel.publish( message )
-						.then( onPublished.bind( this ), onRejected.bind( this ) );
+					if( timeout ) {
+						clearTimeout( timeout );
+						timeout = null;
+					}
+					if( !timedOut ) {
+						return this.channel.publish( message )
+							.then( onPublished.bind( this ), onRejected.bind( this ) );
+					}
 				}.bind( this );
 				this.deferred.push( reject );
 				this.handle( 'publish', op );
