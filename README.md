@@ -482,7 +482,7 @@ Adjust any necessary settings. Then, from the root of the project, run:
 $ vagrant up
 ```
 
-This will create your box. Right now, it only supports the `vmware_fusion` plugin. To access the box, run:
+This will create your box. Right now, it supports the `virtualbox` and `vmware_fusion` providers. To access the box, run:
 
 ```bash
 $ vagrant ssh

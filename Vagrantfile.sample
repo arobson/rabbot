@@ -9,6 +9,12 @@ Vagrant.configure(2) do |config|
     v.vmx["numvcpus"] = "1"
   end
 
+  config.vm.provider "virtualbox" do |v, override|
+    override.vm.box_url = "https://vagrantcloud.com/phusion/boxes/ubuntu-14.04-amd64/versions/2014.04.30/providers/virtualbox.box"
+    v.memory = 1024
+    v.cpus = 1
+  end
+
   config.vm.provision :docker do |d|
     d.build_image "/vagrant/.docker",
       args: "-t rabbitmq-hashing"
