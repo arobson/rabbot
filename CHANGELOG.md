@@ -1,6 +1,6 @@
 ## 0.2.*
 
-### Next
+### 0.2.9
  * #91 - Provide publish timeout
  * #98 - No-op duplicate exchange, queue and binding declarations
  * #96 - Fall back to routing key if no type is provided for routing
@@ -8,6 +8,8 @@
  * #77 - Add explanation of connection events
  * #95 - Add test coverage for wildcards in handle
  * Change log namespaces to use '.' delimiter instead of ':'
+ * Add example for VirtualBox in Vagrantfile.sample - thanks, @josephfrazier
+ * Correct configuration and README regarding ports, credentials, and clustering - thanks again, @josephfrazier
 
 ### 0.2.8
  * Bug fix - Resolve issue #64 working with node-config no longer throws exceptions by avoiding `get` call
