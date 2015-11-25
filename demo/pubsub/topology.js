@@ -2,8 +2,8 @@ module.exports = function( rabbit, subscribeTo ) {
 	return rabbit.configure( {
 		// arguments used to establish a connection to a broker
 		connection: {
-			user: 'bunneh',
-			pass: 'rabbit',
+			user: 'guest',
+			pass: 'guest',
 			server: [ '127.0.0.1' ],
 			port: 5672,
 			vhost: '%2f',
