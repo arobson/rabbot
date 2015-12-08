@@ -5,7 +5,6 @@ var connectionFn = require( './connectionFsm.js' );
 var topologyFn = require( './topology.js' );
 var postal = require( 'postal' );
 var uuid = require( 'node-uuid' );
-var log = require( './log.js' );
 var dispatch = postal.channel( 'rabbit.dispatch' );
 var responses = postal.channel( 'rabbit.responses' );
 var signal = postal.channel( 'rabbit.ack' );

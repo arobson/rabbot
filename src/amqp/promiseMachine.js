@@ -106,7 +106,7 @@ module.exports = function( factory, target, release, disposalEvent ) {
 					this._dispose();
 					this.transition( 'released' );
 				},
-				operate: function( call ) {
+				operate: function() {
 					this.deferUntilTransition( 'acquired' );
 				}
 			},
