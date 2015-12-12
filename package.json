@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "repository": "https://github.com/leankit-labs/wascally",
   "scripts": {
+    "lint": "jshint ./",
     "test": "gulp test-and-exit"
   },
   "publishConfig": {

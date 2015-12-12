@@ -3,6 +3,8 @@ var when = require( 'when' );
 var connectionFn = require( '../../src/connectionFsm.js' );
 var noOp = function() {};
 
+/* globals expect */
+
 var connectionMonadFn = function() {
 	var handlers = {};
 

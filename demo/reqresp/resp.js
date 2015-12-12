@@ -1,3 +1,4 @@
+/* jshint unused: false */
 var rabbit = require( '../../src/index' );
 var settings = {
 	connection: {

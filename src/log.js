@@ -5,9 +5,9 @@ var log = configure( {} );
 function configure( config ) {
 	var envDebug = !!process.env.DEBUG;
 	if ( envDebug ) {
-		return Log( postal, { adapters: { debug: { level: 5 } } } );
+		return new Log( postal, { adapters: { debug: { level: 5 } } } );
 	} else {
-		return Log( postal, config );
+		return new Log( postal, config );
 	}
 }
 

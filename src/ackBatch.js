@@ -114,9 +114,7 @@ AckBatch.prototype._resolveAll = function( status, first, last ) {
 			this.emit( 'empty' );
 		}.bind( this ), 0 );
 	}.bind( this );
-	if ( this.messages.length === 0 ) {
-
-	} else {
+	if ( this.messages.length !== 0 ) {
 		var lastTag = this._lastByStatus( status ).tag;
 		log.info( '%s ALL (%d) tags on %s - %s.',
 			status,

@@ -22,7 +22,7 @@ module.exports = function emitter( name ) {
 			handlers[ ev ] = [ handle ];
 		}
 		return { unsubscribe: function( h ) {
-				var r = handlers[ ev ].splice( _.indexOf( handlers[ ev ], h || handle ) );
+				var r = handlers[ ev ].splice( _.indexOf( handlers[ ev ], h || handle ) ); // jshint ignore:line
 			} };
 	}
 
