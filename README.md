@@ -1,4 +1,9 @@
 # Wascally
+
+[![Version npm](https://img.shields.io/npm/v/wascally.svg?style=flat)](https://www.npmjs.com/package/wascally)
+[![npm Downloads](https://img.shields.io/npm/dm/wascally.svg?style=flat)](https://www.npmjs.com/package/wascally)
+[![Dependencies](https://img.shields.io/david/LeanKit-Labs/wascally.svg?style=flat)](https://david-dm.org/LeanKit-Labs/wascally)
+
 This is a very opinionated abstraction over amqplib to help simplify certain common tasks and (hopefully) reduce the effort required to use RabbitMQ in your Node services.
 
 ### Features:
