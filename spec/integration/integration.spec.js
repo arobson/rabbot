@@ -78,7 +78,7 @@ describe( 'Integration Test Suite', function() {
 					publishTimeout: 50
 				} );
 
-				rabbit.addExchange( { name: 'silly-ex' }, 'silly' );
+				rabbit.addExchange( { name: 'silly-ex' }, 'silly' ).then( null, _.noop );
 			} );
 
 			it( 'should fail to connect', function() {

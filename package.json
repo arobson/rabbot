@@ -1,6 +1,6 @@
 {
   "name": "wascally",
-  "version": "0.2.8",
+  "version": "0.2.10",
   "description": "Abstractions to simplify working with the wascally wabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/leankit-labs/wascally",
@@ -27,6 +27,10 @@
       "url": "http://derickbailey.com/"
     },
     {
+      "name": "Joseph Frazier",
+      "url": "https://github.com/josephfrazier"
+    },
+    {
       "name": "John Mathis",
       "url": "http://github.com/JohnDMathis"
     },
@@ -49,26 +53,30 @@
     {
       "name": "Leonardo Bispo de Oliveira",
       "url": "http://blog.bispooliveira.de"
+    },
+    {
+      "name": "Michael Tuttle",
+      "url": "https://github.com/openam"
     }
   ],
   "license": "MIT",
   "devDependencies": {
-    "biggulp": "0.*.*",
-    "chai": "^2.0.0",
-    "chai-as-promised": "^4.2.0",
-    "gulp": "~3.8.1",
-    "sinon": "^1.12.2",
-    "sinon-as-promised": "^3.0.0"
+    "biggulp": "^0.2.2",
+    "chai": "^3.4.1",
+    "chai-as-promised": "^5.1.0",
+    "gulp": "^3.9.0",
+    "sinon": "^1.17.2",
+    "sinon-as-promised": "^4.0.0"
   },
   "dependencies": {
     "amqplib": "~0.4.0",
-    "debug": "^2.1.1",
-    "lodash": "~2.4.1",
-    "machina": "~1.0.1",
-    "monologue.js": "~0.3.3",
-    "node-uuid": "^1.4.1",
-    "postal": "1.0.*",
-    "when": "~3.0.0",
-    "whistlepunk": "0.2.0"
+    "debug": "^2.2.0",
+    "lodash": "^3.10.1",
+    "machina": "^1.1.2",
+    "monologue.js": "^0.3.4",
+    "node-uuid": "^1.4.7",
+    "postal": "^1.0.7",
+    "when": "^3.7.5",
+    "whistlepunk": "^0.3.2"
   }
 }

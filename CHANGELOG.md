@@ -1,5 +1,10 @@
 ## 0.2.*
 
+### 0.2.10
+ * #107 - Correct improper connection timeout configuration and update README
+ * Update dependencies to latest versions
+ * Use latest whistlepunk log api
+
 ### 0.2.9
  * #91 - Provide publish timeout
  * #98 - No-op duplicate exchange, queue and binding declarations

@@ -61,14 +61,18 @@ var Topology = function( connection, options, unhandledStrategies ) {
 		this.replyQueue = autoReplyTo;
 	}
 
+	function onReplyQueueFailed( err ) {
+		log.error( 'Failed to create reply queue for connection name "' + connection.name || 'default' + '" with ', err );
+	}
+
 	connection.on( 'reconnected', function() {
-		this.createReplyQueue();
+		this.createReplyQueue().then( null, onReplyQueueFailed );
 		this.onReconnect();
 	}.bind( this ) );
 
 	// delay creation to allow for subscribers to attach a handler
 	process.nextTick( function() {
-		this.createReplyQueue();
+		this.createReplyQueue().then( null, onReplyQueueFailed );
 	}.bind( this ) );
 };
 
