@@ -5,3 +5,4 @@ log/
 spec/
 plato/
 coverage/
+.vagrant/
