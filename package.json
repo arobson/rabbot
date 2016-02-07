@@ -1,12 +1,12 @@
 {
-  "name": "wascally",
-  "version": "0.2.10",
-  "description": "Abstractions to simplify working with the wascally wabbitMQ",
+  "name": "rabbot",
+  "version": "1.0.0-1",
+  "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
-  "repository": "https://github.com/leankit-labs/wascally",
+  "repository": "https://github.com/leankit-labs/rabbot",
   "scripts": {
     "lint": "jshint ./",
-    "test": "gulp test-and-exit"
+    "test": "gulp test"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
@@ -61,7 +61,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "biggulp": "^0.2.2",
+    "biggulp": "0.3.x",
     "chai": "^3.4.1",
     "chai-as-promised": "^5.1.0",
     "gulp": "^3.9.0",
@@ -75,7 +75,7 @@
     "machina": "^1.1.2",
     "monologue.js": "^0.3.4",
     "node-uuid": "^1.4.7",
-    "postal": "^1.0.7",
+    "postal": "^1.0.8",
     "when": "^3.7.5",
     "whistlepunk": "^0.3.2"
   }

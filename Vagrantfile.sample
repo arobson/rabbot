@@ -2,7 +2,7 @@ Vagrant.configure(2) do |config|
 
   config.vm.box = "phusion/ubuntu-14.04-amd64"
   config.vm.box_url = "https://oss-binaries.phusionpassenger.com/vagrant/boxes/latest/ubuntu-14.04-amd64-vmwarefusion.box"
-  config.vm.hostname = "rabbitmq.wascally.local"
+  config.vm.hostname = "rabbitmq.rabbot.local"
 
   config.vm.provider "vmware_fusion" do |v|
     v.vmx["memsize"] = "1024"
@@ -21,7 +21,7 @@ Vagrant.configure(2) do |config|
 
   	d.run "rabbitmq",
   		image: "rabbitmq-hashing",
-  		args: "-e RABBITMQ_NODENAME=wascally -p 5672:5672 -p 15672:15672"
+  		args: "-e RABBITMQ_NODENAME=rabbot -p 5672:5672 -p 15672:15672"
   end
 
   config.vm.provision "shell", run: "always", inline: <<-SHELL

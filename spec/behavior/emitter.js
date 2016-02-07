@@ -1,4 +1,4 @@
-var _ = require( 'lodash' );
+var _ = require( "lodash" );
 
 module.exports = function emitter( name ) {
 
@@ -31,7 +31,7 @@ module.exports = function emitter( name ) {
 	}
 
 	return {
-		name: name || 'default',
+		name: name || "default",
 		handlers: handlers,
 		on: on,
 		once: on,

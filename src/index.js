@@ -1,13 +1,13 @@
-var _ = require( 'lodash' );
-var Monologue = require( 'monologue.js' );
-var when = require( 'when' );
-var connectionFn = require( './connectionFsm.js' );
-var topologyFn = require( './topology.js' );
-var postal = require( 'postal' );
-var uuid = require( 'node-uuid' );
-var dispatch = postal.channel( 'rabbit.dispatch' );
-var responses = postal.channel( 'rabbit.responses' );
-var signal = postal.channel( 'rabbit.ack' );
+var _ = require( "lodash" );
+var Monologue = require( "monologue.js" );
+var when = require( "when" );
+var connectionFn = require( "./connectionFsm.js" );
+var topologyFn = require( "./topology.js" );
+var postal = require( "postal" );
+var uuid = require( "node-uuid" );
+var dispatch = postal.channel( "rabbit.dispatch" );
+var responses = postal.channel( "rabbit.responses" );
+var signal = postal.channel( "rabbit.ack" );
 
 var unhandledStrategies = {
 	nackOnUnhandled: function( message ) {
@@ -20,41 +20,81 @@ var unhandledStrategies = {
 };
 unhandledStrategies.onUnhandled = unhandledStrategies.nackOnUnhandled;
 
+var serializers = {
+	"application/json": {
+		deserialize: function( bytes, encoding ) {
+			return JSON.parse( bytes.toString( encoding || "utf8" ) );
+		},
+		serialize: function( object ) {
+			return new Buffer( JSON.stringify( object ), "utf8" );
+		}
+	},
+	"application/octet-stream": {
+		deserialize: function( bytes ) {
+			return bytes;
+		},
+		serialize: function( bytes ) {
+			return bytes;
+		}
+	},
+	"text/plain": {
+		deserialize: function( bytes, encoding ) {
+			return bytes.toString( encoding || "utf8" );
+		},
+		serialize: function( string ) {
+			return new Buffer( string, "utf8" );
+		}
+	}
+};
+
 var Broker = function() {
 	this.connections = {};
-	this.setAckInterval( 500 );
 	this.hasHandles = false;
 	this.autoNack = false;
+	this.serializers = serializers;
+	this.configurations = {};
 	_.bindAll( this );
 };
 
 Broker.prototype.addConnection = function( options ) {
-	var name = options ? ( options.name || 'default' ) : 'default';
+	var name = options ? ( options.name || "default" ) : "default";
+	options = options || {};
+	options.name = name;
+	options.retryLimit = options.retryLimit || 3;
+	options.failAfter = options.failAfter || 60;
+	var connection;
 	if ( !this.connections[ name ] ) {
-		var connection = connectionFn( options || {} );
-		var topology = topologyFn( connection, options || {}, unhandledStrategies );
-		connection.on( 'connected', function( state ) {
-			connection.uri = state.item.uri;
-			this.emit( 'connected', connection );
-			this.emit( connection.name + '.connection.opened', connection );
+		connection = connectionFn( options );
+		var topology = topologyFn( connection, options || {}, serializers, unhandledStrategies );
+		connection.on( "connected", function() {
+			this.emit( "connected", connection );
+			this.emit( connection.name + ".connection.opened", connection );
+			this.setAckInterval( 500 );
 		}.bind( this ) );
-		connection.on( 'closed', function() {
-			this.emit( 'closed', connection );
-			this.emit( connection.name + '.connection.closed', connection );
+		connection.on( "closed", function() {
+			this.emit( "closed", connection );
+			this.emit( connection.name + ".connection.closed", connection );
 		}.bind( this ) );
-		connection.on( 'failed', function( err ) {
-			this.emit( 'failed', connection );
-			this.emit( name + '.connection.failed', err );
+		connection.on( "failed", function( err ) {
+			this.emit( "failed", connection );
+			this.emit( name + ".connection.failed", err );
+		}.bind( this ) );
+		connection.on( "unreachable", function() {
+			this.emit( "unreachable", connection );
+			this.emit( name, ".connection.unreachable" );
+			this.clearAckInterval();
 		}.bind( this ) );
 		this.connections[ name ] = topology;
 		return topology;
 	} else {
-		return this.connections[ name ];
+		connection = this.connections[ name ];
+		connection.connection.connect();
+		return connection;
 	}
 };
 
 Broker.prototype.addExchange = function( name, type, options, connectionName ) {
-	connectionName = connectionName || 'default';
+	connectionName = connectionName || "default";
 	if ( _.isObject( name ) ) {
 		options = name;
 		connectionName = type;
@@ -66,25 +106,29 @@ Broker.prototype.addExchange = function( name, type, options, connectionName ) {
 };
 
 Broker.prototype.addQueue = function( name, options, connectionName ) {
-	connectionName = connectionName || 'default';
+	connectionName = connectionName || "default";
 	options.name = name;
 	if ( options.subscribe && !this.hasHandles ) {
-		console.warn( 'Subscription to "' + name + '" was started without any handlers. This will result in lost messages!' );
+		console.warn( "Subscription to '" + name + "' was started without any handlers. This will result in lost messages!" );
 	}
 	return this.connections[ connectionName ].createQueue( options, connectionName );
 };
 
+Broker.prototype.addSerializer = function( contentType, serializer ) {
+	serializers[ contentType ] = serializer;
+};
+
 Broker.prototype.batchAck = function() {
-	signal.publish( 'ack', {} );
+	signal.publish( "ack", {} );
 };
 
 Broker.prototype.bindExchange = function( source, target, keys, connectionName ) {
-	connectionName = connectionName || 'default';
+	connectionName = connectionName || "default";
 	return this.connections[ connectionName ].createBinding( { source: source, target: target, keys: keys } );
 };
 
 Broker.prototype.bindQueue = function( source, target, keys, connectionName ) {
-	connectionName = connectionName || 'default';
+	connectionName = connectionName || "default";
 	return this.connections[ connectionName ].createBinding(
 		{ source: source, target: target, keys: keys, queue: true },
 		connectionName
@@ -104,9 +148,12 @@ Broker.prototype.closeAll = function( reset ) {
 };
 
 Broker.prototype.close = function( connectionName, reset ) {
-	connectionName = connectionName || 'default';
+	connectionName = connectionName || "default";
 	var connection = this.connections[ connectionName ].connection;
 	if ( !_.isUndefined( connection ) ) {
+		if( reset ) {
+			this.connections[ connectionName ].reset();
+		}
 		return connection.close( reset );
 	} else {
 		return when( true );
@@ -114,31 +161,43 @@ Broker.prototype.close = function( connectionName, reset ) {
 };
 
 Broker.prototype.deleteExchange = function( name, connectionName ) {
-	connectionName = connectionName || 'default';
+	connectionName = connectionName || "default";
 	return this.connections[ connectionName ].deleteExchange( name );
 };
 
 Broker.prototype.deleteQueue = function( name, connectionName ) {
-	connectionName = connectionName || 'default';
+	connectionName = connectionName || "default";
 	return this.connections[ connectionName ].deleteQueue( name );
 };
 
 Broker.prototype.getExchange = function( name, connectionName ) {
-	connectionName = connectionName || 'default';
-	return this.connections[ connectionName ].channels[ 'exchange:' + name ];
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].channels[ "exchange:" + name ];
 };
 
 Broker.prototype.getQueue = function( name, connectionName ) {
-	connectionName = connectionName || 'default';
-	return this.connections[ connectionName ].channels[ 'queue:' + name ];
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].channels[ "queue:" + name ];
 };
 
-Broker.prototype.handle = function( messageType, handler, context ) {
+Broker.prototype.handle = function( messageType, handler, queueName, context ) {
 	this.hasHandles = true;
-	var subscription = dispatch.subscribe( messageType, handler.bind( context ) );
+	var prefix = "#";
+	var target, parts;
+	if( _.isString( queueName ) ) {
+		prefix = queueName.replace( /[.]/g, "-" );
+	} else {
+		context = queueName;
+	}
+	parts = [ prefix ];
+	if( !_.isEmpty( messageType ) ) {
+		parts.push( messageType );
+	}
+	target = parts.join( "." );
+	var subscription = dispatch.subscribe( target, handler.bind( context ) );
 	if ( this.autoNack ) {
 		subscription.catch( function( err, msg ) {
-			console.log( 'Handler for "' + messageType + '" failed with:', err.stack );
+			console.log( "Handler for '" + target + "' failed with:", err.stack );
 			msg.nack();
 		} );
 	}
@@ -155,15 +214,15 @@ Broker.prototype.nackOnError = function() {
 };
 
 Broker.prototype.nackUnhandled = function() {
-	unhandledStrategies.onUnhandled = this.nackOnUnhandled;
+	unhandledStrategies.onUnhandled = unhandledStrategies.nackOnUnhandled;
 };
 
 Broker.prototype.onUnhandled = function( handler ) {
-	unhandledStrategies.onUnhandled = this.customOnUnhandled = handler;
+	unhandledStrategies.onUnhandled = unhandledStrategies.customOnUnhandled = handler;
 };
 
 Broker.prototype.rejectUnhandled = function() {
-	unhandledStrategies.onUnhandled = this.rejectOnUnhandled;
+	unhandledStrategies.onUnhandled = unhandledStrategies.rejectOnUnhandled;
 };
 
 Broker.prototype.publish = function( exchangeName, type, message, routingKey, correlationId, connectionName, sequenceNo ) {
@@ -171,9 +230,9 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 	var options;
 	if ( _.isObject( type ) ) {
 		options = type;
-		connectionName = message || options.connectionName || 'default';
+		connectionName = message || options.connectionName || "default";
 	} else {
-		connectionName = connectionName || message.connectionName || 'default';
+		connectionName = connectionName || message.connectionName || "default";
 		options = {
 			appId: this.appId,
 			type: type,
@@ -201,7 +260,7 @@ Broker.prototype.request = function( exchangeName, options, connectionName ) {
 	options.connectionName = connectionName;
 	return when.promise( function( resolve, reject, notify ) {
 		var subscription = responses.subscribe( requestId, function( message ) {
-			if ( message.properties.headers[ 'sequence_end' ] ) { // jshint ignore:line
+			if ( message.properties.headers[ "sequence_end" ] ) { // jshint ignore:line
 				resolve( message );
 				subscription.unsubscribe();
 			} else {
@@ -214,6 +273,13 @@ Broker.prototype.request = function( exchangeName, options, connectionName ) {
 
 Broker.prototype.reset = function() {
 	this.connections = {};
+	this.configurations = {};
+};
+
+Broker.prototype.retry = function( connectionName ) {
+	connectionName = connectionName || "default";
+	var config = this.configurations[ connectionName ];
+	return this.configure( config );
 };
 
 Broker.prototype.setAckInterval = function( interval ) {
@@ -223,21 +289,32 @@ Broker.prototype.setAckInterval = function( interval ) {
 	this.ackIntervalId = setInterval( this.batchAck, interval );
 };
 
-Broker.prototype.startSubscription = function( queueName, connectionName ) {
+Broker.prototype.shutdown = function() {
+	return this.closeAll( true )
+		.then( function() {
+			this.clearAckInterval();
+		}.bind( this ) );
+};
+
+Broker.prototype.startSubscription = function( queueName, exclusive, connectionName ) {
 	if ( !this.hasHandles ) {
-		console.warn( 'Subscription to "' + queueName + '" was started without any handlers. This will result in lost messages!' );
+		console.warn( "Subscription to '" + queueName + "' was started without any handlers. This will result in lost messages!" );
 	}
-	connectionName = connectionName || 'default';
+	if( _.isString( exclusive ) ) {
+		connectionName = exclusive;
+		exclusive = false;
+	}
+	connectionName = connectionName || "default";
 	var queue = this.getQueue( queueName, connectionName );
 	if ( queue ) {
-		queue.subscribe( queue );
+		queue.subscribe( queue, exclusive );
 		return queue;
 	} else {
-		throw new Error( 'No queue named "' + queueName + '" for connection "' + connectionName + '". Subscription failed.' );
+		throw new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed." );
 	}
 };
 
-require( './config.js' )( Broker );
+require( "./config.js" )( Broker );
 
 Monologue.mixInto( Broker );
 

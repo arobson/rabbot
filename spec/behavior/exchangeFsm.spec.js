@@ -1,17 +1,17 @@
-require( '../setup.js' );
-var _ = require( 'lodash' );
-var when = require( 'when' );
-var exchangeFsm = require( '../../src/exchangeFsm' );
+require( "../setup.js" );
+var _ = require( "lodash" );
+var when = require( "when" );
+var exchangeFsm = require( "../../src/exchangeFsm" );
 var noOp = function() {};
-var emitter = require( './emitter' );
+var emitter = require( "./emitter" );
 
-function channelFn( options ) {
+function exchangeFn( options ) {
 	var channel = {
 		name: options.name,
 		type: options.type,
 		channel: emitter(),
 		define: noOp,
-		destroy: noOp,
+		release: noOp,
 		publish: noOp
 	};
 	var channelMock = sinon.mock( channel );
@@ -19,135 +19,203 @@ function channelFn( options ) {
 	return {
 		mock: channelMock,
 		factory: function() {
-			return channel;
+			return when( channel );
 		}
 	};
 }
 
-describe( 'Exchange FSM', function() {
+describe( "Exchange FSM", function() {
 
-	describe( 'when initialization fails', function() {
+	describe( "when connection is unreachable", function() {
 		var connection, topology, exchange, channelMock, options, error;
-
+		var published;
 		before( function( done ) {
-			options = { name: 'test', type: 'test' };
+			options = { name: "test", type: "test" };
 			connection = emitter();
 			connection.addExchange = noOp;
 			topology = emitter();
 
-			var ch = channelFn( options );
-			channelMock = ch.mock;
+			var ex = exchangeFn( options );
+			channelMock = ex.mock;
 			channelMock
-				.expects( 'define' )
+				.expects( "define" )
 				.once()
-				.returns( when.reject( new Error( 'nope' ) ) );
+				.returns( { then: _.noop } );
 
-			exchange = exchangeFsm( options, connection, topology, ch.factory );
-			exchange.on( 'failed', function( err ) {
+			exchange = exchangeFsm( options, connection, topology, {}, ex.factory );
+			published = _.map( [ 1, 2, 3 ], function() {
+				return exchange.publish( {} );
+			} );
+			exchange.once( "failed", function( err ) {
 				error = err;
 				done();
 			} ).once();
+			connection.raise( "unreachable" );
+			
 		} );
 
-		it( 'should have failed with an error', function() {
-			error.toString().should.equal( 'Error: nope' );
+		it( "should have emitted failed with an error", function() {
+			error.toString().should.equal( "Error: Could not establish a connection to any known nodes." );
 		} );
 
-		it( 'should be in failed state', function() {
-			exchange.state.should.equal( 'failed' );
-		} );
-
-		describe( 'when publishing in failed state', function() {
-			it( 'should reject publish with an error', function() {
-				return exchange.publish( {} ).should.be.rejectedWith( 'nope' );
+		it( "should reject all published promises", function() {
+			_.each( published, function( promise ) {
+				promise.should.have.been.rejectedWith( "Could not establish a connection to any known nodes." );
 			} );
 		} );
 
-		describe( 'when checking in failed state', function() {
-			it( 'should reject check with an error', function() {
-				return exchange.check().should.be.rejectedWith( 'nope' );
+		it( "should be in unreachable state", function() {
+			exchange.state.should.equal( "unreachable" );
+		} );
+
+		describe( "when publishing in unreachable state", function() {
+			it( "should reject publish with an error", function() {
+				return exchange.publish( {} ).should.be.rejectedWith( "Could not establish a connection to any known nodes." );
+			} );
+		} );
+
+		describe( "when checking in unreachable state", function() {
+			it( "should reject check with an error", function() {
+				return exchange.check().should.be.rejectedWith( "Could not establish a connection to any known nodes." );
 			} );
 		} );
 	} );
 
-	describe( 'when initializing succeeds', function() {
-		var connection, topology, exchange, ch, channelMock, options, error;
-
+	describe( "when definition has failed with error", function() {
+		var connection, topology, exchange, channelMock, options, error;
+		var published;
 		before( function( done ) {
-			options = { name: 'test', type: 'test' };
+			options = { name: "test", type: "test" };
 			connection = emitter();
 			connection.addExchange = noOp;
 			topology = emitter();
 
-			ch = channelFn( options );
-			channelMock = ch.mock;
+			var ex = exchangeFn( options );
+			channelMock = ex.mock;
+			var deferred = when.defer();
 			channelMock
-				.expects( 'define' )
+				.expects( "define" )
 				.once()
-				.returns( when.resolve() );
+				.returns( deferred.promise );
 
-			exchange = exchangeFsm( options, connection, topology, ch.factory );
-			exchange.on( 'failed', function( err ) {
+			exchange = exchangeFsm( options, connection, topology, {}, ex.factory );
+			published = _.map( [ 1, 2, 3 ], function() {
+				return exchange.publish( {} );
+			} );
+			deferred.reject( new Error( "nope" ) );
+			exchange.on( "failed", function( err ) {
 				error = err;
 				done();
 			} ).once();
-			exchange.on( 'defined', function() {
+		} );
+
+		it( "should have emitted failed with an error", function() {
+			error.toString().should.equal( "Error: nope" );
+		} );
+
+		it( "should be in failed state", function() {
+			exchange.state.should.equal( "failed" );
+		} );
+
+		it( "should reject all published promises", function() {
+			_.each( published, function( promise ) {
+				promise.should.have.been.rejectedWith( "nope" );
+			} );
+		} );
+
+		describe( "when publishing in unreachable state", function() {
+			it( "should reject publish with an error", function() {
+				return exchange.publish( {} ).should.be.rejectedWith( "nope" );
+			} );
+		} );
+
+		describe( "when checking in unreachable state", function() {
+			it( "should reject check with an error", function() {
+				return exchange.check().should.be.rejectedWith( "nope" );
+			} );
+		} );
+	} );
+
+	describe( "when initializing succeeds", function() {
+		var connection, topology, exchange, ex, channelMock, options, error;
+
+		before( function( done ) {
+			options = { name: "test", type: "test" };
+			connection = emitter();
+			connection.addExchange = noOp;
+			topology = emitter();
+
+			ex = exchangeFn( options );
+			channelMock = ex.mock;
+			channelMock
+				.expects( "define" )
+				.once()
+				.returns( when.resolve() );
+
+			exchange = exchangeFsm( options, connection, topology, {}, ex.factory );
+			exchange.on( "failed", function( err ) {
+				error = err;
+				done();
+			} ).once();
+			exchange.on( "defined", function() {
 				done();
 			} ).once();
 		} );
 
-		it( 'should not have failed', function() {
+		it( "should not have failed", function() {
 			should.not.exist( error );
 		} );
 
-		it( 'should be in ready state', function() {
-			exchange.state.should.equal( 'ready' );
+		it( "should be in ready state", function() {
+			exchange.state.should.equal( "ready" );
 		} );
 
-		describe( 'when publishing in ready state', function() {
+		describe( "when publishing in ready state", function() {
 			before( function() {
 				channelMock
-					.expects( 'publish' )
+					.expects( "publish" )
 					.once()
 					.returns( when( true ) );
 			} );
 
-			it( 'should resolve publish without error', function() {
+			it( "should resolve publish without error", function() {
 				return exchange.publish( {} ).should.be.fulfilled;
 			} );
 		} );
 
-		describe( 'when checking in ready state', function() {
-			it( 'should resolve check without error', function() {
+		describe( "when checking in ready state", function() {
+			it( "should resolve check without error", function() {
 				exchange.check().should.be.fulfilled;
 			} );
 		} );
 
-		describe( 'when channel is released', function() {
+		describe( "when channel is closed", function() {
 
 			before( function( done ) {
 				channelMock
-					.expects( 'define' )
+					.expects( "define" )
 					.once()
 					.returns( when.resolve() );
-
-				exchange.on( 'failed', function( err ) {
-					error = err;
-					done();
-				} ).once();
-				exchange.on( 'defined', function() {
+				
+				exchange.on( "defined", function() {
 					done();
 				} ).once();
 
-				ch.factory().channel.raise( 'released' );
+				exchange.once( "closed", function() {
+					exchange.check();
+				} );
+
+				ex.factory().then( function( e ) {
+					e.channel.raise( "closed" );
+				} );
 			} );
 
-			it( 'should reinitialize without error', function() {
+			it( "should reinitialize without error", function() {
 				should.not.exist( error );
 			} );
 		} );
 
-		describe( 'when destroying', function() {
+		describe( "when releasing", function() {
 
 			before( function() {
 				exchange.published.add( {} );
@@ -155,43 +223,44 @@ describe( 'Exchange FSM', function() {
 				exchange.published.add( {} );
 
 				channelMock
-					.expects( 'destroy' )
+					.expects( "release" )
 					.once()
 					.returns( when.resolve() );
-
-				return exchange.destroy();
+				process.nextTick( function() {
+					exchange.published.remove( { sequenceNo: 0 } );
+					exchange.published.remove( { sequenceNo: 1 } );
+					exchange.published.remove( { sequenceNo: 2 } );
+				} );
+				return exchange.release();
 			} );
 
-			it( 'should remove handlers from topology and connection', function() {
+			it( "should remove handlers from topology and connection", function() {
 				_.flatten( _.values( connection.handlers ) ).length.should.equal( 0 );
 				_.flatten( _.values( topology.handlers ) ).length.should.equal( 0 );
 			} );
 
-			it( 'should release channel instance', function() {
+			it( "should release channel instance", function() {
 				should.not.exist( exchange.channel );
 			} );
 
-			describe( 'when publishing to a destroyed channel', function() {
-
+			describe( "when publishing to a released channel", function() {
 				before( function() {
 					channelMock
-						.expects( 'define' )
-						.once()
-						.returns( when.resolve() );
+						.expects( "define" )
+						.never();
 
 					channelMock
-						.expects( 'publish' )
-						.exactly( 4 )
-						.returns( when.resolve() );
-
-					exchange.on( 'defined', function() {
-						topology.raise( 'bindings-completed' );
-					} ).once();
-
-					return exchange.publish( {} );
+						.expects( "publish" )
+						.never();
 				} );
 
-				it( 'should republish previous messages', function() {} );
+				it( "should reject publish", function() {
+					exchange.publish( {} ).should.be.rejectedWith( "Error: Cannot publish to exchange 'test' after intentionally closing its connection" );
+				} );
+
+				it( "should not make any calls to underlying exchange channel", function() {
+					channelMock.verify();
+				} );
 			} );
 		} );
 

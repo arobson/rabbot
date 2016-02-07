@@ -1,16 +1,18 @@
-require( '../setup.js' );
-var when = require( 'when' );
+require( "../setup.js" );
+var when = require( "when" );
 
-describe( 'Configuration', function() {
+describe( "Configuration", function() {
 	var noOp = function() {};
 	var connection = {
-		name: 'test',
+		name: "test",
 		configureBindings: noOp,
 		configureExchanges: noOp,
-		configureQueues: noOp
+		configureQueues: noOp,
+		once: noOp
 	};
 	var Broker = function( conn ) {
 		this.connection = conn;
+		this.configurations = {};
 	};
 
 	Broker.prototype.addConnection = function() {
@@ -19,7 +21,7 @@ describe( 'Configuration', function() {
 
 	Broker.prototype.emit = function() {};
 
-	describe( 'with valid configuration', function() {
+	describe( "with valid configuration", function() {
 		var config = {
 			exchanges: [ {} ],
 			queues: [ {} ],
@@ -28,26 +30,26 @@ describe( 'Configuration', function() {
 		var connectionMock;
 		before( function() {
 			connectionMock = sinon.mock( connection );
-			connectionMock.expects( 'configureExchanges' )
+			connectionMock.expects( "configureExchanges" )
 				.once()
 				.withArgs( config.exchanges )
 				.returns( when( true ) );
-			connectionMock.expects( 'configureQueues' )
+			connectionMock.expects( "configureQueues" )
 				.once()
 				.withArgs( config.queues )
 				.returns( when( true ) );
-			connectionMock.expects( 'configureBindings' )
+			connectionMock.expects( "configureBindings" )
 				.once()
-				.withArgs( config.bindings, 'test' )
+				.withArgs( config.bindings, "test" )
 				.returns( when( true ) );
-			require( '../../src/config' )( Broker );
+			require( "../../src/config" )( Broker );
 
 			var broker = new Broker( connection );
 
 			return broker.configure( config );
 		} );
 
-		it( 'should make expected calls', function() {
+		it( "should make expected calls", function() {
 			connectionMock.verify();
 		} );
 
@@ -56,7 +58,7 @@ describe( 'Configuration', function() {
 		} );
 	} );
 
-	describe( 'when exchange creation fails', function() {
+	describe( "when exchange creation fails", function() {
 		var config = {
 			exchanges: [ {} ],
 			queues: [ {} ],
@@ -66,15 +68,15 @@ describe( 'Configuration', function() {
 		var error;
 		before( function() {
 			connectionMock = sinon.mock( connection );
-			connectionMock.expects( 'configureExchanges' )
+			connectionMock.expects( "configureExchanges" )
 				.once()
 				.withArgs( config.exchanges )
-				.returns( when.reject( new Error( 'Not feelin\' it today' ) ) );
-			connectionMock.expects( 'configureQueues' )
+				.returns( when.reject( new Error( "Not feelin' it today" ) ) );
+			connectionMock.expects( "configureQueues" )
 				.never();
-			connectionMock.expects( 'configureBindings' )
+			connectionMock.expects( "configureBindings" )
 				.never();
-			require( '../../src/config' )( Broker );
+			require( "../../src/config" )( Broker );
 
 			var broker = new Broker( connection );
 
@@ -84,12 +86,12 @@ describe( 'Configuration', function() {
 				} );
 		} );
 
-		it( 'should make expected calls', function() {
+		it( "should make expected calls", function() {
 			connectionMock.verify();
 		} );
 
-		it( 'should return error', function() {
-			error.toString().should.equal( 'Error: Not feelin\' it today' );
+		it( "should return error", function() {
+			error.toString().should.equal( "Error: Not feelin' it today" );
 		} );
 
 		after( function() {
@@ -97,7 +99,7 @@ describe( 'Configuration', function() {
 		} );
 	} );
 
-	describe( 'when queue creation fails', function() {
+	describe( "when queue creation fails", function() {
 		var config = {
 			exchanges: [ {} ],
 			queues: [ {} ],
@@ -107,17 +109,17 @@ describe( 'Configuration', function() {
 		var error;
 		before( function() {
 			connectionMock = sinon.mock( connection );
-			connectionMock.expects( 'configureExchanges' )
+			connectionMock.expects( "configureExchanges" )
 				.once()
 				.withArgs( config.exchanges )
 				.returns( when( true ) );
-			connectionMock.expects( 'configureQueues' )
+			connectionMock.expects( "configureQueues" )
 				.once()
 				.withArgs( config.queues )
-				.returns( when.reject( new Error( 'Not feelin\' it today' ) ) );
-			connectionMock.expects( 'configureBindings' )
+				.returns( when.reject( new Error( "Not feelin' it today" ) ) );
+			connectionMock.expects( "configureBindings" )
 				.never();
-			require( '../../src/config' )( Broker );
+			require( "../../src/config" )( Broker );
 
 			var broker = new Broker( connection );
 
@@ -127,12 +129,12 @@ describe( 'Configuration', function() {
 				} );
 		} );
 
-		it( 'should make expected calls', function() {
+		it( "should make expected calls", function() {
 			connectionMock.verify();
 		} );
 
-		it( 'should return error', function() {
-			error.toString().should.equal( 'Error: Not feelin\' it today' );
+		it( "should return error", function() {
+			error.toString().should.equal( "Error: Not feelin' it today" );
 		} );
 
 		after( function() {
@@ -140,7 +142,7 @@ describe( 'Configuration', function() {
 		} );
 	} );
 
-	describe( 'when binding creation fails', function() {
+	describe( "when binding creation fails", function() {
 		var config = {
 			exchanges: [ {} ],
 			queues: [ {} ],
@@ -150,19 +152,19 @@ describe( 'Configuration', function() {
 		var error;
 		before( function() {
 			connectionMock = sinon.mock( connection );
-			connectionMock.expects( 'configureExchanges' )
+			connectionMock.expects( "configureExchanges" )
 				.once()
 				.withArgs( config.exchanges )
 				.returns( when( true ) );
-			connectionMock.expects( 'configureQueues' )
+			connectionMock.expects( "configureQueues" )
 				.once()
 				.withArgs( config.queues )
 				.returns( when( true ) );
-			connectionMock.expects( 'configureBindings' )
+			connectionMock.expects( "configureBindings" )
 				.once()
-				.withArgs( config.bindings, 'test' )
-				.returns( when.reject( new Error( 'Not feelin\' it today' ) ) );
-			require( '../../src/config' )( Broker );
+				.withArgs( config.bindings, "test" )
+				.returns( when.reject( new Error( "Not feelin' it today" ) ) );
+			require( "../../src/config" )( Broker );
 
 			var broker = new Broker( connection );
 
@@ -172,12 +174,12 @@ describe( 'Configuration', function() {
 				} );
 		} );
 
-		it( 'should make expected calls', function() {
+		it( "should make expected calls", function() {
 			connectionMock.verify();
 		} );
 
-		it( 'should return error', function() {
-			error.toString().should.equal( 'Error: Not feelin\' it today' );
+		it( "should return error", function() {
+			error.toString().should.equal( "Error: Not feelin' it today" );
 		} );
 
 		after( function() {

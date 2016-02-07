@@ -1,10 +1,22 @@
-var amqp = require( 'amqplib' );
-var _ = require( 'lodash' );
-var fs = require( 'fs' );
-var when = require( 'when' );
-var AmqpConnection = require( 'amqplib/lib/callback_model' ).CallbackModel;
-var promiseFn = require( './promiseMachine.js' );
-var log = require( '../log.js' )( 'wascally.amqp-connection' );
+var amqp = require( "amqplib" );
+var _ = require( "lodash" );
+var fs = require( "fs" );
+var when = require( "when" );
+var AmqpConnection = require( "amqplib/lib/callback_model" ).CallbackModel;
+var monad = require( "./iomonad" );
+var log = require( "../log" )( "rabbot.connection" );
+var info = require( "../info" );
+
+/* log
+	* `rabbot.amqp-connection`
+	  * `debug`
+	    * when amqplib's `connection.close` promise is rejected
+	 * `info`
+	    * connection attempt
+	    * connection success
+	    * connection failure
+	    * no reachable endpoints
+*/
 
 function getArgs( fn ) {
 	var fnString = fn.toString();
@@ -22,9 +34,9 @@ function getOption( opts, key, alt ) {
 }
 
 function getUri( protocol, user, pass, server, port, vhost, heartbeat ) {
-	return protocol + user + ':' + pass +
-		'@' + server + ':' + port + '/' + vhost +
-		'?heartbeat=' + heartbeat;
+	return protocol + user + ":" + pass +
+		"@" + server + ":" + port + "/" + vhost +
+		"?heartbeat=" + heartbeat;
 }
 
 function split( x ) {
@@ -33,7 +45,7 @@ function split( x ) {
 	} else if ( _.isArray( x ) ) {
 		return x;
 	} else {
-		return x.split( ',' ).map( trim );
+		return x.split( "," ).map( trim );
 	}
 }
 
@@ -46,24 +58,24 @@ function trim( x ) {
 }
 
 var Adapter = function( parameters ) {
-	var serverList = getOption( parameters, 'RABBIT_BROKER' ) || getOption( parameters, 'server', 'localhost' );
-	var portList = getOption( parameters, 'RABBIT_PORT' ) || getOption( parameters, 'port', 5672 );
+	var serverList = getOption( parameters, "RABBIT_BROKER" ) || getOption( parameters, "server", "localhost" );
+	var portList = getOption( parameters, "RABBIT_PORT" ) || getOption( parameters, "port", 5672 );
 
-	this.name = parameters ? ( parameters.name || 'default' ) : 'default';
+	this.name = parameters ? ( parameters.name || "default" ) : "default";
 	this.connectionIndex = 0;
 	this.servers = split( serverList );
 	this.ports = split( portList );
-	this.heartbeat = getOption( parameters, 'RABBIT_HEARTBEAT' ) || getOption( parameters, 'heartbeat', 30 );
-	this.protocol = getOption( parameters, 'RABBIT_PROTOCOL' ) || getOption( parameters, 'protocol', 'amqp://' );
-	this.pass = getOption( parameters, 'RABBIT_PASSWORD' ) || getOption( parameters, 'pass', 'guest' );
-	this.user = getOption( parameters, 'RABBIT_USER' ) || getOption( parameters, 'user', 'guest' );
-	this.vhost = getOption( parameters, 'RABBIT_VHOST' ) || getOption( parameters, 'vhost', '%2f' );
-	var timeout = getOption( parameters, 'RABBIT_TIMEOUT' ) || getOption( parameters, 'timeout' );
-	var certPath = getOption( parameters, 'RABBIT_CERT' ) || getOption( parameters, 'certPath' );
-	var keyPath = getOption( parameters, 'RABBIT_KEY' ) || getOption( parameters, 'keyPath' );
-	var caPaths = getOption( parameters, 'RABBIT_CA' ) || getOption( parameters, 'caPath' );
-	var passphrase = getOption( parameters, 'RABBIT_PASSPHRASE' ) || getOption( parameters, 'passphrase' );
-	var pfxPath = getOption( parameters, 'RABBIT_PFX' ) || getOption( parameters, 'pfxPath' );
+	this.heartbeat = getOption( parameters, "RABBIT_HEARTBEAT" ) || getOption( parameters, "heartbeat", 30 );
+	this.protocol = getOption( parameters, "RABBIT_PROTOCOL" ) || getOption( parameters, "protocol", "amqp://" );
+	this.pass = getOption( parameters, "RABBIT_PASSWORD" ) || getOption( parameters, "pass", "guest" );
+	this.user = getOption( parameters, "RABBIT_USER" ) || getOption( parameters, "user", "guest" );
+	this.vhost = getOption( parameters, "RABBIT_VHOST" ) || getOption( parameters, "vhost", "%2f" );
+	var timeout = getOption( parameters, "RABBIT_TIMEOUT" ) || getOption( parameters, "timeout" );
+	var certPath = getOption( parameters, "RABBIT_CERT" ) || getOption( parameters, "certPath" );
+	var keyPath = getOption( parameters, "RABBIT_KEY" ) || getOption( parameters, "keyPath" );
+	var caPaths = getOption( parameters, "RABBIT_CA" ) || getOption( parameters, "caPath" );
+	var passphrase = getOption( parameters, "RABBIT_PASSPHRASE" ) || getOption( parameters, "passphrase" );
+	var pfxPath = getOption( parameters, "RABBIT_PFX" ) || getOption( parameters, "pfxPath" );
 	var useSSL = certPath || keyPath || passphrase || caPaths || pfxPath;
 	this.options = { noDelay: true };
 	if ( timeout ) {
@@ -90,6 +102,11 @@ var Adapter = function( parameters ) {
 	if ( useSSL ) {
 		this.protocol = 'amqps://';
 	}
+	this.options.clientProperties = {
+		host: info.host(),
+		process: info.process(),
+		lib: info.lib()
+	};
 	this.limit = _.max( [ this.servers.length, this.ports.length ] );
 };
 
@@ -99,24 +116,29 @@ Adapter.prototype.connect = function() {
 		var attempt;
 		attempt = function() {
 			var nextUri = this.getNextUri();
-			log.info( 'Attempting connection to %s (%s)', this.name, nextUri );
+			log.info( "Attempting connection to '%s' (%s)", this.name, nextUri );
 			function onConnection( connection ) {
 				connection.uri = nextUri;
-				log.info( 'Connected to %s (%s)', this.name, nextUri );
+				log.info( "Connected to '%s' (%s)", this.name, nextUri );
 				resolve( connection );
 			}
 			function onConnectionError( err ) {
-				log.info( 'Failed to connect to %s (%s) with', this.name, nextUri, err );
+				log.info( "Failed to connect to '%s' (%s) with, '%s'", this.name, nextUri, err );
 				attempted.push( nextUri );
 				this.bumpIndex();
-				attempt( err );
+				if( attempted.length < this.limit ) {
+					attempt( err );
+				} else {
+					log.info( "Cannot connect to `%s` - all endpoints failed", this.name );
+					reject( "No endpoints could be reached" );
+				}
 			}
 			if ( _.indexOf( attempted, nextUri ) < 0 ) {
 				amqp.connect( nextUri, this.options )
 					.then( onConnection.bind( this ), onConnectionError.bind( this ) );
 			} else {
-				log.info( 'Cannot connect to %s - all endpoints failed', this.name );
-				reject( 'No endpoints could be reached' );
+				log.info( "Cannot connect to `%s` - all endpoints failed", this.name );
+				reject( "No endpoints could be reached" );
 			}
 		}.bind( this );
 		attempt();
@@ -148,8 +170,14 @@ Adapter.prototype.getNext = function( list ) {
 
 module.exports = function( options ) {
 	var close = function( connection ) {
-		connection.close();
+		connection.close()
+			.then( null, function( err ) {
+				// for some reason calling close always gets a rejected promise
+				// I can't imagine a good reason for this, so I'm basically
+				// only showing this at the debug level
+				log.debug( "Error was reported during close of connection `%s` - `%s`", options.name, err );
+			} );
 	};
 	var adapter = new Adapter( options );
-	return promiseFn( adapter.connect.bind( adapter ), AmqpConnection, close, 'close' );
+	return monad( options.name, "connection", adapter.connect.bind( adapter ), AmqpConnection, close );
 };

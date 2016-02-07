@@ -1,158 +1,236 @@
-var _ = require( 'lodash' );
-var when = require( 'when' );
-var machina = require( 'machina' );
-var Monologue = require( 'monologue.js' );
+var _ = require( "lodash" );
+var when = require( "when" );
+var machina = require( "machina" );
+var format = require( "util" ).format;
+var Monologue = require( "monologue.js" );
 Monologue.mixInto( machina.Fsm );
-var log = require( './log.js' )( 'wascally.queue' );
+var log = require( "./log.js" )( "rabbot.queue" );
 
-var Channel = function( options, connection, topology, channelFn ) {
+/* log
+	* `rabbot.queue`
+	  * `debug`
+	    * release called
+	  * `info`
+	    * subscription started
+	    * queue released
+	  * `warn`
+	    * queue released with pending messages
+*/
+
+var Factory = function( options, connection, topology, serializers, queueFn ) {
 
 	// allows us to optionally provide a mock
-	channelFn = channelFn || require( './amqp/queue' );
+	queueFn = queueFn || require( "./amqp/queue" );
 
 	var Fsm = machina.Fsm.extend( {
 		name: options.name,
-		channel: undefined,
+		queue: undefined,
 		responseSubscriptions: {},
 		signalSubscription: undefined,
 		handlers: [],
 
 		check: function() {
 			var deferred = when.defer();
-			this.handle( 'check', deferred );
+			this.handle( "check", deferred );
 			return deferred.promise;
 		},
 
-		destroy: function() {
+		release: function() {
 			return when.promise( function( resolve ) {
-				log.debug( 'Destroy called on queue %s - %s (%d messages pending)',
-					this.name, connection.name, this.channel.getMessageCount() );
-				this.on( 'destroyed', function() {
+				if( this.queue ) {
+					log.debug( "Release called on queue %s - %s (%d messages pending)",
+						this.name, connection.name, this.queue.getMessageCount() );
+				}
+				this.on( "released", function() {
 					resolve();
 				} ).once();
-				this.handle( 'destroy' );
+				this.handle( "release" );
 			}.bind( this ) );
 		},
 
-		subscribe: function() {
+		retry: function() {
+			this.transition( 'initializing' );
+		},
+
+		subscribe: function( exclusive ) {
+			options.subscribe = true;
 			return when.promise( function( resolve, reject ) {
-				var op = function() {
-					return this.channel.subscribe()
-						.then( resolve, reject );
+				var op = function( err ) {
+					if( err ) {
+						reject( err );
+					} else {
+						return this.queue.subscribe( exclusive )
+							.then( resolve, reject );	
+					}
 				}.bind( this );
-				this.on( 'failed', function( err ) {
+				this.once( "failed", function( err ) {
 					reject( err );
-				} ).once();
-				this.handle( 'subscribe', op );
+				} );
+				this.handle( "subscribe", op );
 			}.bind( this ) );
 		},
 
-		initialState: 'initializing',
+		initialState: "initializing",
 		states: {
-			'destroyed': {
+			closed: {
 				_onEnter: function() {
-					if ( this.channel.getMessageCount() > 0 ) {
-						log.warn( '!!! Queue %s - %s was destroyed with %d pending messages !!!',
-							options.name, connection.name, this.channel.getMessageCount() );
-					} else {
-						log.info( 'Destroyed queue %s - %s', options.name, connection.name );
-					}
-					_.each( this.handlers, function( handle ) {
-						handle.unsubscribe();
-					} );
-					this.channel.destroy()
-						.then( function() {
-							this.channel = undefined;
-							this.emit( 'destroyed' );
-						}.bind( this ) );
-				},
-				destroy: function() {
-					this.emit( 'destroyed' );
+					this.emit( "closed" );
 				},
 				check: function() {
-					this.deferUntilTransition( 'ready' );
-					this.transition( 'initializing' );
+					this.deferUntilTransition( "ready" );
+					this.transition( "initializing" );
 				},
+				subscribe: function() {
+					this.deferUntilTransition( "ready" );
+				}
 			},
-			'failed': {
+			failed: {
 				_onEnter: function() {
-					this.emit( 'failed', this.failedWith );
-					this.channel = undefined;
+					this.emit( "failed", this.failedWith );
+					this.queue = undefined;
 				},
 				check: function( deferred ) {
 					if( deferred ) {
 						deferred.reject( this.failedWith );
 					}
+					this.emit( "failed", this.failedWith );
 				},
-				destroy: function() {
-					this.deferUntilTransition( 'ready' );
+				release: function() {
+					_.each( this.handlers, function( handle ) {
+						handle.unsubscribe();
+					} );
+					if( this.queue ) {
+						this.queue.release()
+							.then( function() {
+								this.transition( "released" );
+							} );
+					}
 				},
-				subscribe: function() {
-					this.emit( 'failed', this.failedWith );
+				subscribe: function( op ) {
+					op( this.failedWith );
 				}
 			},
-			'initializing': {
+			initializing: {
 				_onEnter: function() {
-					this.channel = channelFn( options, topology );
+					queueFn( options, topology, serializers )
+						.then( function( queue ) {
+							this.handle( "acquired", queue );
+						}.bind( this ) );
+				},
+				acquired: function( queue ) {
+					this.queue = queue;
+					this.receivedMessages = this.queue.messages;
 					var onError = function( err ) {
 						this.failedWith = err;
-						this.transition( 'failed' );
+						this.transition( "failed" );
 					}.bind( this );
 					var onDefined = function() {
-						this.transition( 'ready' );
+						this.transition( "ready" );
 					}.bind( this );
-					this.channel.define()
+					this.queue.define()
 						.then( onDefined, onError );
-					this.handlers.push( this.channel.channel.on( 'released', function() {
-						this.handle( 'released' );
-					}.bind( this ) ) );
+					this.handlers.push( this.queue.channel.once( "released", function() {
+							this.handle( "released" );
+						}.bind( this ) ) 
+					);
+					this.handlers.push( this.queue.channel.once( "closed", function() {
+							this.handle( "closed" );
+						}.bind( this ) ) 
+					);
+					this.handlers.push( connection.on( "unreachable", function( err ) {
+							err = err || new Error( "Could not establish a connection to any known nodes." );
+							this._onFailure( err );
+							this.transition( "unreachable" );
+						}.bind( this ) ) 
+					);
 				},
 				check: function() {
-					this.deferUntilTransition( 'ready' );
+					this.deferUntilTransition( "ready" );
 				},
-				destroy: function() {
-					this.deferUntilTransition( 'ready' );
+				release: function() {
+					this.deferUntilTransition( "ready" );
 				},
-				released: function() {
-					this.channel.destroy( true );
-					this.transition( 'initializing' );
+				closed: function() {
+					this.deferUntilTransition( "ready" );
 				},
 				subscribe: function() {
-					this.deferUntilTransition( 'ready' );
+					this.deferUntilTransition( "ready" );
 				}
 			},
-			'ready': {
+			ready: {
 				_onEnter: function() {
-					this.emit( 'defined' );
+					this.emit( "defined" );
 				},
 				check: function( deferred ) {
 					deferred.resolve();
 				},
-				destroy: function() {
-					this.transition( 'destroyed' );
+				closed: function() {
+					this.transition( "closed" );
+				},
+				release: function() {
+					this.transition( "releasing" );
 				},
 				released: function() {
-					this.channel.destroy( true );
-					this.transition( 'initializing' );
+					this.queue.release( true );
+					this.transition( "initializing" );
 				},
 				subscribe: function( op ) {
 					op()
 						.then( function() {
-							log.info( 'Subscription to (%s) queue %s - %s started with consumer tag %s',
-								options.noAck ? 'untracked' : 'tracked',
+							log.info( "Subscription to (%s) queue %s - %s started with consumer tag %s",
+								options.noAck ? "untracked" : "tracked",
 								options.name,
 								connection.name,
-								this.channel.channel.tag );
+								this.queue.channel.tag );
 						}.bind( this ) );
+				}
+			},
+			releasing: {
+				_onEnter: function() {
+					if ( this.queue.getMessageCount() > 0 ) {
+						log.warn( "!!! Queue %s - %s was released with %d pending messages !!!",
+							options.name, connection.name, this.queue.getMessageCount() );
+					} else {
+						log.info( "released queue %s - %s", options.name, connection.name );
+					}
+					_.each( this.handlers, function( handle ) {
+						handle.unsubscribe();
+					} );
+					this.queue.release()
+						.then( function() {
+							this.queue = undefined;
+							this.transition( "released" );
+						}.bind( this ) );
+				}
+			},
+			released: {
+				_onEnter: function() {
+					this.emit( "released" );
+				},
+				release: function() {
+					this.emit( "released" );
+				},
+				check: function( deferred ) {
+					deferred.reject( new Error( format( "Cannot establish queue '%s' after intentionally closing its connection", this.name ) ) );
+				},
+				subscribe: function( op ) {
+					op( new Error( format( "Cannot subscribe to queue '%s' after intentionally closing its connection", this.name ) ) );
+				}
+			},
+			unreachable: {
+				check: function( deferred ) {
+					deferred.reject( new Error( format( "Cannot establish queue '%s' when no nodes can be reached", this.name ) ) );
+				},
+				subscribe: function( op ) {
+					op( new Error( format( "Cannot subscribe to queue '%s' when no nodes can be reached", this.name ) ) );
 				}
 			}
 		}
 	} );
 
 	var fsm = new Fsm();
-	fsm.receivedMessages = fsm.channel.messages;
 	connection.addQueue( fsm );
 	return fsm;
 };
 
-module.exports = Channel;
+module.exports = Factory;

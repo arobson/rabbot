@@ -1,3 +1,46 @@
+
+# rabbot
+
+## 1.0.x
+
+To Do
+ * make sure control channels don't get duplicated
+ * retry post unreachable
+
+### 1.0.0 - issues addressed from wascallyF F* #103 - gulp test no longer throws expect.js errors
+ * #111 - support exclusive subscriptions when calling `startSubscription`
+ * #112 - add `shutdown` method to allow node to exit
+ * #116 - support multiple serializers
+ * #119, #115, #107 - resubscribe to all previously subscribed queues after reconnect
+ * #121 - `rejectUnhandled` should now correctly reject unhandled messages
+ * #122 - guarantee support for type and routing keys set to `''`
+ * Feature - `unique` property on queue creation allows for "single use" exclusive queues with TTL
+ 	* "hash" adds a numeric value
+ 	* "id" uses client id for clearer ownership
+ * Feature - add machine and process info to connection properties for easier identification in management console
+ * Feature - consumer tags are now based on "client id"
+ * Feature - handlers can now be scoped/limited by queue name
+ * Feature - allow custom limits for deferred published messages
+ * Improvement - use "client id" to create response queue names
+ * Improvement - more warning level logging around channel and connection disruption
+ * Improvement - ensure UTC timestamps are put on published messages
+ * Improvemet - reject `reply` promise with error if no `replyTo` address is provided
+ * Improvement - set appId to "client id" on publish
+ * Improvement - introduce limit to the number of messages an exchange will cache waiting for a connection
+ * Improvement - handle blocked and unblocked broker events internally
+ * Improvement - limit the number of messages stored per exchange while waiting on a connection
+ * Bug fix - do not resolve close on connection until all publishes have been confirmed
+ * Breaking - no longer recover automatically from a user terminated connection
+ * Breaking - limit number/duration of connection retries
+ * Breaking - messages are not auto-re-published when a connection or channel fails
+
+#### Significant or Breaking changes
+ * reply signature has changed to support control over serialziation
+ * response queues are named very differently, shouldn't break code, but worth noting
+ * `wascally.iomonad` logging namespace changed to `wascally.io`
+
+# wascally - preserved for history
+
 ## 0.2.*
 
 ### 0.2.10

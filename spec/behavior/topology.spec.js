@@ -1,9 +1,9 @@
-require( '../setup.js' );
-var _ = require( 'lodash' );
-var when = require( 'when' );
-var topologyFn = require( '../../src/topology' );
+require( "../setup.js" );
+var _ = require( "lodash" );
+var when = require( "when" );
+var topologyFn = require( "../../src/topology" );
 var noOp = function() {};
-var emitter = require( './emitter' );
+var emitter = require( "./emitter" );
 
 function connectionFn() {
 
@@ -36,15 +36,15 @@ function connectionFn() {
 	}
 
 	var connection = {
-		name: 'default',
+		name: "default",
 		fail: function( err ) {
-			this.state = 'failed';
+			this.state = "failed";
 			this.lastErr = err;
-			this.raise( 'failed', err );
+			this.raise( "failed", err );
 		},
 		getChannel: noOp,
 		handlers: handlers,
-		lastErr: '',
+		lastErr: "",
 		lastError: function() {
 			return this.lastErr;
 		},
@@ -53,7 +53,7 @@ function connectionFn() {
 		raise: raise,
 		resetHandlers: reset,
 		reset: noOp,
-		state: ''
+		state: ""
 	};
 
 	_.bindAll( connection );
@@ -64,16 +64,16 @@ function connectionFn() {
 	};
 }
 
-describe( 'Topology', function() {
+describe( "Topology", function() {
 
-	describe( 'when initializing with default reply queue', function() {
+	describe( "when initializing with default reply queue", function() {
 		var topology, conn, replyQueue, ex, q;
 
 		before( function( done ) {
 			ex = emitter();
 			q = emitter();
 			q.check = function() {
-				q.raise( 'defined' );
+				q.raise( "defined" );
 				return when.resolve();
 			};
 			var Exchange = function() {
@@ -83,40 +83,42 @@ describe( 'Topology', function() {
 				return q;
 			};
 			conn = connectionFn();
-			topology = topologyFn( conn.instance, {}, undefined, Exchange, Queue, 'test' );
-			topology.once( 'replyQueue.ready', function( queue ) {
+			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue, "test" );
+			topology.once( "replyQueue.ready", function( queue ) {
 				replyQueue = queue;
 				done();
 			} );
 			process.nextTick( function() {
-				q.raise( 'defined' );
+				q.raise( "defined" );
 			} );
 		} );
 
-		it( 'should create default reply queue', function() {
+		it( "should create default reply queue", function() {
 			replyQueue.should.eql(
 				{
-					name: 'test.response.queue',
+					name: "test.response.queue",
+					uniqueName: "test.response.queue",
 					autoDelete: true,
 					subscribe: true
 				}
 			);
 		} );
 
-		describe( 'when recovering from disconnection', function() {
+		describe( "when recovering from disconnection", function() {
 			before( function( done ) {
 				replyQueue = undefined;
-				topology.once( 'replyQueue.ready', function( queue ) {
+				topology.once( "replyQueue.ready", function( queue ) {
 					replyQueue = queue;
 					done();
 				} );
-				conn.instance.raise( 'reconnected' );
+				conn.instance.raise( "reconnected" );
 			} );
 
-			it( 'should recreate default reply queue', function() {
+			it( "should recreate default reply queue", function() {
 				replyQueue.should.eql(
 					{
-						name: 'test.response.queue',
+						name: "test.response.queue",
+						uniqueName: "test.response.queue",
 						autoDelete: true,
 						subscribe: true
 					}
@@ -125,14 +127,14 @@ describe( 'Topology', function() {
 		} );
 	} );
 
-	describe( 'when initializing with custom reply queue', function() {
+	describe( "when initializing with custom reply queue", function() {
 		var topology, conn, replyQueue, ex, q;
 
 		before( function( done ) {
 			ex = emitter();
 			q = emitter();
 			q.check = function() {
-				q.raise( 'defined' );
+				q.raise( "defined" );
 				return when.resolve();
 			};
 			var Exchange = function() {
@@ -144,45 +146,48 @@ describe( 'Topology', function() {
 			conn = connectionFn();
 			var options = {
 				replyQueue: {
-					name: 'mine',
+					name: "mine",
+					uniqueName: "mine",
 					autoDelete: false,
 					subscribe: true
 				}
 			};
-			topology = topologyFn( conn.instance, options, undefined, Exchange, Queue, 'test' );
-			topology.once( 'replyQueue.ready', function( queue ) {
+			topology = topologyFn( conn.instance, options, {}, undefined, Exchange, Queue, "test" );
+			topology.once( "replyQueue.ready", function( queue ) {
 				replyQueue = queue;
 				done();
 			} );
 			process.nextTick( function() {
-				q.raise( 'defined' );
+				q.raise( "defined" );
 			} );
 		} );
 
-		it( 'should create custom reply queue', function() {
+		it( "should create custom reply queue", function() {
 			replyQueue.should.eql(
 				{
-					name: 'mine',
+					name: "mine",
+					uniqueName: "mine",
 					autoDelete: false,
 					subscribe: true
 				}
 			);
 		} );
 
-		describe( 'when recovering from disconnection', function() {
+		describe( "when recovering from disconnection", function() {
 			before( function( done ) {
 				replyQueue = undefined;
-				topology.once( 'replyQueue.ready', function( queue ) {
+				topology.once( "replyQueue.ready", function( queue ) {
 					replyQueue = queue;
 					done();
 				} );
-				conn.instance.raise( 'reconnected' );
+				conn.instance.raise( "reconnected" );
 			} );
 
-			it( 'should recreate custom reply queue', function() {
+			it( "should recreate custom reply queue", function() {
 				replyQueue.should.eql(
 					{
-						name: 'mine',
+						name: "mine",
+						uniqueName: "mine",
 						autoDelete: false,
 						subscribe: true
 					}
@@ -191,14 +196,14 @@ describe( 'Topology', function() {
 		} );
 	} );
 
-	describe( 'when initializing with no reply queue', function() {
+	describe( "when initializing with no reply queue", function() {
 		var topology, conn, replyQueue, ex, q;
 
 		before( function( done ) {
 			ex = emitter();
 			q = emitter();
 			q.check = function() {
-				q.raise( 'defined' );
+				q.raise( "defined" );
 				return when.resolve();
 			};
 			var Exchange = function() {
@@ -211,33 +216,33 @@ describe( 'Topology', function() {
 			var options = {
 				replyQueue: false
 			};
-			topology = topologyFn( conn.instance, options, undefined, Exchange, Queue );
-			topology.once( 'replyQueue.ready', function( queue ) {
+			topology = topologyFn( conn.instance, options, {}, undefined, Exchange, Queue );
+			topology.once( "replyQueue.ready", function( queue ) {
 				replyQueue = queue;
 				done();
 			} );
 			process.nextTick( function() {
-				q.raise( 'defined' );
+				q.raise( "defined" );
 			} );
 			setTimeout( function() {
 				done();
 			}, 200 );
 		} );
 
-		it( 'should not create reply queue', function() {
+		it( "should not create reply queue", function() {
 			should.not.exist( replyQueue );
 			topology.channels.should.eql( {} );
 		} );
 	} );
 
-	describe( 'when creating valid exchange', function() {
+	describe( "when creating valid exchange", function() {
 		var topology, conn, exchange, ex, q;
 
 		before( function( done ) {
 			ex = emitter();
 			q = emitter();
 			ex.check = function() {
-				ex.raise( 'defined' );
+				ex.raise( "defined" );
 				return when.resolve();
 			};
 			var Exchange = function() {
@@ -247,27 +252,27 @@ describe( 'Topology', function() {
 				return q;
 			};
 			conn = connectionFn();
-			topology = topologyFn( conn.instance, {}, undefined, Exchange, Queue );
-			topology.createExchange( { name: 'noice' } )
+			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+			topology.createExchange( { name: "noice" } )
 				.then( function( created ) {
 					exchange = created;
 					done();
 				} );
 			process.nextTick( function() {
-				ex.raise( 'defined' );
+				ex.raise( "defined" );
 			} );
 		} );
 
-		it( 'should create exchange', function() {
+		it( "should create exchange", function() {
 			exchange.should.eql( ex );
 		} );
 
-		it( 'should add exchange to channels', function() {
-			should.exist( topology.channels[ 'exchange:noice' ] );
+		it( "should add exchange to channels", function() {
+			should.exist( topology.channels[ "exchange:noice" ] );
 		} );
 	} );
 
-	describe( 'when creating a duplicate exchange', function() {
+	describe( "when creating a duplicate exchange", function() {
 		var topology, conn, exchange, ex, q;
 		var calls = 0;
 
@@ -275,7 +280,7 @@ describe( 'Topology', function() {
 			ex = emitter();
 			q = emitter();
 			ex.check = function() {
-				ex.raise( 'defined' );
+				ex.raise( "defined" );
 				return when.resolve();
 			};
 			var Exchange = function() {
@@ -286,32 +291,32 @@ describe( 'Topology', function() {
 				return q;
 			};
 			conn = connectionFn();
-			topology = topologyFn( conn.instance, {}, undefined, Exchange, Queue );
-			topology.createExchange( { name: 'noice' } );
-			topology.createExchange( { name: 'noice' } )
+			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+			topology.createExchange( { name: "noice" } );
+			topology.createExchange( { name: "noice" } )
 				.then( function( created ) {
 					exchange = created;
 					done();
 				} );
 			process.nextTick( function() {
-				ex.raise( 'defined' );
+				ex.raise( "defined" );
 			} );
 		} );
 
-		it( 'should create exchange', function() {
+		it( "should create exchange", function() {
 			exchange.should.eql( ex );
 		} );
 
-		it( 'should not create duplicate exchanges', function() {
+		it( "should not create duplicate exchanges", function() {
 			calls.should.equal( 1 );
 		} );
 
-		it( 'should add exchange to channels', function() {
-			should.exist( topology.channels[ 'exchange:noice' ] );
+		it( "should add exchange to channels", function() {
+			should.exist( topology.channels[ "exchange:noice" ] );
 		} );
 	} );
 
-	describe( 'when creating invalid exchange', function() {
+	describe( "when creating invalid exchange", function() {
 		var topology, conn, error, ex, q;
 
 		before( function( done ) {
@@ -327,27 +332,27 @@ describe( 'Topology', function() {
 				return q;
 			};
 			conn = connectionFn();
-			topology = topologyFn( conn.instance, {}, undefined, Exchange, Queue );
-			topology.createExchange( { name: 'badtimes' } )
+			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+			topology.createExchange( { name: "badtimes" } )
 				.then( null, function( err ) {
 					error = err;
 					done();
 				} );
 			process.nextTick( function() {
-				ex.raise( 'failed', new Error( 'ain\'t nobody got time fodat' ) );
+				ex.raise( "failed", new Error( "ain't nobody got time fodat" ) );
 			} );
 		} );
 
-		it( 'should reject with error', function() {
-			error.toString().should.equal( 'Error: Failed to create exchange \'badtimes\' on connection \'default\' with \'ain\'t nobody got time fodat\'' );
+		it( "should reject with error", function() {
+			error.toString().should.contain( "Error: Failed to create exchange 'badtimes' on connection 'default' with 'Error: ain't nobody got time fodat" );
 		} );
 
-		it( 'should not add invalid exchanges to channels', function() {
-			should.not.exist( topology.channels[ 'exchange:badtimes' ] );
+		it( "should not add invalid exchanges to channels", function() {
+			should.not.exist( topology.channels[ "exchange:badtimes" ] );
 		} );
 	} );
 
-	describe( 'when creating invalid queue', function() {
+	describe( "when creating invalid queue", function() {
 		var topology, conn, error, ex, q;
 
 		before( function( done ) {
@@ -363,33 +368,33 @@ describe( 'Topology', function() {
 				return q;
 			};
 			conn = connectionFn();
-			topology = topologyFn( conn.instance, { replyQueue: false }, undefined, Exchange, Queue );
-			topology.createQueue( { name: 'badtimes' } )
+			topology = topologyFn( conn.instance, { replyQueue: false }, {}, undefined, Exchange, Queue );
+			topology.createQueue( { name: "badtimes" } )
 				.then( null, function( err ) {
 					error = err;
 					done();
 				} );
 			process.nextTick( function() {
-				q.raise( 'failed', new Error( 'ain\'t got time fodat' ) );
+				q.raise( "failed", new Error( "ain't got time fodat" ) );
 			} );
 		} );
 
-		it( 'should reject with error', function() {
-			error.toString().should.equal( 'Error: Failed to create queue \'badtimes\' on connection \'default\' with \'ain\'t got time fodat\'' );
+		it( "should reject with error", function() {
+			error.toString().should.contain( "Error: Failed to create queue 'badtimes' on connection 'default' with 'Error: ain't got time fodat" );
 		} );
 
-		it( 'should not add invalid queues to channels', function() {
-			should.not.exist( topology.channels[ 'queue:badtimes' ] );
+		it( "should not add invalid queues to channels", function() {
+			should.not.exist( topology.channels[ "queue:badtimes" ] );
 		} );
 	} );
 
-	describe( 'when deleting an existing exchange', function() {
+	describe( "when deleting an existing exchange", function() {
 		var topology, conn, exchange, ex, q;
 
 		before( function( done ) {
 			ex = emitter();
 			q = emitter();
-			ex.destroy = noOp;
+			ex.release = noOp;
 			var Exchange = function() {
 				return ex;
 			};
@@ -402,15 +407,15 @@ describe( 'Topology', function() {
 			};
 			var controlMock = sinon.mock( control );
 			controlMock
-				.expects( 'deleteExchange' )
+				.expects( "deleteExchange" )
 				.once()
-				.withArgs( 'noice' )
+				.withArgs( "noice" )
 				.returns( when.resolve() );
-			conn.instance.createChannel = function() {
-				return control;
-			};
-			topology = topologyFn( conn.instance, {}, undefined, Exchange, Queue );
-			topology.createExchange( { name: 'noice' } )
+			conn.mock.expects( "getChannel" )
+				.once()
+				.resolves( control );
+			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+			topology.createExchange( { name: "noice" } )
 				.then( function( created ) {
 					exchange = created;
 					topology.deleteExchange( 'noice' )
@@ -419,26 +424,26 @@ describe( 'Topology', function() {
 						} );
 				} );
 			process.nextTick( function() {
-				ex.raise( 'defined' );
+				ex.raise( "defined" );
 			} );
 		} );
 
-		it( 'should create exchange', function() {
+		it( "should create exchange", function() {
 			exchange.should.eql( ex );
 		} );
 
-		it( 'should add exchange to channels', function() {
-			should.not.exist( topology.channels[ 'exchange:noice' ] );
+		it( "should add exchange to channels", function() {
+			should.not.exist( topology.channels[ "exchange:noice" ] );
 		} );
 	} );
 
-	describe( 'when deleting an existing queue', function() {
+	describe( "when deleting an existing queue", function() {
 		var topology, conn, queue, ex, q;
 
 		before( function() {
 			ex = emitter();
 			q = emitter();
-			q.destroy = noOp;
+			q.release = noOp;
 			var Exchange = function() {
 				return ex;
 			};
@@ -451,36 +456,36 @@ describe( 'Topology', function() {
 			};
 			var controlMock = sinon.mock( control );
 			controlMock
-				.expects( 'deleteQueue' )
+				.expects( "deleteQueue" )
 				.once()
-				.withArgs( 'noice' )
+				.withArgs( "noice" )
 				.returns( when.resolve() );
-			conn.instance.createChannel = function() {
-				return control;
-			};
-			topology = topologyFn( conn.instance, { replyQueue: false }, undefined, Exchange, Queue );
+			conn.mock.expects( "getChannel" )
+				.once()
+				.resolves( control );
+			topology = topologyFn( conn.instance, { replyQueue: false }, {}, undefined, Exchange, Queue );
 
 			process.nextTick( function() {
-				q.raise( 'defined' );
+				q.raise( "defined" );
 			} );
 
-			return topology.createQueue( { name: 'noice' } )
+			return topology.createQueue( { name: "noice" } )
 				.then( function( created ) {
 					queue = created;
-					return topology.deleteQueue( 'noice' );
+					return topology.deleteQueue( "noice" );
 				} );
 		} );
 
-		it( 'should create queue', function() {
+		it( "should create queue", function() {
 			queue.should.eql( q );
 		} );
 
-		it( 'should add queue to channels', function() {
-			should.not.exist( topology.channels[ 'queue:noice' ] );
+		it( "should add queue to channels", function() {
+			should.not.exist( topology.channels[ "queue:noice" ] );
 		} );
 	} );
 
-	describe( 'when creating an exchange to exchange binding with no keys', function() {
+	describe( "when creating an exchange to exchange binding with no keys", function() {
 		var topology, conn, ex, q;
 
 		before( function() {
@@ -499,23 +504,23 @@ describe( 'Topology', function() {
 			};
 			var controlMock = sinon.mock( control );
 			controlMock
-				.expects( 'bindExchange' )
+				.expects( "bindExchange" )
 				.once()
-				.withArgs( 'to', 'from', '' )
+				.withArgs( "to", "from", '' )
 				.returns( when.resolve() );
-			conn.instance.createChannel = function() {
-				return control;
-			};
-			topology = topologyFn( conn.instance, {}, undefined, Exchange, Queue );
-			return topology.createBinding( { source: 'from', target: 'to' } );
+			conn.mock.expects( "getChannel" )
+				.once()
+				.resolves( control );
+			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+			return topology.createBinding( { source: "from", target: "to" } );
 		} );
 
-		it( 'should add binding to definitions', function() {
-			topology.definitions.bindings[ 'from->to' ].should.eql( { source: 'from', target: 'to' } );
+		it( "should add binding to definitions", function() {
+			topology.definitions.bindings[ "from->to" ].should.eql( { source: "from", target: "to" } );
 		} );
 	} );
 
-	describe( 'when creating an exchange to queue binding with no keys', function() {
+	describe( "when creating an exchange to queue binding with no keys", function() {
 		var topology, conn, ex, q;
 
 		before( function() {
@@ -533,29 +538,29 @@ describe( 'Topology', function() {
 				bindQueue: noOp
 			};
 			var controlMock = sinon.mock( control );
-			controlMock.expects( 'bindQueue' )
-				.withArgs( 'to', 'from', 'a.*' )
+			controlMock.expects( "bindQueue" )
+				.withArgs( "to", "from", "a.*" )
 				.returns( when.resolve() );
-			controlMock.expects( 'bindQueue' )
-				.withArgs( 'to', 'from', 'b.*' )
+			controlMock.expects( "bindQueue" )
+				.withArgs( "to", "from", "b.*" )
 				.returns( when.resolve() );
 
-			conn.instance.createChannel = function() {
-				return control;
-			};
-			topology = topologyFn( conn.instance, {}, undefined, Exchange, Queue );
-			topology.createBinding( { source: 'from', target: 'to', keys: [ 'a.*', 'b.*' ], queue: true } );
+			conn.mock.expects( "getChannel" )
+				.once()
+				.resolves( control );
+			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+			topology.createBinding( { source: "from", target: "to", keys: [ "a.*", "b.*" ], queue: true } );
 		} );
 
-		it( 'should add binding to definitions', function() {
-			topology.definitions.bindings[ 'from->to' ].should.eql(
-				{ source: 'from', target: 'to', keys: [ 'a.*', 'b.*' ], queue: true }
+		it( "should add binding to definitions", function() {
+			topology.definitions.bindings[ "from->to" ].should.eql(
+				{ source: "from", target: "to", keys: [ "a.*", "b.*" ], queue: true }
 			);
 		} );
 	} );
 
-	describe( 'when a connection to rabbit cannot be established', function() {
-		describe( 'when attempting to create an exchange', function() {
+	describe( "when a connection to rabbit cannot be established", function() {
+		describe( "when attempting to create an exchange", function() {
 			var topology, conn, error, ex, q;
 
 			before( function() {
@@ -568,27 +573,27 @@ describe( 'Topology', function() {
 					return q;
 				};
 				conn = connectionFn();
-				topology = topologyFn( conn.instance, {}, undefined, Exchange, Queue );
+				topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
 				process.nextTick( function() {
-					conn.instance.fail( new Error( 'no such server!' ) );
+					conn.instance.fail( new Error( "no such server!" ) );
 				} );
-				return topology.createExchange( { name: 'delayed.ex' } )
+				return topology.createExchange( { name: "delayed.ex" } )
 					.then( null, function( err ) {
 						error = err;
 					} );
 			} );
 
-			it( 'should reject exchange promise with connection error', function() {
-				error.toString().should.equal(
-					'Error: Failed to create exchange \'delayed.ex\' on connection \'default\' with \'no such server!\'' );
+			it( "should reject exchange promise with connection error", function() {
+				error.toString().should.contain(
+					"Error: Failed to create exchange 'delayed.ex' on connection 'default' with 'Error: no such server!" );
 			} );
 
-			it( 'should keep exchange definition', function() {
-				should.exist( topology.channels[ 'exchange:delayed.ex' ] );
+			it( "should keep exchange definition", function() {
+				should.exist( topology.channels[ "exchange:delayed.ex" ] );
 			} );
 		} );
 
-		describe( 'when attempting to create a queue', function() {
+		describe( "when attempting to create a queue", function() {
 			var topology, conn, error, ex, q;
 
 			before( function() {
@@ -601,23 +606,23 @@ describe( 'Topology', function() {
 					return q;
 				};
 				conn = connectionFn();
-				topology = topologyFn( conn.instance, {}, undefined, Exchange, Queue );
+				topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
 				process.nextTick( function() {
-					conn.instance.fail( new Error( 'no such server!' ) );
+					conn.instance.fail( new Error( "no such server!" ) );
 				} );
-				return topology.createQueue( { name: 'delayed.q' } )
+				return topology.createQueue( { name: "delayed.q" } )
 					.then( null, function( err ) {
 						error = err;
 					} );
 			} );
 
-			it( 'should reject queue promise with connection error', function() {
-				error.toString().should.equal(
-					'Error: Failed to create queue \'delayed.q\' on connection \'default\' with \'no such server!\'' );
+			it( "should reject queue promise with connection error", function() {
+				error.toString().should.contain(
+					"Error: Failed to create queue 'delayed.q' on connection 'default' with 'Error: no such server!" );
 			} );
 
-			it( 'should keep queue definition', function() {
-				should.exist( topology.channels[ 'queue:delayed.q' ] );
+			it( "should keep queue definition", function() {
+				should.exist( topology.channels[ "queue:delayed.q" ] );
 			} );
 		} );
 	} );

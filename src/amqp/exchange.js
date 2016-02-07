@@ -1,7 +1,21 @@
-var _ = require( 'lodash' );
-var when = require( 'when' );
-var exLog = require( '../log.js' )( 'wascally.exchange' );
-var topLog = require( '../log.js' )( 'wascally.topology' );
+var _ = require( "lodash" );
+var when = require( "when" );
+var info = require( "../info" );
+var exLog = require( "../log.js" )( "rabbot.exchange" );
+var topLog = require( "../log.js" )( "rabbot.topology" );
+var format = require( "util" ).format;
+
+/* log
+	* `rabbot.exchange`
+	  * `debug`
+	    * details for message publish - very verbose
+	  * `info`
+	  * `error`
+	    * no serializer is defined for message's content type
+	* `rabbot.topology`
+	  * `info`
+	    * exchange declaration
+*/
 
 function aliasOptions( options, aliases ) {
 	var aliased = _.transform( options, function( result, value, key ) {
@@ -13,43 +27,59 @@ function aliasOptions( options, aliases ) {
 
 function define( channel, options, connectionName ) {
 	var valid = aliasOptions( options, {
-		alternate: 'alternateExchange'
-	}, 'persistent', 'publishTimeout' );
-	topLog.info( 'Declaring %s exchange \'%s\' on connection \'%s\' with the options: %s',
+		alternate: "alternateExchange"
+	}, "limit", "persistent", "publishTimeout" );
+	topLog.info( "Declaring %s exchange '%s' on connection '%s' with the options: %s",
 		options.type,
 		options.name,
 		connectionName,
-		JSON.stringify( _.omit( valid, [ 'name', 'type' ] ) )
+		JSON.stringify( _.omit( valid, [ "name", "type" ] ) )
 	);
 	return channel.assertExchange( options.name, options.type, valid );
 }
 
-function getChannel( connection ) {
-	return connection.createChannel( true );
+function getContentType( message ) {
+	if( message.contentType ) {
+		return message.contentType;
+	}
+	else if( _.isString( message.body ) ) {
+		return "text/plain";
+	} else if( _.isObject( message.body ) && !message.body.length ) {
+		return "application/json";
+	} else {
+		return "application/octet-stream";
+	}
 }
 
-function publish( channel, options, topology, log, message ) {
+function publish( channel, options, topology, log, serializers, message ) {
 	var channelName = options.name;
 	var type = options.type;
 	var baseHeaders = {
-		'CorrelationId': message.correlationId
+		"CorrelationId": message.correlationId
 	};
 	message.headers = _.merge( baseHeaders, message.headers );
-	var payload = new Buffer( JSON.stringify( message.body ) );
+	var contentType = getContentType( message );
+	var serializer = serializers[ contentType ];
+	if( !serializer ) {
+		var errMessage = format( "Failed to publish message with contentType '%s' - no serializer defined", contentType );
+		exLog.error( errMessage );
+		return when.reject( new Error( errMessage ) );
+	}
+	var payload = serializer.serialize( message.body );
 	var publishOptions = {
-		type: message.type || '',
-		contentType: 'application/json',
-		contentEncoding: 'utf8',
-		correlationId: message.correlationId || '',
-		replyTo: message.replyTo || topology.replyQueue.name || '',
-		messageId: message.messageId || message.id || '',
-		timestamp: message.timestamp,
-		appId: message.appId || '',
+		type: message.type || "",
+		contentType:contentType,
+		contentEncoding: "utf8",
+		correlationId: message.correlationId || "",
+		replyTo: message.replyTo || topology.replyQueue.name || "",
+		messageId: message.messageId || message.id || "",
+		timestamp: message.timestamp || Date.now(),
+		appId: message.appId || info.id,
 		headers: message.headers || {},
 		expiration: message.expiresAfter || undefined
 	};
-	if ( publishOptions.replyTo === 'amq.rabbitmq.reply-to' ) {
-		publishOptions.headers[ 'direct-reply-to' ] = 'true';
+	if ( publishOptions.replyTo === "amq.rabbitmq.reply-to" ) {
+		publishOptions.headers[ "direct-reply-to" ] = "true";
 	}
 	if ( !message.sequenceNo ) {
 		log.add( message );
@@ -59,7 +89,7 @@ function publish( channel, options, topology, log, message ) {
 	}
 
 	var effectiveKey = message.routingKey === '' ? '' : message.routingKey || publishOptions.type;
-	exLog.debug( 'Publishing message ( type: %s topic: %s, sequence: %s, correlation: %s, replyTo: %s ) to %s exchange %s - %s',
+	exLog.debug( "Publishing message ( type: '%s' topic: '%s', sequence: '%s', correlation: '%s', replyTo: '%s' ) to %s exchange '%s' on connection '%s'",
 		publishOptions.type,
 		effectiveKey,
 		message.sequenceNo,
@@ -69,33 +99,38 @@ function publish( channel, options, topology, log, message ) {
 		channelName,
 		topology.connection.name );
 
-	function remove( x ) {
+	function onRejected( err ) {
 		log.remove( message );
-		return x;
+		throw err;
 	}
 
-	return when.promise( function( resolve, reject ) {
-		channel.publish(
+	function onConfirmed( sequence ) {
+		log.remove( message );
+		return sequence;
+	}
+
+	return channel.publish(
 			channelName,
 			effectiveKey,
 			payload,
 			publishOptions
-		).then( resolve, reject );
-	} ).then( remove, remove );
+		).then( onConfirmed, onRejected );
 }
 
-module.exports = function( options, topology, publishLog ) {
-	var channel = getChannel( topology.connection );
-	return {
-		channel: channel,
-		define: define.bind( undefined, channel, options, topology.connection.name ),
-		destroy: function() {
-			if ( channel ) {
-				channel.destroy();
-				channel = undefined;
-			}
-			return when( true );
-		},
-		publish: publish.bind( undefined, channel, options, topology, publishLog )
-	};
+module.exports = function( options, topology, publishLog, serializers ) {
+	return topology.connection.getChannel( options.name, true, "exchange channel for " + options.name )
+		.then( function( channel ) {
+			return {
+				channel: channel,
+				define: define.bind( undefined, channel, options, topology.connection.name ),
+				release: function() {
+					if ( channel ) {
+						channel.release();
+						channel = undefined;
+					}
+					return when( true );
+				},
+				publish: publish.bind( undefined, channel, options, topology, publishLog, serializers )
+			};
+		} );
 };

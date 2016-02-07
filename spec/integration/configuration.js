@@ -1,128 +1,128 @@
 module.exports = {
 	connection: {
-		name: 'default',
-		user: 'guest',
-		pass: 'guest',
-		server: '127.0.0.1',
+		name: "default",
+		user: "guest",
+		pass: "guest",
+		server: "127.0.0.1",
 		port: 5672,
-		vhost: '%2f',
-		replyQueue: 'customReplyQueue'
+		vhost: "%2f",
+		replyQueue: "customReplyQueue"
 	},
 
 	exchanges: [
 		{
-			name: 'wascally-ex.direct',
-			type: 'direct',
+			name: "rabbot-ex.direct",
+			type: "direct",
 			autoDelete: true
 		},
 		{
-			name: 'wascally-ex.topic',
-			type: 'topic',
-			alternate: 'wascally-ex.alternate',
+			name: "rabbot-ex.topic",
+			type: "topic",
+			alternate: "rabbot-ex.alternate",
 			autoDelete: true
 		},
 		{
-			name: 'wascally-ex.fanout',
-			type: 'fanout',
+			name: "rabbot-ex.fanout",
+			type: "fanout",
 			autoDelete: true
 		},
 		{
-			name: 'wascally-ex.request',
-			type: 'fanout',
+			name: "rabbot-ex.request",
+			type: "fanout",
 			autoDelete: true
 		},
 		{
-			name: 'wascally-ex.deadend',
-			type: 'fanout',
-			alternate: 'wascally-ex.alternate',
+			name: "rabbot-ex.deadend",
+			type: "fanout",
+			alternate: "rabbot-ex.alternate",
 			autoDelete: true
 		},
 		{
-			name: 'wascally-ex.alternate',
-			type: 'fanout',
+			name: "rabbot-ex.alternate",
+			type: "fanout",
 			autoDelete: true
 		},
 		{
-			name: 'wascally-ex.deadletter',
-			type: 'fanout',
+			name: "rabbot-ex.deadletter",
+			type: "fanout",
 			autoDelete: true
 		},
 		{
-			name: 'wascally-ex.consistent-hash',
-			type: 'x-consistent-hash',
+			name: "rabbot-ex.consistent-hash",
+			type: "x-consistent-hash",
 			autoDelete: true,
 			arguments: {
-				'hash-header': 'CorrelationId'
+				"hash-header": "CorrelationId"
 			}
 		},
 		{
-			name: 'wascally-ex.no-batch',
-			type: 'direct',
+			name: "rabbot-ex.no-batch",
+			type: "direct",
 			autoDelete: true
 		}
 	],
 
 	queues: [
 		{
-			name: 'wascally-q.direct',
+			name: "rabbot-q.direct",
 			autoDelete: true,
 			subscribe: true
 		},
 		{
-			name: 'wascally-q.topic',
+			name: "rabbot-q.topic",
 			autoDelete: true,
 			subscribe: true,
-			deadletter: 'wascally-ex.deadletter'
+			deadletter: "rabbot-ex.deadletter"
 		},
 		{
-			name: 'wascally-q.general1',
+			name: "rabbot-q.general1",
 			noAck: true,
 			autoDelete: true,
 			subscribe: true
 		},
 		{
-			name: 'wascally-q.general2',
+			name: "rabbot-q.general2",
 			noAck: true,
 			autoDelete: true,
 			subscribe: true
 		},
 		{
-			name: 'wascally-q.request',
+			name: "rabbot-q.request",
 			autoDelete: true,
 			subscribe: true
 		},
 		{
-			name: 'wascally-q.alternate',
+			name: "rabbot-q.alternate",
 			autoDelete: true,
 			subscribe: true
 		},
 		{
-			name: 'wascally-q.deadletter',
+			name: "rabbot-q.deadletter",
 			autoDelete: true,
 			subscribe: true
 		},
 		{
-			name: 'wascally-q.hashed1',
+			name: "rabbot-q.hashed1",
 			autoDelete: true,
 			subscribe: true
 		},
 		{
-			name: 'wascally-q.hashed2',
+			name: "rabbot-q.hashed2",
 			autoDelete: true,
 			subscribe: true
 		},
 		{
-			name: 'wascally-q.hashed3',
+			name: "rabbot-q.hashed3",
 			autoDelete: true,
 			subscribe: true
 		},
 		{
-			name: 'wascally-q.hashed4',
+			name: "rabbot-q.hashed4",
 			autoDelete: true,
 			subscribe: true
 		},
 		{
-			name: 'wascally-q.no-batch',
+			name: "rabbot-q.no-batch",
 			autoDelete: true,
 			subscribe: true,
 			noBatch: true,
@@ -132,63 +132,63 @@ module.exports = {
 
 	bindings: [
 		{
-			exchange: 'wascally-ex.direct',
-			target: 'wascally-q.direct',
-			keys: ''
+			exchange: "rabbot-ex.direct",
+			target: "rabbot-q.direct",
+			keys: ""
 		},
 		{
-			exchange: 'wascally-ex.topic',
-			target: 'wascally-q.topic',
-			keys: 'this.is.*'
+			exchange: "rabbot-ex.topic",
+			target: "rabbot-q.topic",
+			keys: "this.is.*"
 		},
 		{
-			exchange: 'wascally-ex.fanout',
-			target: 'wascally-q.general1',
+			exchange: "rabbot-ex.fanout",
+			target: "rabbot-q.general1",
 			keys: []
 		},
 		{
-			exchange: 'wascally-ex.fanout',
-			target: 'wascally-q.general2',
+			exchange: "rabbot-ex.fanout",
+			target: "rabbot-q.general2",
 			keys: []
 		},
 		{
-			exchange: 'wascally-ex.request',
-			target: 'wascally-q.request',
+			exchange: "rabbot-ex.request",
+			target: "rabbot-q.request",
 			keys: []
 		},
 		{
-			exchange: 'wascally-ex.deadletter',
-			target: 'wascally-q.deadletter',
+			exchange: "rabbot-ex.deadletter",
+			target: "rabbot-q.deadletter",
 			keys: []
 		},
 		{
-			exchange: 'wascally-ex.alternate',
-			target: 'wascally-q.alternate',
+			exchange: "rabbot-ex.alternate",
+			target: "rabbot-q.alternate",
 			keys: []
 		},
 		{
-			exchange: 'wascally-ex.consistent-hash',
-			target: 'wascally-q.hashed1',
-			keys: '100'
+			exchange: "rabbot-ex.consistent-hash",
+			target: "rabbot-q.hashed1",
+			keys: "100"
 		},
 		{
-			exchange: 'wascally-ex.consistent-hash',
-			target: 'wascally-q.hashed2',
-			keys: '100'
+			exchange: "rabbot-ex.consistent-hash",
+			target: "rabbot-q.hashed2",
+			keys: "100"
 		},
 		{
-			exchange: 'wascally-ex.consistent-hash',
-			target: 'wascally-q.hashed3',
-			keys: '100'
+			exchange: "rabbot-ex.consistent-hash",
+			target: "rabbot-q.hashed3",
+			keys: "100"
 		},
 		{
-			exchange: 'wascally-ex.consistent-hash',
-			target: 'wascally-q.hashed4',
-			keys: '100'
+			exchange: "rabbot-ex.consistent-hash",
+			target: "rabbot-q.hashed4",
+			keys: "100"
 		},
 		{
-			exchange: 'wascally-ex.no-batch',
-			target: 'wascally-q.no-batch'
+			exchange: "rabbot-ex.no-batch",
+			target: "rabbot-q.no-batch"
 		}
 	]
 };

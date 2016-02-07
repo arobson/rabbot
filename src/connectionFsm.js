@@ -1,8 +1,34 @@
-var _ = require( 'lodash' );
-var Monologue = require( 'monologue.js' );
-var when = require( 'when' );
-var machina = require( 'machina' );
-var log = require( './log.js' )( 'wascally.connection' );
+var _ = require( "lodash" );
+var Monologue = require( "monologue.js" );
+var when = require( "when" );
+var machina = require( "machina" );
+var format = require( "util" ).format;
+var log = require( "./log.js" )( "rabbot.connection" );
+
+/* events emitted:
+	'closing' - close is initiated by user
+	'closed' - initiated close has completed
+	'connecting' - connection initiated
+	'connected' - connection established
+	'reconnected' - lost connection recovered
+	'failed' - connection lost
+	'unreachable' - no end points could be reached within threshold
+*/
+
+/* logs:
+    * `rabbot.connection`
+	  * `debug`:
+	  	* on successful acquisition of a new channel
+	  * `info`:
+	  	* user initiated close started
+	  	* user initiated close completed
+	  * `warn`:
+	  	* attempt to acquire a channel during user initiated connection close
+	  	* attempt to acquire a channel on a user-closed connection
+	  * `error`:
+	  	* on failed channel creation
+	  	* failed reconnection
+*/
 
 var Connection = function( options, connectionFn, channelFn ) {
 	channelFn = channelFn || require( './amqp/channel' );
@@ -11,16 +37,80 @@ var Connection = function( options, connectionFn, channelFn ) {
 	var connection;
 	var queues = [];
 	var exchanges = [];
+	var channels = {};
 
 	var Fsm = machina.Fsm.extend( {
-		name: options.name || 'default',
-		initialState: 'initializing',
-		reconnected: false,
+		name: options.name || "default",
+		initialState: "initializing",
+		connected: false,
+		consecutiveFailures: 0,
+		lastAttempt: Date.now(),
+
+		initialize: function() {
+			options.name = this.name;
+		},
 
 		_closer: function() {
-			connection.close().then( function() {
-				this.transition( 'closed' );
+			connection.close();
+		},
+
+		_getChannel: function ( name, confirm, context ) {
+			var channel = channels[ name ];
+			if ( !channel ) {
+				return when.promise( function( resolve ) {
+					channel = channelFn.create( connection, name, confirm );
+					channels[ name ] = channel;
+					channel.on( "acquired", function() {
+						this._onChannel.bind( this, name, context );
+						resolve( channel );
+					}.bind( this ) );
+				}.bind( this ) );
+			} else {
+				return when( channel );
+			}
+		},
+
+		_onChannel: function( name, context, channel ) {
+			log.debug( "Acquired channel '%s' on '%s' successfully for '%s'", name, this.name, context );
+			return channel;
+		},
+
+		_onChannelFailure: function( name, context, error ) {
+			log.error( "Failed to create channel '%s' on '%s' for '%s' with %s", name, this.name, error );
+			return when.reject( error );
+		},
+
+		_reconnect: function() {
+			var reacquisitions = _.map( channels, function( channel ) {
+				return when.promise( function( resolve ) {
+					channel.once( "acquired", function() {
+						resolve( channel );
+					} );
+					channel.acquire();
+				}.bind( this ) );
 			}.bind( this ) );
+
+			function reacquired() {
+				this.emit( "reconnected" );
+			}
+
+			function reacquireFailed( err ) {
+				log.error( "Could not complete reconnection of '%s' due to %s", err );
+				this.transition( "failed" );
+				this.handle( "failed", err );
+			}
+
+			when.all( reacquisitions )
+				.then( 
+					reacquired.bind( this ),
+					reacquireFailed.bind( this ) 
+				);
+		},
+
+		_replay: function( ev ) {
+			return function( x ) {
+				this.handle( ev, x );
+			}.bind( this );
 		},
 
 		addQueue: function( queue ) {
@@ -31,25 +121,34 @@ var Connection = function( options, connectionFn, channelFn ) {
 			exchanges.push( exchange );
 		},
 
-		close: function( reset ) {
+		getChannel: function( name, confirm, context ) {
 			var deferred = when.defer();
-			this.handle( 'close', deferred );
-			return deferred.promise.then( function() {
-				if( reset ) {
-					queues = [];
-					exchanges = [];
-				}
+			this.handle( "channel", {
+				name: name,
+				confirm: confirm,
+				context: context,
+				deferred: deferred 
 			} );
+			return deferred.promise;
 		},
 
-		createChannel: function( confirm ) {
-			this.connect();
-			return channelFn.create( connection, confirm );
+		close: function( reset ) {
+			log.info( "Close initiated on connection '%s'", this.name );
+			var deferred = when.defer();
+			this.handle( "close", deferred );
+			return deferred.promise
+				.then( function() {
+					if( reset ) {
+						queues = [];
+						exchanges = [];
+					}
+				} );
 		},
 
 		connect: function() {
+			this.consecutiveFailures = 0;
 			var deferred = when.defer();
-			this.handle( 'connect', deferred );
+			this.handle( "connect", deferred );
 			return deferred.promise;
 		},
 
@@ -57,113 +156,131 @@ var Connection = function( options, connectionFn, channelFn ) {
 			return connection.lastError;
 		},
 
-		replay: function( ev ) {
-			return function( x ) {
-				this.emit( ev, x );
-				this.handle( ev, x );
-			}.bind( this );
-		},
-
 		states: {
-			'initializing': {
+			initializing: {
 				_onEnter: function() {
 					connection = connectionFn( options );
-					connection.on( 'acquiring', this.replay( 'acquiring' ) );
-					connection.on( 'acquired', this.replay( 'acquired' ) );
-					connection.on( 'failed', this.replay( 'failed' ) );
-					connection.on( 'lost', this.replay( 'lost' ) );
+					this.lastAttempt = Date.now();
+					connection.on( "acquiring", this._replay( "acquiring" ) );
+					connection.on( "acquired", this._replay( "acquired" ) );
+					connection.on( "failed", this._replay( "failed" ) );
+					connection.on( "closed", this._replay( "closed" ) );
+					connection.on( "released", this._replay( "released" ) );
 				},
-				'acquiring': function() {
-					this.transition( 'connecting' );
+				acquiring: function() {
+					this.transition( "connecting" );
 				},
-				'acquired': function() {
-					this.transition( 'connected' );
+				acquired: function() {
+					this.transition( "connected" );
 				},
-				'close': function() {
-					this.deferUntilTransition( 'connected' );
-					this.transition( 'connected' );
+				channel: function() {
+					this.deferUntilTransition( "connected" );
 				},
-				'connect': function() {
-					this.deferUntilTransition( 'connected' );
-					this.transition( 'connecting' );
+				close: function() {
+					this.deferUntilTransition( "connected" );
+					this.transition( "connected" );
 				},
-				'failed': function( err ) {
-					this.transition( 'failed' );
-					this.emit( 'failed', err );
+				connect: function() {
+					this.deferUntilTransition( "connected" );
+					this.transition( "connecting" );
+				},
+				failed: function() {
+					this.deferUntilTransition();
+					this.transition( "connecting" );
 				}
 			},
-			'connecting': {
+			connecting: {
 				_onEnter: function() {
-					setTimeout( function() {
-						connection.acquire();
-					}, 0 );
+					connection.acquire()
+						.then( null, function() {} );
+					this.emit( "connecting" );
 				},
-				'acquired': function() {
-					this.transition( 'connected' );
+				acquired: function() {
+					this.transition( "connected" );
 				},
-				'close': function() {
-					this.deferUntilTransition( 'connected' );
-					this.transition( 'connected' );
+				channel: function() {
+					this.deferUntilTransition( "connected" );
 				},
-				'connect': function() {
-					this.deferUntilTransition( 'connected' );
+				close: function() {
+					this.deferUntilTransition();
 				},
-				'failed': function( err ) {
-					this.transition( 'failed' );
-					this.emit( 'failed', err );
+				connect: function() {
+					this.deferUntilTransition( "connected" );
+				},
+				failed: function() {
+					this.deferUntilTransition( "failed" );
+					this.transition( "failed" );
 				}
 			},
-			'connected': {
+			connected: {
 				_onEnter: function() {
-					if ( this.reconnected ) {
-						this.emit( 'reconnected' );
+					this.uri = connection.item.uri;
+					this.consecutiveFailures = 0;
+					if ( this.connected ) {
+						this._reconnect();
 					}
-					this.reconnected = true;
-					this.emit( 'connected', connection );
+					this.connected = true;
+					this.emit( "connected", connection );
 				},
-				'failed': function( err ) {
-					this.emit( 'failed', err );
-					this.transition( 'connecting' );
+				acquired: function() {
+					this.deferUntilTransition( "connecting" );
 				},
-				'lost': function() {
-					this.transition( 'connecting' );
+				channel: function( request ) {
+					this._getChannel( request.name, request.confirm, request.context )
+						.then( 
+							request.deferred.resolve, 
+							request.deferred.reject
+						);
 				},
-				'close': function() {
-					this.deferUntilTransition( 'closed' );
-					this.transition( 'closing' );
+				close: function() {
+					this.deferUntilTransition( "closed" );
+					this.transition( "closing" );
 				},
-				'connect': function( deferred ) {
+				connect: function( deferred ) {
 					deferred.resolve();
-					this.emit( 'already-connected', connection );
+					this.emit( "already-connected", connection );
+				},
+				failed: function() {
+					this.deferUntilTransition( "failed" );
+					this.transition( "failed" );
+				},
+				closed: function() {
+					this.transition( "connecting" );
 				}
 			},
-			'closed': {
+			closed: {
 				_onEnter: function() {
-					log.info( 'Closed connection to %s', this.name );
+					log.info( 'Close on connection \'%s\' resolved', this.name );
 					this.emit( 'closed', {} );
 				},
-				'acquiring': function() {
-					this.transition( 'connecting' );
+				acquiring: function() {
+					this.transition( "connecting" );
 				},
-				'close': function( deferred ) {
+				channel: function() {
+					log.warn( "Channel '%s' on '%s' was requested for '%s' which was closed by user. Request will be deferred until connection is re-established explicitly by user." );
+					this.deferUntilTransition( "connected" );
+				},
+				close: function( deferred ) {
 					deferred.resolve();
 					connection.release();
-					this.emit( 'closed' );
+					this.emit( "closed" );
 				},
-				'connect': function() {
-					this.deferUntilTransition( 'connected' );
-					this.transition( 'connecting' );
+				connect: function() {
+					this.deferUntilTransition( "connected" );
+					this.transition( "connecting" );
 				},
-				'failed': function( err ) {
-					this.emit( 'failed', err );
+				failed: function() {
+					this.deferUntilTransition( "failed" );
+					this.transition( "failed" );
 				}
 			},
-			'closing': {
+			closing: {
 				_onEnter: function() {
+					this.emit( "closing" );
 					var closeList = queues.concat( exchanges );
 					if ( closeList.length ) {
 						when.all( _.map( closeList, function( channel ) {
-							return channel.destroy();
+							return channel.release();
 						} ) ).then( function() {
 							this._closer();
 						}.bind( this ) );
@@ -171,22 +288,68 @@ var Connection = function( options, connectionFn, channelFn ) {
 						this._closer();
 					}
 				},
-				'connect': function() {
-					this.deferUntilTransition( 'closed' );
+				channel: function( request ) {
+					log.warn( "Channel '%s' on '%s' was requested for '%s' during user initiated close. Request will be rejected." );
+					request.deferred.reject( new Error( 
+						format( "Illegal request for channel '%s' during close of connection '%s' initiated by user", 
+							request.name,
+							this.name
+						)
+					) );
+				},
+				connect: function() {
+					this.deferUntilTransition( "closed" );
 				},
 				close: function() {
-					this.deferUntilTransition( 'closed' );
+					this.deferUntilTransition( "closed" );
+				},
+				closed: function() {
+					this.transition( "closed" );
+				},
+				released: function() {
+					this.transition( "closed" );
 				}
 			},
-			'failed': {
-				'close': function( deferred ) {
-					deferred.resolve();
-					connection.destroy();
-					this.emit( 'closed' );
+			failed: {
+				_onEnter: function() {
+					this.consecutiveFailures ++;
+					var tooLong = ( ( Date.now() - this.lastAttempt ) / 1000 ) > options.failAfter;
+					var tooManyFailures = this.consecutiveFailures >= options.retryLimit;
+					if( tooLong || tooManyFailures ) {
+						this.transition( "unreachable" );
+					}
 				},
-				'connect': function() {
-					this.deferUntilTransition( 'connected' );
-					this.transition( 'connecting' );
+				failed: function( err ) {
+					this.emit( "failed", err );
+				},
+				acquiring: function() {
+					this.transition( "connecting" );
+				},
+				channel: function() {
+					this.deferUntilTransition( "connected" );
+				},
+				close: function( deferred ) {
+					deferred.resolve();
+					connection.release();
+					this.emit( "closed" );
+				},
+				connect: function() {
+					this.deferUntilTransition( "connected" );
+					this.transition( "connecting" );
+				}
+			},
+			unreachable: {
+				_onEnter: function() {
+					connection
+						.release()
+						.then( function() {
+							this.emit( "unreachable" );
+						}.bind( this ) );
+				},
+				connect: function() {
+					this.consecutiveFailures = 0;
+					this.lastAttempt = Date.now();
+					this.transition( "connecting" );
 				}
 			}
 		}

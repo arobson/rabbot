@@ -21,7 +21,7 @@
 	"noempty"   : true,   //warns when you have an empty block in your code
 	"nonew"     : true,   //prohibits the use of constructor functions for side-effects
 	"plusplus"  : false,  //prohibits the use of unary increment and decrement operators
-	"quotmark"  : true,   //enforces the consistency of quotation marks used throughout your code
+	"quotmark"  : false,   //enforces the consistency of quotation marks used throughout your code
 	"regexp"    : false,  //prohibits the use of unsafe `.` in regular expressions
 	"undef"     : true,   //prohibits the use of explicitly undeclared variables
 	"unused"    : true,   //warns when you define and never use your variables
@@ -93,7 +93,8 @@
 		"it",
 		"require",
 		"sinon",
-		"should"
+		"should",
+		"expect"
 	],
 
 	// LEGACY
