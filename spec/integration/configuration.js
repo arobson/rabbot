@@ -59,6 +59,11 @@ module.exports = {
 			name: "rabbot-ex.no-batch",
 			type: "direct",
 			autoDelete: true
+		},
+		{
+			name: "rabbot-ex.no-ack",
+			type: "direct",
+			autoDelete: true	
 		}
 	],
 
@@ -127,6 +132,13 @@ module.exports = {
 			subscribe: true,
 			noBatch: true,
 			limit: 5
+		},
+		{
+			name: "rabbot-q.no-ack",
+			autoDelete: true,
+			subscribe: true,
+			noAck: true,
+			limit: 5
 		}
 	],
 
@@ -189,6 +201,10 @@ module.exports = {
 		{
 			exchange: "rabbot-ex.no-batch",
 			target: "rabbot-q.no-batch"
+		},
+		{
+			exchange: "rabbot-ex.no-ack",
+			target: "rabbot-q.no-ack"
 		}
 	]
 };

@@ -30,6 +30,9 @@ To Do
  * Improvement - handle blocked and unblocked broker events internally
  * Improvement - limit the number of messages stored per exchange while waiting on a connection
  * Bug fix - do not resolve close on connection until all publishes have been confirmed
+ * Bug fix - use reject instead of nack when queues are in noBatch
+ * Bug fix - noop nacks and rejections when consuming in no-ack mode
+ * Bug fix - channels closed by the broker should still be re-acquired with redefined primitives
  * Breaking - no longer recover automatically from a user terminated connection
  * Breaking - limit number/duration of connection retries
  * Breaking - messages are not auto-re-published when a connection or channel fails

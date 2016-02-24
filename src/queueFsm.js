@@ -29,6 +29,18 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 		signalSubscription: undefined,
 		handlers: [],
 
+		_define: function() {
+			var onError = function( err ) {
+				this.failedWith = err;
+				this.transition( "failed" );
+			}.bind( this );
+			var onDefined = function() {
+				this.transition( "ready" );
+			}.bind( this );
+			this.queue.define()
+				.then( onDefined, onError );
+		},
+
 		check: function() {
 			var deferred = when.defer();
 			this.handle( "check", deferred );
@@ -120,20 +132,16 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 				acquired: function( queue ) {
 					this.queue = queue;
 					this.receivedMessages = this.queue.messages;
-					var onError = function( err ) {
-						this.failedWith = err;
-						this.transition( "failed" );
-					}.bind( this );
-					var onDefined = function() {
-						this.transition( "ready" );
-					}.bind( this );
-					this.queue.define()
-						.then( onDefined, onError );
-					this.handlers.push( this.queue.channel.once( "released", function() {
+					this._define();
+					this.handlers.push( this.queue.channel.on( "acquired", function() {
+							this._define();
+						}.bind( this ) ) 
+					);
+					this.handlers.push( this.queue.channel.on( "released", function() {
 							this.handle( "released" );
 						}.bind( this ) ) 
 					);
-					this.handlers.push( this.queue.channel.once( "closed", function() {
+					this.handlers.push( this.queue.channel.on( "closed", function() {
 							this.handle( "closed" );
 						}.bind( this ) ) 
 					);

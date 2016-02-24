@@ -298,7 +298,7 @@ module.exports = function( name, type, factory, target, close ) {
 					this.transition( "released" );
 				},
 				released: function() {
-					this.transition( "released" );
+					// this is expected because the close event fires after the error event on a channel or connection
 				}
 			},
 			releasing: {

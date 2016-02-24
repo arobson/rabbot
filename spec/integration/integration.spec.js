@@ -490,6 +490,40 @@ describe( "Integration Test Suite", function() {
 		} );
 	} );
 
+	// this test is here primarily for use with detailed logging so that
+	// one can observe the output and verify that the channel doesn't error
+	// and close as a result (which it used to do)
+	describe( "with noAck enabled", function() {
+		var messagesToSend, harness;
+
+		before( function( done ) {
+			this.timeout( 5000 );
+
+			messagesToSend = 1;
+			harness = harnessFn( done, 1 );
+			var messageCount = 0;
+
+			harness.handle( "no.ack", function( message ) {
+				if( messageCount < 1 ) {
+					message.reject();
+				}
+				messageCount += 1;
+			} );
+
+			for (var i = 0; i < messagesToSend; i++) {
+				rabbit.publish( "rabbot-ex.no-ack", {
+					type: "no.ack",
+					body: "message " + i,
+					routingKey: ""
+				} );
+			}
+		} );
+
+		it( "should receive all messages", function() {
+			harness.received.length.should.equal( messagesToSend );
+		} );
+	} );
+
 	describe( "with wild card type handling", function() {
 		var harness;
 		before( function( done ) {

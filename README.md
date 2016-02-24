@@ -10,7 +10,7 @@ This is a very opinionated abstraction over amqplib to help simplify certain com
 
 ### Features:
 
- * Gracefully handle re-connections
+ * Gracefully handle lost connections and channels
  * Automatically re-define all topology on re-connection
  * Support the majority of RabbitMQ's extensions
  * Handle batching of acknowledgements and rejections
@@ -200,6 +200,8 @@ rabbit.request( "request.exchange", {
 > * `typeName` can use AMQP style wild-cards to handle multiple message types - use this with caution!
 
 Message handlers are registered to handle a message based on the typeName. Calling handle will return a reference to the handler that can later be removed. The message that is passed to the handler is the raw Rabbit payload. The body property contains the message body published. The message has `ack`, `nack` (requeue the message), `reply` and `reject` (don't requeue the message) methods control what Rabbit does with the message.
+
+> !IMPORTANT!: ack, nack and reject are effectively noOps when a queue's `noAck` is set to `true`. RabbitMQ does not support nacking or rejection of messages from consumers in `no-ack` mode. This means that error handling and unhandled message strategies won't be able to re-queue messages.
 
 #### Explicit Error Handling
 In this example, any possible error is caught in an explicit try/catch:
@@ -561,7 +563,7 @@ This queue configuration will set a prefetch limit of 5 on the channel that is u
 ## A Note About Etiquette
 Like everything on LeanKit-Labs, rabbot was created to address a need we had at work. Any time I spend on it during work hours is to ensure that it does what LeanKit needs it to. The considerable amount of time I've spent on wascally and now rabbot outside of work hours is because I (and LeanKit) love open source software and want to contribute. We hope that you find this library useful and that it makes your job or project easier.
 
-That said, I am often troubled by how often users of open source libraries become demanding rather than active participants. Please keep a cordial/professional tone when reporting issues or requesting help. Feature requests or issue reports that strike me as entitled or disrespectful will be ignored and closed. You're benefiting from a considerable amount of knowledge and effort for $0; please keep this in mind, even when you're frustrated about a defect, design flaw or missing feature.
+That said, I am often troubled by how often users of open source libraries become demanding rather than active participants. Please keep a cordial/professional tone when reporting issues or requesting help. Feature requests or issue reports that have an entitled or disrespectful tone will be ignored and closed. All of us in open source are benefiting from a considerable amount of knowledge and effort for $0; please keep this in mind when frustrated about a defect, design flaw or missing feature.
 
 ## Additional Learning Resources
 
@@ -632,6 +634,5 @@ $ gulp
 This project has both an `.editorconfig` and `.esformatter` file to help keep adherance to style simple. Please also take advantage of the `.jshintrc` file and avoid linter warnings.
 
 ## Roadmap
- * support RabbitMQ backpressure mechanisms
+ * improve support RabbitMQ backpressure mechanisms
  * add support for Rabbit's HTTP API
- * enable better cluster utilization by spreading connections out over all nodes in cluster

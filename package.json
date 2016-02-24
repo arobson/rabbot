@@ -1,6 +1,6 @@
 {
   "name": "rabbot",
-  "version": "1.0.0-1",
+  "version": "1.0.0-2",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/leankit-labs/rabbot",

@@ -53,6 +53,9 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 
 		_onAcquisition: function( transitionTo, exchange ) {
 			this.exchange = exchange;
+			this.handlers.push( this.exchange.channel.on( "acquired", function() {
+				this._define( "ready" );
+			}.bind( this ) ) );
 			this.exchange.channel.once( "released", function() {
 				this.handle( "released" );
 			}.bind( this ) );

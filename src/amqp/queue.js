@@ -5,7 +5,7 @@ var dispatch = postal.channel( "rabbit.dispatch" );
 var responses = postal.channel( "rabbit.responses" );
 var when = require( "when" );
 var info = require( "../info" );
-var log = require( "../log" )( "rabbot.amqp-queue" );
+var log = require( "../log" )( "rabbot.queue" );
 var format = require( "util" ).format;
 var topLog = require( "../log" )( "rabbot.topology" );
 var unhandledLog = require( "../log" )( "rabbot.unhandled" );
@@ -23,6 +23,7 @@ var noOp = function() {};
 	  * `error`
 	    * no serializer defined for outgoing message
 	    * no serializer defined for incoming message
+	    * message nacked/rejected when consumer is set to no-ack
 	* `rabbot.topology`
 	  * `info`
 	    * queue declaration
@@ -89,26 +90,34 @@ function getCount( messages ) {
 function getNoBatchOps( channel, raw, messages, noAck ) {
 	messages.receivedCount += 1;
 
-	var ack;
+	var ack, nack, reject;
 	if ( noAck ) {
 		ack = noOp;
+		nack = function() {
+			log.error( "Tag %d on '%s' - '%s' cannot be nacked in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName );
+		};
+		reject = function() {
+			log.error( "Tag %d on '%s' - '%s' cannot be rejected in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName );
+		};
 	} else {
 		ack = function() {
 			log.debug( "Acking tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName );
 			channel.ack( { fields: { deliveryTag: raw.fields.deliveryTag } }, false );
 		};
+		nack = function() {
+			log.debug( "Nacking tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName );
+			channel.nack( { fields: { deliveryTag: raw.fields.deliveryTag } }, true );
+		};
+		reject = function() {
+			log.debug( "Rejecting tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName );
+			channel.reject( { fields: { deliveryTag: raw.fields.deliveryTag } }, false );
+		};
 	}
 
 	return {
 		ack: ack,
-		nack: function() {
-			log.debug( "Nacking tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName );
-			channel.nack( { fields: { deliveryTag: raw.fields.deliveryTag } }, false );
-		},
-		reject: function() {
-			log.debug( "Rejecting tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName );
-			channel.nack( { fields: { deliveryTag: raw.fields.deliveryTag } }, false, false );
-		}
+		nack: nack,
+		reject: reject
 	};
 }
 
@@ -185,12 +194,10 @@ function getUntrackedOps( channel, raw, messages ) {
 	return {
 		ack: noOp,
 		nack: function() {
-			log.debug( "Nacking tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName );
-			channel.nack( { fields: { deliveryTag: raw.fields.deliveryTag } }, false );
+			log.error( "Tag %d on '%s' - '%s' cannot be nacked in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName );
 		},
 		reject: function() {
-			log.debug( "Rejecting tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName );
-			channel.nack( { fields: { deliveryTag: raw.fields.deliveryTag } }, false, false );
+			log.error( "Tag %d on '%s' - '%s' cannot be rejected in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName );	
 		}
 	};
 }
