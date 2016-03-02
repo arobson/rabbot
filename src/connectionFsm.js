@@ -44,7 +44,8 @@ var Connection = function( options, connectionFn, channelFn ) {
 		initialState: "initializing",
 		connected: false,
 		consecutiveFailures: 0,
-		lastAttempt: Date.now(),
+		connectTimeout: undefined,
+		failAfter: ( options.failAfter || 60 ) * 1000,
 
 		initialize: function() {
 			options.name = this.name;
@@ -121,6 +122,13 @@ var Connection = function( options, connectionFn, channelFn ) {
 			exchanges.push( exchange );
 		},
 
+		clearConnectionTimeout: function() {
+			if( this.connectionTimeout ) {
+				clearTimeout( this.connectionTimeout );
+				this.connectionTimeout = null;
+			}
+		},
+
 		getChannel: function( name, confirm, context ) {
 			var deferred = when.defer();
 			this.handle( "channel", {
@@ -156,11 +164,19 @@ var Connection = function( options, connectionFn, channelFn ) {
 			return connection.lastError;
 		},
 
+		setConnectionTimeout: function() {
+			if( !this.connectionTimeout ) {
+				this.connectionTimeout = setTimeout( function() {
+					this.transition( "unreachable" );
+				}.bind( this ), this.failAfter );
+			}
+		},
+
 		states: {
 			initializing: {
 				_onEnter: function() {
 					connection = connectionFn( options );
-					this.lastAttempt = Date.now();
+					this.setConnectionTimeout();
 					connection.on( "acquiring", this._replay( "acquiring" ) );
 					connection.on( "acquired", this._replay( "acquired" ) );
 					connection.on( "failed", this._replay( "failed" ) );
@@ -191,6 +207,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 			},
 			connecting: {
 				_onEnter: function() {
+					this.setConnectionTimeout();
 					connection.acquire()
 						.then( null, function() {} );
 					this.emit( "connecting" );
@@ -214,6 +231,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 			},
 			connected: {
 				_onEnter: function() {
+					this.clearConnectionTimeout();
 					this.uri = connection.item.uri;
 					this.consecutiveFailures = 0;
 					if ( this.connected ) {
@@ -250,6 +268,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 			},
 			closed: {
 				_onEnter: function() {
+					this.clearConnectionTimeout();
 					log.info( 'Close on connection \'%s\' resolved', this.name );
 					this.emit( 'closed', {} );
 				},
@@ -312,10 +331,10 @@ var Connection = function( options, connectionFn, channelFn ) {
 			},
 			failed: {
 				_onEnter: function() {
+					this.setConnectionTimeout();
 					this.consecutiveFailures ++;
-					var tooLong = ( ( Date.now() - this.lastAttempt ) / 1000 ) > options.failAfter;
 					var tooManyFailures = this.consecutiveFailures >= options.retryLimit;
-					if( tooLong || tooManyFailures ) {
+					if( tooManyFailures ) {
 						this.transition( "unreachable" );
 					}
 				},
@@ -340,6 +359,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 			},
 			unreachable: {
 				_onEnter: function() {
+					this.clearConnectionTimeout();
 					connection
 						.release()
 						.then( function() {
@@ -348,7 +368,6 @@ var Connection = function( options, connectionFn, channelFn ) {
 				},
 				connect: function() {
 					this.consecutiveFailures = 0;
-					this.lastAttempt = Date.now();
 					this.transition( "connecting" );
 				}
 			}

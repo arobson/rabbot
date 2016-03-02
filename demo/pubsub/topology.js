@@ -9,7 +9,7 @@ module.exports = function( rabbit, subscribeTo ) {
 			vhost: "%2f",
 			timeout: 1000,
 			failAfter: 30,
-			retryLimit: 4
+			retryLimit: 400
 		},
 
 		// define the exchanges
@@ -32,6 +32,7 @@ module.exports = function( rabbit, subscribeTo ) {
 			{
 				name: "wascally-pubsub-requests-q",
 				autoDelete: true,
+				unique: "hash",
 				subscribe: subscribeTo === "requests"
 			},
 			{

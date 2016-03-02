@@ -80,7 +80,6 @@ describe( "IO Monad", function() {
 				return when.reject( new Error( "because no one likes you" ) );
 			};
 			resource = new Monad( "test", "resource", factory, Resource, function( x ) {
-				console.log( "poo" );
 				x.close();
 				x.raise( "closed", "" );
 			} );

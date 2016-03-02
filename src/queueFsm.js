@@ -41,6 +41,32 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 				.then( onDefined, onError );
 		},
 
+		_listen: function() {
+			this.handlers.push( this.queue.channel.on( "acquired", function(  ) {
+					this._define();
+				}.bind( this ) )
+			);
+			this.handlers.push( this.queue.channel.on( "released", function() {
+					this.handle( "released" );
+				}.bind( this ) )
+			);
+			this.handlers.push( this.queue.channel.on( "closed", function() {
+					this.handle( "closed" );
+				}.bind( this ) )
+			);
+			this.handlers.push( connection.on( "unreachable", function( err ) {
+					err = err || new Error( "Could not establish a connection to any known nodes." );
+					this.transition( "unreachable" );
+				}.bind( this ) )
+			);
+		},
+
+		_removeHandlers: function() {
+			_.each( this.handlers, function( handle ) {
+				handle.unsubscribe();
+			} );
+		},
+
 		check: function() {
 			var deferred = when.defer();
 			this.handle( "check", deferred );
@@ -86,6 +112,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 		states: {
 			closed: {
 				_onEnter: function() {
+					this._removeHandlers();
 					this.emit( "closed" );
 				},
 				check: function() {
@@ -108,10 +135,8 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 					this.emit( "failed", this.failedWith );
 				},
 				release: function() {
-					_.each( this.handlers, function( handle ) {
-						handle.unsubscribe();
-					} );
 					if( this.queue ) {
+						this._removeHandlers();
 						this.queue.release()
 							.then( function() {
 								this.transition( "released" );
@@ -133,24 +158,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 					this.queue = queue;
 					this.receivedMessages = this.queue.messages;
 					this._define();
-					this.handlers.push( this.queue.channel.on( "acquired", function() {
-							this._define();
-						}.bind( this ) ) 
-					);
-					this.handlers.push( this.queue.channel.on( "released", function() {
-							this.handle( "released" );
-						}.bind( this ) ) 
-					);
-					this.handlers.push( this.queue.channel.on( "closed", function() {
-							this.handle( "closed" );
-						}.bind( this ) ) 
-					);
-					this.handlers.push( connection.on( "unreachable", function( err ) {
-							err = err || new Error( "Could not establish a connection to any known nodes." );
-							this._onFailure( err );
-							this.transition( "unreachable" );
-						}.bind( this ) ) 
-					);
+					this._listen();
 				},
 				check: function() {
 					this.deferUntilTransition( "ready" );
@@ -201,9 +209,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 					} else {
 						log.info( "released queue %s - %s", options.name, connection.name );
 					}
-					_.each( this.handlers, function( handle ) {
-						handle.unsubscribe();
-					} );
+					this._removeHandlers();
 					this.queue.release()
 						.then( function() {
 							this.queue = undefined;

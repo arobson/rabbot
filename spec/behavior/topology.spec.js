@@ -4,6 +4,7 @@ var when = require( "when" );
 var topologyFn = require( "../../src/topology" );
 var noOp = function() {};
 var emitter = require( "./emitter" );
+var info = require( "../../src/info" );
 
 function connectionFn() {
 
@@ -67,7 +68,7 @@ function connectionFn() {
 describe( "Topology", function() {
 
 	describe( "when initializing with default reply queue", function() {
-		var topology, conn, replyQueue, ex, q;
+		var topology, conn, replyQueue, ex, q, controlMock;
 
 		before( function( done ) {
 			ex = emitter();
@@ -83,13 +84,36 @@ describe( "Topology", function() {
 				return q;
 			};
 			conn = connectionFn();
+
+			var control = {
+				bindQueue: noOp
+			};
+			controlMock = sinon.mock( control );
+			
+			var uniqueQueueName = "top-q-" + info.createHash();
+			controlMock
+				.expects( "bindQueue" )
+				.once()
+				.withArgs( uniqueQueueName, "top-ex" )
+				.returns( when.resolve() );
+			conn.mock.expects( "getChannel" )
+				.once()
+				.resolves( control );
+
 			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue, "test" );
+			when.all( [
+					topology.createExchange( { name: "top-ex", type: "topic" } ),
+					topology.createQueue( { name: "top-q", unique: "hash" } )
+				] ).then( function() {
+					topology.configureBindings( { exchange: "top-ex", target: "top-q" } );
+				} );
 			topology.once( "replyQueue.ready", function( queue ) {
 				replyQueue = queue;
 				done();
 			} );
 			process.nextTick( function() {
 				q.raise( "defined" );
+				ex.raise( "defined" );
 			} );
 		} );
 
@@ -104,11 +128,38 @@ describe( "Topology", function() {
 			);
 		} );
 
+		it( "should bind queue", function() {
+			controlMock.verify();
+		} );
+
 		describe( "when recovering from disconnection", function() {
+			var controlMock;
 			before( function( done ) {
 				replyQueue = undefined;
+
+				var control = {
+					bindExchange: noOp,
+					bindQueue: noOp
+				};
+				controlMock = sinon.mock( control );
+				
+				var uniqueQueueName = "top-q-" + info.createHash();
+				controlMock
+					.expects( "bindExchange" )
+					.never();
+				controlMock
+					.expects( "bindQueue" )
+					.once()
+					.withArgs( uniqueQueueName, "top-ex" )
+					.returns( when.resolve() );
+				conn.mock.expects( "getChannel" )
+					.once()
+					.resolves( control );
+
 				topology.once( "replyQueue.ready", function( queue ) {
 					replyQueue = queue;
+				} );
+				topology.once( "bindings-completed", function( bindings ) {
 					done();
 				} );
 				conn.instance.raise( "reconnected" );
@@ -123,6 +174,10 @@ describe( "Topology", function() {
 						subscribe: true
 					}
 				);
+			} );
+
+			it( "should bindQueue", function() {
+				controlMock.verify();
 			} );
 		} );
 	} );

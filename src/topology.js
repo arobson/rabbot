@@ -94,15 +94,16 @@ Topology.prototype.configureBindings = function( bindingDef, list ) {
 	if ( _.isUndefined( bindingDef ) ) {
 		return when( true );
 	} else {
-		var actualDefinitions = toArray( bindingDef, list ),
-			bindings = _.map( actualDefinitions, function( def ) {
-				var q = this.definitions.queues[ def.target ];
+		var actualDefinitions = toArray( bindingDef, list );
+		var bindings = _.map( actualDefinitions, function( def ) {
+				var q = this.definitions.queues[ def.queueAlias ? def.queueAlias : def.target ];
 				return this.createBinding(
 					{
 						source: def.exchange || def.source,
 						target: q ? q.uniqueName : def.target,
 						keys: def.keys,
-						queue: q !== undefined
+						queue: q !== undefined,
+						queueAlias: q ? q.name : undefined
 					} );
 			}.bind( this ) );
 		if ( bindings.length === 0 ) {
@@ -146,11 +147,11 @@ Topology.prototype.createBinding = function( options ) {
 		var source = options.source;
 		var target = options.target;
 		var keys = getKeys( options.keys );
-		promise = this.connection.getChannel( "control", false, "control channel for bindings" )
+		this.promises[ id ] = promise = this.connection.getChannel( "control", false, "control channel for bindings" )
 			.then( function( channel ) {
 				log.info( "Binding %s '%s' to '%s' on '%s' with keys: %s",
 					( options.queue ? "queue" : "exchange" ), target, source, this.connection.name, JSON.stringify( keys ) );
-				return this.promises[ id ] = promise = when.all(
+				return when.all(
 					_.map( keys, function( key ) {
 						return channel[ call ]( target, source, key );
 					} ) );
@@ -258,6 +259,8 @@ Topology.prototype.getUniqueName = function( options ) {
 		return [ info.id, options.name ].join( "-" );
 	} else if( options.unique === "hash" ) {
 		return [ options.name, info.createHash() ].join( "-" );
+	} else if( options.unique === "consistent" ) {
+		return [ options.name, info.createConsistentHash() ].join( "-" );
 	} else {
 		return options.name;
 	}
@@ -274,7 +277,7 @@ Topology.prototype.onReconnect = function() {
 			return this.configureBindings( this.definitions.bindings, true )
 				.then( function() {
 					log.info( "Topology rebuilt for connection '%s'", this.connection.name );
-					this.emit( "bindings-completed" );
+					this.emit( "bindings-completed", this.definitions );
 				}.bind( this ) );
 		}.bind( this ) );
 };

@@ -58,7 +58,10 @@ function trim( x ) {
 }
 
 var Adapter = function( parameters ) {
-	var serverList = getOption( parameters, "RABBIT_BROKER" ) || getOption( parameters, "server", "localhost" );
+	var hosts = getOption( parameters, "host" );
+	var servers = getOption( parameters, "server" );
+	var brokers = getOption( parameters, "RABBIT_BROKER" );
+	var serverList = brokers || hosts || servers || "localhost";
 	var portList = getOption( parameters, "RABBIT_PORT" ) || getOption( parameters, "port", 5672 );
 
 	this.name = parameters ? ( parameters.name || "default" ) : "default";

@@ -9,17 +9,30 @@ var architecture = os.arch();
 var title = process.title;
 var pid = process.pid;
 var consumerId = format( '%s.%s.%s', host, title, pid );
+var consistentId = format( '%s.%s', host, title );
 var toBE = os.endianness() === "BE";
 
 function createConsumerTag( queueName ) {
-	return format( "%s.%s", consumerId, queueName );
+	if( queueName.indexOf( consumerId ) === 0 ) {
+		return queueName;
+	} else {
+		return format( "%s.%s", consumerId, queueName );
+	}
+}
+
+function hash( id ) {
+	var bytes = crypto.createHash( "md4" ).update( id ).digest();
+	var num = toBE ? bytes.readdInt16BE() : bytes.readInt16LE();
+	return num < 0 ? Math.abs( num ) + 0xffffffff : num;
 }
 
 // not great, but good enough for our purposes
 function createConsumerHash() {
-	var bytes = crypto.createHash( "md4" ).update( consumerId ).digest();
-	var num = toBE ? bytes.readdInt16BE() : bytes.readInt16LE();
-	return num < 0 ? Math.abs( num ) + 0xffffffff : num;
+	return hash( consumerId );
+}
+
+function createConsistentHash() {
+	return hash( consistentId );
 }
 
 function getHostInfo() {
@@ -40,5 +53,6 @@ module.exports = {
 	lib: getLibInfo,
 	process: getProcessInfo,
 	createTag: createConsumerTag,
-	createHash: createConsumerHash
+	createHash: createConsumerHash,
+	createConsistentHash: createConsistentHash
 };

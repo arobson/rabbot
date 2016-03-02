@@ -75,6 +75,7 @@ describe( "Connection FSM", function() {
 				connection = connectionFn( { name: "failure" }, function() {
 					return monad;
 				} );
+				monad.release = function() { return when(); };
 				connection.once( "connecting", function() {
 					monad.raise( "failed", new Error( "bummer" ) );
 				} );

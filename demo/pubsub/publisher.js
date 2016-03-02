@@ -16,11 +16,14 @@ rabbit.handle( "subscriber.request", function( msg ) {
 // services that will be using the same topology to avoid
 // scenarios where you have race conditions around when
 // exchanges, queues or bindings are in place
-require( "./topology.js" )( rabbit, "requests" );
+require( "./topology.js" )( rabbit, "requests" )
+	.then( function() {
+		console.log( "EVERYTHING IS PEACHY" );
+	} );
 
 rabbit.on( "unreachable", function() {
 	console.log( ":(" );
-	rabbit.retry();
+	process.exit();
 } );
 
 function publish( total ) {

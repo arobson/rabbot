@@ -133,6 +133,7 @@ describe( "Queue FSM", function() {
 		} );
 
 		describe( "when channel is closed remotely", function() {
+			var channel;
 			before( function( done ) {
 				channelMock
 					.expects( "define" )
@@ -148,6 +149,7 @@ describe( "Queue FSM", function() {
 				} );
 
 				ch.factory().then( function( q ) {
+					channel = q.channel;
 					q.channel.raise( "closed" );
 				} );
 			} );
@@ -158,6 +160,12 @@ describe( "Queue FSM", function() {
 
 			it( "should be in a ready state", function() {
 				queue.state.should.equal( "ready" );
+			} );
+
+			it( "should not duplicate subscriptions to channel events", function() {
+				_.each( channel.handlers, function( list, name ) {
+					list.length.should.equal( 1 );
+				} );
 			} );
 		} );
 

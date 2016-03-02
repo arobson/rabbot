@@ -3,7 +3,7 @@ module.exports = {
 		name: "default",
 		user: "guest",
 		pass: "guest",
-		server: "127.0.0.1",
+		host: "127.0.0.1",
 		port: 5672,
 		vhost: "%2f",
 		replyQueue: "customReplyQueue"
@@ -146,7 +146,7 @@ module.exports = {
 		{
 			exchange: "rabbot-ex.direct",
 			target: "rabbot-q.direct",
-			keys: ""
+			keys: []
 		},
 		{
 			exchange: "rabbot-ex.topic",

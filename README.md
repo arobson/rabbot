@@ -54,7 +54,7 @@ The call returns a promise that can be used to determine when the connection to 
 
 Options is a hash that can contain the following:
  * `name` - the name of this connection. Defaults to `"default"`.
- * `server` - the IP address or DNS name of the RabbitMQ server. Defaults to `"localhost"`.
+ * `host` - the IP address or DNS name of the RabbitMQ server. Defaults to `"localhost"`.
  * `port` - the TCP/IP port on which RabbitMQ is listening. Defaults to `5672`.
  * `vhost` - the named vhost to use in RabbitMQ. Defaults to the root vhost, `"%2f"` ("/").
  * `protocol` - the connection protocol to use. Defaults to "amqp://".
@@ -73,7 +73,7 @@ Note that the "default" connection (by name) is used when any method is called w
 rabbit.addConnection( {
 	user: "someUser",
 	pass: "sup3rs3cr3t",
-	server: "my-rqm.server",
+	host: "my-rqm.server",
 	port: 5672,
 	timeout: 2000,
 	vhost: "%2f",
@@ -85,7 +85,7 @@ rabbit.addConnection( {
 rabbot will stop trying to connect/re-connect if either of these thresholds is reached (whichever comes first).
 
 ### Cluster Support
-rabbot provides the ability to define multiple nodes per connections by supplying either a comma delimited list or array of server IPs or names to the `server` property. You can also specify multuple ports in the same way but make certain that either you provide a single port for all servers or that the number of ports matches the number and order of servers.
+rabbot provides the ability to define multiple nodes per connections by supplying either a comma delimited list or array of server IPs or names to the `host` property. You can also specify multuple ports in the same way but make certain that either you provide a single port for all servers or that the number of ports matches the number and order of servers.
 
 ### Shutting Down
 Both exchanges and queues have asynchronous processes that work behind the scenes processing publish confirms and batching message acknowledgements. To shutdown things in a clean manner, rabbot provides a `shutdown` method that returns a promise which will resolve once all outstanding confirmations and batching have completed and the connection is closed. 
@@ -458,7 +458,16 @@ Options is a hash that can contain the following:
  * expires			2^32			time in ms before a queue with 0 consumers expires
  * deadLetter 		"dlx.exchange"	the exchange to dead-letter messages to
  * maxPriority		2^8				the highest priority this queue supports
- * unique			'hash'|'id'		creates a unique queue name by including the client id or hash in the name
+ * unique			'hash'|'id'|'consistent' creates a unique queue name by including the client id or hash in the name
+
+#### unique
+The unique option has 3 different possible values, each with its own behavior:
+
+ * `hash` - results in a unique positive integer per process. Use when queue recovery is not a concern.
+ * `consistent` - results in a unique positive integer based on machine name and process title. Use when queue recovery is required.
+ * `id` - creates a consumer tag consisting of the machine name, process title and process id. Use when readability is desired and queue recovery is not a concern.
+
+> Note: the concept of queue recovery is that the same queue name will be generated in the event of a process restart. If using `hash` or `id`, the pid is used and a different queue name will be generated each time the process starts.
 
 ### bindExchange( sourceExchange, targetExchange, [routingKeys], [connectionName] )
 Binds the target exchange to the source exchange. Messages flow from source to target.
