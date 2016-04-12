@@ -14,7 +14,7 @@ var format = require( "util" ).format;
 	  * `warn`:
 	    * exchange was released with unconfirmed messages
 		* on publish to released exchange
-		* publish is rejected because exchange has reached the limit because of pending connection	
+		* publish is rejected because exchange has reached the limit because of pending connection
  */
 
 var Factory = function( options, connection, topology, serializers, exchangeFn ) {
@@ -107,7 +107,7 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 			}
 			var publishTimeout = message.timeout || options.publishTimeout || message.connectionPublishTimeout || 0;
 			return when.promise( function( resolve, reject ) {
-				var timeout, timedOut;
+				var timeout, timedOut, failedSub;
 				if( publishTimeout > 0 ) {
 					timeout = setTimeout( function() {
 						timedOut = true;
@@ -118,10 +118,12 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 				function onPublished() {
 					resolve();
 					this._removeDeferred( reject );
+					failedSub.unsubscribe();
 				}
 				function onRejected( err ) {
 					reject( err );
 					this._removeDeferred( reject );
+					failedSub.unsubscribe();
 				}
 				var op = function( err ) {
 					if( err ) {
@@ -137,7 +139,7 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 						}
 					}
 				}.bind( this );
-				this.once( "failed", function( err ) {
+				failedSub = this.once( "failed", function( err ) {
 					onRejected.bind( this )( err );
 				}.bind( this ) );
 				this.deferred.push( reject );
@@ -245,7 +247,7 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 						this.exchange.release()
 							.then( function() {
 									this.transition( "released" );
-								}.bind( this ) 
+								}.bind( this )
 							);
 					}
 

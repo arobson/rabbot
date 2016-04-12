@@ -51,7 +51,7 @@ describe( "Exchange FSM", function() {
 				done();
 			} ).once();
 			connection.raise( "unreachable" );
-			
+
 		} );
 
 		it( "should have emitted failed with an error", function() {
@@ -69,8 +69,20 @@ describe( "Exchange FSM", function() {
 		} );
 
 		describe( "when publishing in unreachable state", function() {
+			var error;
+
+			before( function() {
+				return exchange.publish( {} ).catch( function( err ) {
+					error = err;
+				} );
+			} );
+
 			it( "should reject publish with an error", function() {
-				return exchange.publish( {} ).should.be.rejectedWith( "Could not establish a connection to any known nodes." );
+				error.toString().should.equal( "Error: Could not establish a connection to any known nodes." );
+			} );
+
+			it( "should clean up the \"failed\" subscription", function() {
+				exchange._subscriptions.failed.should.have.lengthOf( 0 );
 			} );
 		} );
 
@@ -124,8 +136,20 @@ describe( "Exchange FSM", function() {
 		} );
 
 		describe( "when publishing in unreachable state", function() {
+			var error;
+
+			before( function() {
+				return exchange.publish( {} ).catch( function( err ) {
+					error = err;
+				} );
+			} );
+
 			it( "should reject publish with an error", function() {
-				return exchange.publish( {} ).should.be.rejectedWith( "nope" );
+				error.toString().should.equal( "Error: nope" );
+			} );
+
+			it( "should clean up the \"failed\" subscription", function() {
+				exchange._subscriptions.failed.should.have.lengthOf( 0 );
 			} );
 		} );
 
@@ -171,15 +195,26 @@ describe( "Exchange FSM", function() {
 		} );
 
 		describe( "when publishing in ready state", function() {
+			var promise;
+
 			before( function() {
 				channelMock
 					.expects( "publish" )
 					.once()
 					.returns( when( true ) );
+
+				promise = exchange.publish( {} );
+
+				return promise;
 			} );
 
 			it( "should resolve publish without error", function() {
-				return exchange.publish( {} ).should.be.fulfilled;
+				return promise.should.be.fulfilled;
+			} );
+
+			it( "should clean up the \"failed\" subscription", function() {
+				// Should only have a single failed subscription from the outer "before" block
+				exchange._subscriptions.failed.should.have.lengthOf( 1 );
 			} );
 		} );
 
@@ -196,7 +231,7 @@ describe( "Exchange FSM", function() {
 					.expects( "define" )
 					.once()
 					.returns( when.resolve() );
-				
+
 				exchange.on( "defined", function() {
 					done();
 				} ).once();
