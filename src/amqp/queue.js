@@ -246,8 +246,12 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 		messages.listenForSignal();
 	}
 
-	log.info( "Starting subscription to queue '%s' on '%s'", channelName, topology.connection.name );
 	options.consumerTag = info.createTag( channelName );
+	if( _.keys( channel.item.consumers ).length > 0 ) {
+		log.info( "Duplicate subscription to queue %s ignored", channelName );
+		return when( options.consumerTag );
+	}
+	log.info( "Starting subscription to queue '%s' on '%s'", channelName, topology.connection.name );
 	return channel.consume( channelName, function( raw ) {
 		var correlationId = raw.properties.correlationId;
 		var ops = getResolutionOperations( channel, raw, messages, options );

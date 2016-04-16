@@ -205,6 +205,38 @@ describe( "Integration Test Suite", function() {
 		} );
 	} );
 
+	describe( "with duplicate subscribe calls", function() {
+		var harness;
+		before( function( done ) {
+			this.timeout( 10000 );
+			harness = harnessFn( done, 3 );
+			harness.handle( "topic" );
+			rabbit.startSubscription( "rabbot-q.topic" );
+			rabbit.publish( "rabbot-ex.topic", { type: "topic", routingKey: "this.is.a.test", body: "broadcast" } );
+			rabbit.publish( "rabbot-ex.topic", { type: "topic", routingKey: "this.is.sparta", body: "leonidas" } );
+			rabbit.publish( "rabbot-ex.topic", { type: "topic", routingKey: "a.test.this.is", body: "yoda" } );
+		} );
+
+		it( "should not wreck everything", function() {
+			var results = _.map( harness.received, function( m ) {
+				return {
+					body: m.body,
+					key: m.fields.routingKey
+				};
+			} );
+			_.sortBy( results, "body" ).should.eql(
+				[
+					{ body: "broadcast", key: "this.is.a.test" },
+					{ body: "leonidas", key: "this.is.sparta" },
+					{ body: "yoda", key: "a.test.this.is" },
+				] );
+		} );
+
+		after( function() {
+			harness.clean();
+		} );
+	} );
+
 	describe( "with fanout exchange", function() {
 		var harness;
 		before( function( done ) {
