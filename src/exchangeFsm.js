@@ -25,6 +25,7 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 	var Fsm = machina.Fsm.extend( {
 		name: options.name,
 		type: options.type,
+		publishTimeout: options.publishTimeout || 0,
 		limit: ( options.limit || 100 ),
 		exchange: undefined,
 		handlers: [],

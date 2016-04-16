@@ -64,6 +64,7 @@ Options is a hash that can contain the following:
  * `heartbeat` - how often the client and server check to see if they can still reach each other, specified in seconds. Defaults to `30` (seconds).
  * `replyQueue` - the name of the reply queue to use. Defaults to a queue name unique to the process.
  * `publishTimeout` - the default timeout in milliseconds for a publish call.
+ * `replyTimeout` - the default timeout in milliseconds to wait for a reply.
  * `failAfter` - limits how long rabbot will attempt to connect (in seconds). Defaults to `60`.
  * `retryLimit` - limits how many consecutive failed attempts rabbot will make. Defaults to 3.
 
@@ -175,7 +176,9 @@ rabbit.publish( "exchange.name",
 ```
 
 ### request( exchangeName, options, [connectionName] )
-This works just like a publish except that the promise returned provides the response (or responses) from the other side.
+This works just like a publish except that the promise returned provides the response (or responses) from the other side. A `replyTimeout` is available in the options that controls how long rabbot will wait for a reply before removing the subscription for the request to prevent memory leaks.
+
+> Note: the default replyTimeout will be double the publish timeout or 1 second if no publish timeout was ever specified.
 
 ```javascript
 // when multiple responses are provided, all but the last will be provided via the .progress callback.
@@ -192,6 +195,7 @@ rabbit.request( "request.exchange", {
 ```
 
 ### handle( typeName, handler, [queueName], [context] )
+### handle( options, handler )
 
 > Notes:
 > * Handle calls should happen __before__ starting subscriptions.
@@ -202,6 +206,23 @@ rabbit.request( "request.exchange", {
 Message handlers are registered to handle a message based on the typeName. Calling handle will return a reference to the handler that can later be removed. The message that is passed to the handler is the raw Rabbit payload. The body property contains the message body published. The message has `ack`, `nack` (requeue the message), `reply` and `reject` (don't requeue the message) methods control what Rabbit does with the message.
 
 > !IMPORTANT!: ack, nack and reject are effectively noOps when a queue's `noAck` is set to `true`. RabbitMQ does not support nacking or rejection of messages from consumers in `no-ack` mode. This means that error handling and unhandled message strategies won't be able to re-queue messages.
+
+#### Options
+If using the second format, the options hash can contain the following properties, defaults shown:
+
+```js
+{
+	queue: "*", // only handle messages from the queue with this name
+	type: "#", // handle messages with this type name or pattern
+	autoNack: true, // automatically handle exceptions thrown in this handler
+	context: null, // control what `this` is when invoking the handler
+	handler: null // allows you to just pass the handle function as an option property ... because why not?
+}
+```
+
+> Notes: 
+> * using options without a `queue` or `type` specified will handle _all_ messages received by the service because of the defaults.
+> * the behavior here differs in that exceptions are handled for you _by default_
 
 #### Explicit Error Handling
 In this example, any possible error is caught in an explicit try/catch:
@@ -440,6 +461,7 @@ Options is a hash that can contain the following:
  * persistent 		true|false		a.k.a. persistent delivery, messages saved to disk
  * alternate 		"alt.exchange"	define an alternate exchange
  * publishTimeout	2^32			timeout in milliseconds for publish calls to this exchange
+ * replyTimeout		2^32			timeout in milliseconds to wait for a reply
  * limit 			2^16			the number of unpublished messages to cache while waiting on connection
 
 ### addQueue( queueName, [options], [connectionName] )

@@ -25,7 +25,13 @@ var harnessFactory = function( rabbit, cb, expected ) {
 	}
 
 	function handleFn( type, handle, queueName ) {
-		handlers.push( rabbit.handle( type, wrap( handle || defaultHandle ), queueName ) );
+		if( _.isObject( type ) ) {
+			var options = type;
+			options.handler = wrap( options.handler || defaultHandle );
+			handlers.push( rabbit.handle( options ) );
+		} else {
+			handlers.push( rabbit.handle( type, wrap( handle || defaultHandle ), queueName ) );	
+		}
 	}
 
 	function clean() {
@@ -283,7 +289,7 @@ describe( "Integration Test Suite", function() {
 		} );
 	} );
 
-	describe( "with requests", function() {
+	describe( "with requests (within replyTimeout)", function() {
 		this.timeout( 3000 );
 		var harness, response1, response2, response3;
 		before( function( done ) {
@@ -356,6 +362,21 @@ describe( "Integration Test Suite", function() {
 		} );
 	} );
 
+	describe( "with requests (replyTimeout elapsed)", function() {
+		this.timeout( 3000 );
+		var timeoutError;
+		before( function() {
+			return rabbit.request( "rabbot-ex.request", { type: "polite", body: "how are you?", replyTimeout: 200 } )
+				.then( null, function( err ) {
+					timeoutError = err;
+				} );
+		} );
+
+		it( "should receive rejection with timeout error", function() {
+			timeoutError.message.should.eql( "No reply received within the configured timeout of 200 ms" );
+		} );
+	} );
+
 	describe( "with rejection and dead-letter", function() {
 		var harness;
 		before( function( done ) {
@@ -400,7 +421,7 @@ describe( "Integration Test Suite", function() {
 			harness = harnessFn( done, 1 );
 			rabbit.rejectUnhandled();
 			rabbit.setAckInterval( 500 );
-			harness.handle( "rabbot-q-deadletter.#" );
+			harness.handle( { queue: "rabbot-q-deadletter" } );
 			rabbit.publish( "rabbot-ex.topic", { type: "noonecares", routingKey: "this.is.rejection", body: "haters gonna hate" } );
 		} );
 
@@ -591,7 +612,7 @@ describe( "Integration Test Suite", function() {
 	describe( "with queue specified", function() {
 		var harness;
 		before( function( done ) {
-			harness = harnessFn( done, 1 );
+			harness = harnessFn( done, 3 );
 			harness.handle( "", undefined, "rabbot-q-general1" );
 			rabbit.publish( "rabbot-ex.fanout", { type: "", routingKey: "", body: "one" } );
 			rabbit.publish( "rabbot-ex.fanout", { type: "", routingKey: "", body: "two" } );

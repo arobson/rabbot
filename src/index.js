@@ -182,20 +182,34 @@ Broker.prototype.getQueue = function( name, connectionName ) {
 
 Broker.prototype.handle = function( messageType, handler, queueName, context ) {
 	this.hasHandles = true;
-	var prefix = "#";
-	var target, parts;
-	if( _.isString( queueName ) ) {
-		prefix = queueName.replace( /[.]/g, "-" );
+	var options;
+	if( _.isString( messageType ) ) {
+		options = {
+			type: messageType,
+			queue: queueName || "*",
+			context: context,
+			autoNack: this.autoNack,
+			handler: handler 
+		}
 	} else {
-		context = queueName;
+		options = messageType;
+		options.autoNack = options.autoNack === false ? false : true;
+		options.queue = options.queue || (options.type ? '*' : '#');
+		options.handler = options.handler || handler;
 	}
-	parts = [ prefix ];
-	if( !_.isEmpty( messageType ) ) {
-		parts.push( messageType );
+	var parts = [];
+	if( options.queue === "#" ) {
+		parts.push( "#" );
+	} else {
+		parts.push( options.queue.replace( /[.]/g, "-" ) );
+		if( options.type !== "" ) {
+			parts.push( options.type || "#" );
+		}
 	}
-	target = parts.join( "." );
-	var subscription = dispatch.subscribe( target, handler.bind( context ) );
-	if ( this.autoNack ) {
+
+	var target = parts.join( "." );
+	var subscription = dispatch.subscribe( target, options.handler.bind( options.context ) );
+	if ( options.autoNack ) {
 		subscription.catch( function( err, msg ) {
 			console.log( "Handler for '" + target + "' failed with:", err.stack );
 			msg.nack();
@@ -258,9 +272,19 @@ Broker.prototype.request = function( exchangeName, options, connectionName ) {
 	var requestId = uuid.v1();
 	options.messageId = requestId;
 	options.connectionName = connectionName;
+	var connection = this.connections[ connectionName ].options;
+	var exchange = this.getExchange( exchangeName, connectionName );
+	var publishTimeout = options.timeout || exchange.publishTimeout || connection.publishTimeout || 500;
+	var replyTimeout = options.replyTimeout || exchange.replyTimeout || connection.replyTimeout || ( publishTimeout * 2 );
+	
 	return when.promise( function( resolve, reject, notify ) {
+		var timeout = setTimeout( function() {
+			subscription.unsubscribe();
+			reject( new Error( "No reply received within the configured timeout of " + replyTimeout + " ms" ) );
+		}, replyTimeout );
 		var subscription = responses.subscribe( requestId, function( message ) {
 			if ( message.properties.headers[ "sequence_end" ] ) { // jshint ignore:line
+				clearTimeout( timeout );
 				resolve( message );
 				subscription.unsubscribe();
 			} else {
@@ -268,6 +292,7 @@ Broker.prototype.request = function( exchangeName, options, connectionName ) {
 			}
 		} );
 		this.publish( exchangeName, options );
+		
 	}.bind( this ) );
 };
 

@@ -3,11 +3,8 @@
 
 ## 1.0.x
 
-To Do
- * make sure control channels don't get duplicated
- * retry post unreachable
-
-### 1.0.0 - issues addressed from wascallyF F* #103 - gulp test no longer throws expect.js errors
+### 1.0.0 - issues addressed from wascally
+ * #103 - gulp test no longer throws expect.js errors
  * #111 - support exclusive subscriptions when calling `startSubscription`
  * #112 - add `shutdown` method to allow node to exit
  * #116 - support multiple serializers
@@ -41,6 +38,7 @@ To Do
  * reply signature has changed to support control over serialziation
  * response queues are named very differently, shouldn't break code, but worth noting
  * `wascally.iomonad` logging namespace changed to `wascally.io`
+ * timeouts added to requests
 
 # wascally - preserved for history
 
