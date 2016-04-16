@@ -111,8 +111,7 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 				if( publishTimeout > 0 ) {
 					timeout = setTimeout( function() {
 						timedOut = true;
-						reject( new Error( "Publish took longer than configured timeout" ) );
-						this._removeDeferred( reject );
+						onRejected.bind( this )( new Error( "Publish took longer than configured timeout" ) );
 					}.bind( this ), publishTimeout );
 				}
 				function onPublished() {
