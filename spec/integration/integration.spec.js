@@ -74,7 +74,7 @@ describe( "Integration Test Suite", function() {
 		describe( "when attempting a connection", function() {
 			var error;
 			before( function( done ) {
-				rabbit.once( "silly.connection.failed", function( err ) {
+				rabbit.once( "#.connection.failed", function( err ) {
 					error = err;
 					done();
 				} );
@@ -82,7 +82,8 @@ describe( "Integration Test Suite", function() {
 				rabbit.addConnection( {
 					name: "silly",
 					server: "shfifty-five.gov",
-					publishTimeout: 50
+					publishTimeout: 50,
+					timeout: 500
 				} );
 
 				rabbit.addExchange( { name: "silly-ex" }, "silly" ).then( null, _.noop );
@@ -110,7 +111,8 @@ describe( "Integration Test Suite", function() {
 				config = {
 					connection: {
 						name: "silly2",
-						server: "beanpaste.org"
+						server: "beanpaste.org",
+						timeout: 500
 					},
 					exchanges: [
 						{
