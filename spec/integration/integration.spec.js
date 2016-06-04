@@ -681,9 +681,9 @@ describe( "Integration Test Suite", function() {
 	describe( "with unroutable messages", function() {
 		var harness;
 		before( function( done ) {
-			harness = harnessFn( done, 1 );
-			rabbit.publish( "rabbot-ex.direct", { routingKey: "completely.un.routable.1", body: "returned message #1" } );
-			rabbit.publish( "rabbot-ex.direct", { routingKey: "completely.un.routable.2", body: "returned message #2" } );
+			harness = harnessFn( done, 2 );
+			rabbit.publish( "rabbot-ex.direct", { mandatory: true, routingKey: "completely.un.routable.1", body: "returned message #1" } );
+			rabbit.publish( "rabbot-ex.direct", { mandatory: true, routingKey: "completely.un.routable.2", body: "returned message #2" } );
 		} );
 
 		it( "should capture messages returned by Rabbit", function() {
