@@ -108,6 +108,14 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 			}.bind( this ) );
 		},
 
+		unsubscribe: function() {
+			options.subscribe = false;
+			var op = function( err ) {
+				this.queue.unsubscribe();
+			};
+			this.handle( "unsubscribe", op );
+		},
+
 		initialState: "initializing",
 		states: {
 			closed: {
@@ -199,6 +207,9 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 								connection.name,
 								this.queue.channel.tag );
 						}.bind( this ) );
+				},
+				unsubscribe: function( op ) {
+					op();
 				}
 			},
 			releasing: {

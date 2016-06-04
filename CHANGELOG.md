@@ -18,6 +18,8 @@
  * Feature - consumer tags are now based on "client id"
  * Feature - handlers can now be scoped/limited by queue name
  * Feature - allow custom limits for deferred published messages
+ * Feature - add support for AMQP URIs when defining connections
+ * Feature - add ability to stop a running subscription to the queue
  * Improvement - use "client id" to create response queue names
  * Improvement - more warning level logging around channel and connection disruption
  * Improvement - ensure UTC timestamps are put on published messages

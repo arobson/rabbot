@@ -6,6 +6,7 @@ var AmqpConnection = require( "amqplib/lib/callback_model" ).CallbackModel;
 var monad = require( "./iomonad" );
 var log = require( "../log" )( "rabbot.connection" );
 var info = require( "../info" );
+var url = require( "url" );
 
 /* log
 	* `rabbot.amqp-connection`
@@ -39,6 +40,23 @@ function getUri( protocol, user, pass, server, port, vhost, heartbeat ) {
 		"?heartbeat=" + heartbeat;
 }
 
+function parseUri( uri ) {
+	if( uri ) {
+		var parsed = url.parse( uri );
+		var authSplit = parsed.auth ? parsed.auth.split( ":" ) : [ null, null ];
+		var heartbeat = parsed.query ? parsed.query.split( "&" )[ 0 ].split( "=" )[ 1 ] : null;
+		return {
+			useSSL: parsed.protocol === "amqps:",
+			user: authSplit[ 0 ],
+			pass: authSplit[ 1 ],
+			host: parsed.hostname,
+			port: parsed.port,
+			vhost: parsed.pathname ? encodeURIComponent( parsed.pathname ) : null,
+			heartbeat: heartbeat
+		};
+	}
+}
+
 function split( x ) {
 	if ( _.isNumber( x ) ) {
 		return [ x ];
@@ -58,6 +76,8 @@ function trim( x ) {
 }
 
 var Adapter = function( parameters ) {
+	var uriOpts = parseUri( parameters.uri );
+	_.merge( parameters, uriOpts );
 	var hosts = getOption( parameters, "host" );
 	var servers = getOption( parameters, "server" );
 	var brokers = getOption( parameters, "RABBIT_BROKER" );

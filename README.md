@@ -2,19 +2,19 @@
 
 [![Version npm](https://img.shields.io/npm/v/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
 [![npm Downloads](https://img.shields.io/npm/dm/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
-[![Dependencies](https://img.shields.io/david/LeanKit-Labs/rabbot.svg?style=flat)](https://david-dm.org/LeanKit-Labs/rabbot)
+[![Dependencies](https://img.shields.io/david/arobson/rabbot.svg?style=flat)](https://david-dm.org/arobson/rabbot)
 
-This is a very opinionated abstraction over amqplib to help simplify certain common tasks and (hopefully) reduce the effort required to use RabbitMQ in your Node services. 
+This is a very opinionated abstraction over amqplib to help simplify the implementation of several messaging patterns on RabbitMQ. 
 
-> !Important! - successful use of this library requires a conceptual knowledge of AMQP and an understanding of RabbitMQ.
+> !Important! - successful use of this library will require a conceptual knowledge of AMQP and an understanding of RabbitMQ.
 
 ### Features:
 
- * Gracefully handle lost connections and channels
- * Automatically re-define all topology on re-connection
+ * Attempt to gracefully handle lost connections and channels
+ * Automatically re-assert all topology on re-connection
  * Support the majority of RabbitMQ's extensions
  * Handle batching of acknowledgements and rejections
- * Topology & configuration via the JSON configuration method (thanks to @JohnDMathis!)
+ * Topology & configuration via JSON (thanks to @JohnDMathis!)
  * Built-in support for JSON, binary and text message bodies
  * Support for custom serialization
 
@@ -29,19 +29,21 @@ This is a very opinionated abstraction over amqplib to help simplify certain com
 
 ## Differences from `wascally`
 
-#### No more "automagic" connection management
+#### Let it fail
 A great deal of confusion and edge cases arise from how wascally managed connectivity. Wascally treated any loss of connection or channels equally. This made it hard to predict behavior as a user of the library since any action taken against the API could trigger reconnection after an intentional shutdown. It also made it impossible to know whether a user intended to reconnect a closed connection or if the reconnection was the result of a programming error.
 
-rabbot does not re-establish connectivity automatically after connections have been intentionally closed _or_ after a failure threshold has been passed. In either of these cases, making API calls will either lead to rejected or indefinitely deferred promises. You, the user, must intentionally re-establish connectivity after closing a connection _or_ once rabbot has exhausted its attempts to connect on your behalf.
+Rabbot does not re-establish connectivity automatically after connections have been intentionally closed _or_ after a failure threshold has been passed. In either of these cases, making API calls will either lead to rejected or indefinitely deferred promises. You, the user, must intentionally re-establish connectivity after closing a connection _or_ once rabbot has exhausted its attempts to connect on your behalf.
+
+*The recommendation is*: if rabbot tells you it can't reach rabbot after exhausting the configured retries, shut your service down and let your monitoring and alerting tell you about it. The code isn't going to fix a network or broker outage by retrying indefinitely and filling up your logs.
 
 #### No more indefinite retention of unpublished messages
 Wascally retained published messages indefinitely until a connection and all topology could be established. This meant that a service unable to connect could produce messages until it ran out of memory. It also meant that wascally could reject the promise returned from the publish call but then later publish the message without the ability to inform the caller.
 
-When a connection is lost, or the `unreachable` event is emitted, all promises for publish calls are rejected and all unpublished messages are flushed. Rabbot will not provide any additional features around unpublishable messages - there are no good one-size-fits-all behaviors in these failure scenarios and it is important that developers understand and solve these needs at the service level.
+When a connection is lost, or the `unreachable` event is emitted, all promises for publish calls are rejected and all unpublished messages are flushed. Rabbot will not provide any additional features around unpublishable messages - there are no good one-size-fits-all behaviors in these failure scenarios and it is important that developers understand and solve these needs at the service level for their use case.
 
 ## Demos
 
- * [pubsub](https://github.com/LeanKit-Labs/rabbot/blob/master/demo/pubsub/README.md)
+ * [pubsub](https://github.com/arobson/rabbot/blob/master/demo/pubsub/README.md)
 
 # API Reference
 This library implements promises for the API calls via when.js.
@@ -53,6 +55,7 @@ This library implements promises for the API calls via when.js.
 The call returns a promise that can be used to determine when the connection to the server has been established.
 
 Options is a hash that can contain the following:
+ * `uri` - the AMQP URI. No default. This will be parsed and missing defaults will be supplied.
  * `name` - the name of this connection. Defaults to `"default"`.
  * `host` - the IP address or DNS name of the RabbitMQ server. Defaults to `"localhost"`.
  * `port` - the TCP/IP port on which RabbitMQ is listening. Defaults to `5672`.
@@ -70,6 +73,7 @@ Options is a hash that can contain the following:
 
 Note that the "default" connection (by name) is used when any method is called without a connection name supplied.
 
+__Options Example__
 ```javascript
 rabbit.addConnection( {
 	user: "someUser",
@@ -79,6 +83,13 @@ rabbit.addConnection( {
 	timeout: 2000,
 	vhost: "%2f",
 	heartbeat: 10
+} );
+```
+
+__Equivalent URI Example__
+```javascript
+rabbit.addConnection( {
+	uri: "amqp://someUser:sup3rs3cr3t@my-rqm.server:5672/?heartbeat=10"
 } );
 ```
 
@@ -347,6 +358,15 @@ The following structure shows and briefly explains the format of the message tha
 }
 ```
 
+### stopSubscription( queueName, [connectionName] )
+
+> !Caution!: 
+> * This does not affect bindings to the queue, it only stops the flow of messages from the queue to your service.
+> * If the queue is auto-delete, this will destroy the queue, dropping messages and losing any messages sent that would have been routed to it.
+> * If a network disruption has occurred or does occur, subscription will be restored to its last known state.
+
+Stops consuming messages from the queue. Does not explicitly change bindings on the queue. Does not explicitly release the queue or the channel used to establish the queue. In general, Rabbot works best when queues exist for the lifetime of a service. Starting and stopping queue subscriptions is likely to produce unexpected behaviors (read: avoid it).
+
 ## Message API
 rabbot defaults to (and assumes) queues are in ack mode. It batches ack and nack operations in order to improve total throughput. Ack/Nack calls do not take effect immediately.
 
@@ -592,9 +612,11 @@ This queue configuration will set a prefetch limit of 5 on the channel that is u
 **Note:** The queue `limit` is not the same as the `queueLimit` option - the latter of which sets the maximum number of messages allowed in the queue.
 
 ## A Note About Etiquette
-Like everything on LeanKit-Labs, rabbot was created to address a need we had at work. Any time I spend on it during work hours is to ensure that it does what LeanKit needs it to. The considerable amount of time I've spent on wascally and now rabbot outside of work hours is because I (and LeanKit) love open source software and want to contribute. We hope that you find this library useful and that it makes your job or project easier.
+Rabbot was created to address a need at work. Any time I spend on it during work hours is to ensure that it does what my employer needs it to. The considerable amount of time I've spent on wascally and now rabbot outside of work hours is because I love open source software and the community want to contribute. I hope that you find this library useful and that it makes you feel like your job or project was easier.
 
-That said, I am often troubled by how often users of open source libraries become demanding rather than active participants. Please keep a cordial/professional tone when reporting issues or requesting help. Feature requests or issue reports that have an entitled or disrespectful tone will be ignored and closed. All of us in open source are benefiting from a considerable amount of knowledge and effort for $0; please keep this in mind when frustrated about a defect, design flaw or missing feature.
+That said, I am often troubled by how often users of open source libraries become demanding consumers rather than active participants. Please keep a cordial/professional tone when reporting issues or requesting help. Feature requests or issue reports that have an entitled or disrespectful tone will be ignored and closed. All of us in open source are benefiting from a considerable amount of knowledge and effort for $0; please keep this in mind when frustrated about a defect, design flaw or missing feature.
+
+While I appreciate suggestions for how to make things better, I'd much rather see participation in the form of pull requests. I'd be happy to help you out if there are parts of the code base you're uncomfortable with.
 
 ## Additional Learning Resources
 

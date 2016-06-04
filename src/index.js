@@ -329,7 +329,6 @@ Broker.prototype.startSubscription = function( queueName, exclusive, connectionN
 		connectionName = exclusive;
 		exclusive = false;
 	}
-	connectionName = connectionName || "default";
 	var queue = this.getQueue( queueName, connectionName );
 	if ( queue ) {
 		queue.subscribe( queue, exclusive );
@@ -338,6 +337,16 @@ Broker.prototype.startSubscription = function( queueName, exclusive, connectionN
 		throw new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed." );
 	}
 };
+
+Broker.prototype.stopSubscription = function( queueName, connectionName ) {
+	var queue = this.getQueue( queueName, connectionName );
+	if( queue ) {
+		queue.unsubscribe();
+		return queue;
+	} else {
+		throw new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Unsubscribe failed." );
+	}
+}
 
 require( "./config.js" )( Broker );
 
