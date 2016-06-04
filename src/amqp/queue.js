@@ -253,6 +253,11 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 	}
 	log.info( "Starting subscription to queue '%s' on '%s'", channelName, topology.connection.name );
 	return channel.consume( channelName, function( raw ) {
+		if( !raw ) {
+			// this happens when the consumer has been cancelled
+			log.warn( "Queue '%s' was sent a consumer cancel notification" );
+			throw new Error( "Broker cancelled the consumer remotely" );
+		}
 		var correlationId = raw.properties.correlationId;
 		var ops = getResolutionOperations( channel, raw, messages, options );
 
