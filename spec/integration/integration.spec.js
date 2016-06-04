@@ -5,9 +5,10 @@ var harnessFactory = function( rabbit, cb, expected ) {
 	var handlers = [];
 	var received = [];
 	var unhandled = [];
+	var returned = [];
 	expected = expected || 1;
 	var check = function() {
-		if ( ( received.length + unhandled.length ) === expected ) {
+		if ( ( received.length + unhandled.length + returned.length ) === expected ) {
 			cb();
 		}
 	};
@@ -30,7 +31,7 @@ var harnessFactory = function( rabbit, cb, expected ) {
 			options.handler = wrap( options.handler || defaultHandle );
 			handlers.push( rabbit.handle( options ) );
 		} else {
-			handlers.push( rabbit.handle( type, wrap( handle || defaultHandle ), queueName ) );	
+			handlers.push( rabbit.handle( type, wrap( handle || defaultHandle ), queueName ) );
 		}
 	}
 
@@ -48,6 +49,11 @@ var harnessFactory = function( rabbit, cb, expected ) {
 		check();
 	} );
 
+	rabbit.onReturned( function( message ) {
+		returned.push( message );
+		check();
+	} );
+
 	return {
 		add: function( msg ) {
 			received.push( msg );
@@ -57,7 +63,8 @@ var harnessFactory = function( rabbit, cb, expected ) {
 		clean: clean,
 		handle: handleFn,
 		handlers: handlers,
-		unhandled: unhandled
+		unhandled: unhandled,
+		returned: returned
 	};
 };
 
@@ -663,6 +670,33 @@ describe( "Integration Test Suite", function() {
 					{ body: "one", queue: "rabbot-q.general1" },
 					{ body: "three", queue: "rabbot-q.general1" },
 					{ body: "two", queue: "rabbot-q.general1" }
+				] );
+		} );
+
+		after( function() {
+			harness.clean();
+		} );
+	} );
+
+	describe( "with unroutable messages", function() {
+		var harness;
+		before( function( done ) {
+			harness = harnessFn( done, 2 );
+			rabbit.publish( "rabbot-ex.direct", { mandatory: true, routingKey: "completely.un.routable.1", body: "returned message #1" } );
+			rabbit.publish( "rabbot-ex.direct", { mandatory: true, routingKey: "completely.un.routable.2", body: "returned message #2" } );
+		} );
+
+		it( "should capture messages returned by Rabbit", function() {
+			var results = _.map( harness.returned, function( m ) {
+				return {
+					type: m.type,
+					body: m.body
+				};
+			} );
+			results.should.eql(
+				[
+					{ body: "returned message #1", type: "completely.un.routable.1" },
+					{ body: "returned message #2", type: "completely.un.routable.2" }
 				] );
 		} );
 

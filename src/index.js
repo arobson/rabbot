@@ -18,7 +18,11 @@ var unhandledStrategies = {
 	},
 	customOnUnhandled: function() {}
 };
+var returnedStrategies = {
+	customOnReturned: function() {}
+};
 unhandledStrategies.onUnhandled = unhandledStrategies.nackOnUnhandled;
+returnedStrategies.onReturned = returnedStrategies.customOnReturned;
 
 var serializers = {
 	"application/json": {
@@ -65,7 +69,7 @@ Broker.prototype.addConnection = function( options ) {
 	var connection;
 	if ( !this.connections[ name ] ) {
 		connection = connectionFn( options );
-		var topology = topologyFn( connection, options || {}, serializers, unhandledStrategies );
+		var topology = topologyFn( connection, options || {}, serializers, unhandledStrategies, returnedStrategies );
 		connection.on( "connected", function() {
 			this.emit( "connected", connection );
 			this.emit( connection.name + ".connection.opened", connection );
@@ -83,6 +87,9 @@ Broker.prototype.addConnection = function( options ) {
 			this.emit( "unreachable", connection );
 			this.emit( name, ".connection.unreachable" );
 			this.clearAckInterval();
+		}.bind( this ) );
+		connection.on( "return", function(raw) {
+			this.emit( "return", raw);
 		}.bind( this ) );
 		this.connections[ name ] = topology;
 		return topology;
@@ -239,6 +246,10 @@ Broker.prototype.rejectUnhandled = function() {
 	unhandledStrategies.onUnhandled = unhandledStrategies.rejectOnUnhandled;
 };
 
+Broker.prototype.onReturned = function( handler ) {
+	returnedStrategies.onReturned = returnedStrategies.customOnReturned = handler;
+};
+
 Broker.prototype.publish = function( exchangeName, type, message, routingKey, correlationId, connectionName, sequenceNo ) {
 	var timestamp = Date.now();
 	var options;
@@ -276,7 +287,7 @@ Broker.prototype.request = function( exchangeName, options, connectionName ) {
 	var exchange = this.getExchange( exchangeName, connectionName );
 	var publishTimeout = options.timeout || exchange.publishTimeout || connection.publishTimeout || 500;
 	var replyTimeout = options.replyTimeout || exchange.replyTimeout || connection.replyTimeout || ( publishTimeout * 2 );
-	
+
 	return when.promise( function( resolve, reject, notify ) {
 		var timeout = setTimeout( function() {
 			subscription.unsubscribe();
@@ -292,7 +303,7 @@ Broker.prototype.request = function( exchangeName, options, connectionName ) {
 			}
 		} );
 		this.publish( exchangeName, options );
-		
+
 	}.bind( this ) );
 };
 

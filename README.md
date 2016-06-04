@@ -100,7 +100,7 @@ rabbot will stop trying to connect/re-connect if either of these thresholds is r
 rabbot provides the ability to define multiple nodes per connections by supplying either a comma delimited list or array of server IPs or names to the `host` property. You can also specify multuple ports in the same way but make certain that either you provide a single port for all servers or that the number of ports matches the number and order of servers.
 
 ### Shutting Down
-Both exchanges and queues have asynchronous processes that work behind the scenes processing publish confirms and batching message acknowledgements. To shutdown things in a clean manner, rabbot provides a `shutdown` method that returns a promise which will resolve once all outstanding confirmations and batching have completed and the connection is closed. 
+Both exchanges and queues have asynchronous processes that work behind the scenes processing publish confirms and batching message acknowledgements. To shutdown things in a clean manner, rabbot provides a `shutdown` method that returns a promise which will resolve once all outstanding confirmations and batching have completed and the connection is closed.
 
 ### Events
 rabbot emits both generic and specific connectivity events that you can bind to in order to handle various states:
@@ -167,7 +167,7 @@ Things to remember when publishing a message:
 This example shows all of the available properties (including those which get set by default):
 
 ```javascript
-rabbit.publish( "exchange.name", 
+rabbit.publish( "exchange.name",
 	{
 		routingKey: "hi",
 		type: "company.project.messages.textMessage",
@@ -177,6 +177,7 @@ rabbit.publish( "exchange.name",
 		messageId: "100",
 		expiresAfter: 1000 // TTL in ms, in this example 1 second
 		timestamp: // posix timestamp (long)
+		mandatory: true, //Must be set to true for onReturned to receive unqueued message
 		headers: {
 			random: "application specific value"
 		},
@@ -231,7 +232,7 @@ If using the second format, the options hash can contain the following propertie
 }
 ```
 
-> Notes: 
+> Notes:
 > * using options without a `queue` or `type` specified will handle _all_ messages received by the service because of the defaults.
 > * the behavior here differs in that exceptions are handled for you _by default_
 
@@ -318,6 +319,16 @@ Rejects unhandled messages so that will will _not_ be requeued. **DO NOT** use t
 rabbit.rejectUnhandled();
 ```
 
+### Returned Messages
+Unroutable messages that were published with `mandatory: true` will be returned. These messages cannot be ack/nack'ed.
+
+#### onReturned( handler )
+```javascript
+rabbit.onReturned( function( message ) {
+	 // the returned message
+} );
+```
+
 ### startSubscription( queueName, [exclusive], [connectionName] )
 
 > Recommendation: set handlers for anticipated types up before starting subscriptions.
@@ -380,7 +391,7 @@ Enqueues the message for rejection. This will re-enqueue the message.
 Rejects the message without re-queueing it. Please use with caution and consider having a dead-letter-exchange assigned to the queue before using this feature.
 
 ### message.reply( message, [options] )
-Acknowledges the messages and sends the message back to the requestor. The `message` is only the body of the reply. 
+Acknowledges the messages and sends the message back to the requestor. The `message` is only the body of the reply.
 
 The options hash can specify additional information about the reply and has the following properties (defaults shown:
 

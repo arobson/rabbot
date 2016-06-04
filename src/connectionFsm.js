@@ -13,6 +13,7 @@ var log = require( "./log.js" )( "rabbot.connection" );
 	'reconnected' - lost connection recovered
 	'failed' - connection lost
 	'unreachable' - no end points could be reached within threshold
+ 	'return' - published message was returned by AMQP
 */
 
 /* logs:
@@ -65,6 +66,9 @@ var Connection = function( options, connectionFn, channelFn ) {
 						this._onChannel.bind( this, name, context );
 						resolve( channel );
 					}.bind( this ) );
+					channel.on( "return", function(raw) {
+						this.emit( "return", raw);
+					}.bind(this));
 				}.bind( this ) );
 			} else {
 				return when( channel );

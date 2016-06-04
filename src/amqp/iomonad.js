@@ -19,6 +19,7 @@ var staticId = 0;
 /* events emitted:
 	`acquiring` - in the process of acquisition
 	`acquired` - channel or connection is available
+	`return` - published message was returned by AMQP
 	`failed` - acquisition failed
 	`closed` - broker terminated the connection or channel
 	`released` - closed in response to a user action _or_ after exhausting allowed attempts
@@ -79,6 +80,9 @@ module.exports = function( name, type, factory, target, close ) {
 			this.waitInterval = 0;
 			log.debug( "Acquired %s '%s' successfully", type, name );
 			// amqplib primitives emit close and error events
+			this.item.on( "return", function(raw) {
+				this.handle( "return", raw );
+			}.bind( this ) );
 			this.item.once( "close", function( info ) {
 				info = info || "No information provided";
 				this._clearEventHandlers();
@@ -193,6 +197,9 @@ module.exports = function( name, type, factory, target, close ) {
 				},
 				acquire: function() {
 					this.emit( "acquired" );
+				},
+				return: function(raw) {
+					this.emit( "return", raw);
 				},
 				blocked: function() {
 					this.transition( "blocked" );

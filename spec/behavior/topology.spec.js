@@ -89,7 +89,7 @@ describe( "Topology", function() {
 				bindQueue: noOp
 			};
 			controlMock = sinon.mock( control );
-			
+
 			var uniqueQueueName = "top-q-" + info.createHash();
 			controlMock
 				.expects( "bindQueue" )
@@ -100,7 +100,7 @@ describe( "Topology", function() {
 				.once()
 				.resolves( control );
 
-			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue, "test" );
+			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue, "test" );
 			when.all( [
 					topology.createExchange( { name: "top-ex", type: "topic" } ),
 					topology.createQueue( { name: "top-q", unique: "hash" } )
@@ -142,7 +142,7 @@ describe( "Topology", function() {
 					bindQueue: noOp
 				};
 				controlMock = sinon.mock( control );
-				
+
 				var uniqueQueueName = "top-q-" + info.createHash();
 				controlMock
 					.expects( "bindExchange" )
@@ -207,7 +207,7 @@ describe( "Topology", function() {
 					subscribe: true
 				}
 			};
-			topology = topologyFn( conn.instance, options, {}, undefined, Exchange, Queue, "test" );
+			topology = topologyFn( conn.instance, options, {}, undefined, undefined, Exchange, Queue, "test" );
 			topology.once( "replyQueue.ready", function( queue ) {
 				replyQueue = queue;
 				done();
@@ -271,7 +271,7 @@ describe( "Topology", function() {
 			var options = {
 				replyQueue: false
 			};
-			topology = topologyFn( conn.instance, options, {}, undefined, Exchange, Queue );
+			topology = topologyFn( conn.instance, options, {}, undefined, undefined, Exchange, Queue );
 			topology.once( "replyQueue.ready", function( queue ) {
 				replyQueue = queue;
 				done();
@@ -307,7 +307,7 @@ describe( "Topology", function() {
 				return q;
 			};
 			conn = connectionFn();
-			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
 			topology.createExchange( { name: "noice" } )
 				.then( function( created ) {
 					exchange = created;
@@ -346,7 +346,7 @@ describe( "Topology", function() {
 				return q;
 			};
 			conn = connectionFn();
-			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
 			topology.createExchange( { name: "noice" } );
 			topology.createExchange( { name: "noice" } )
 				.then( function( created ) {
@@ -387,7 +387,7 @@ describe( "Topology", function() {
 				return q;
 			};
 			conn = connectionFn();
-			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
 			topology.createExchange( { name: "badtimes" } )
 				.then( null, function( err ) {
 					error = err;
@@ -423,7 +423,7 @@ describe( "Topology", function() {
 				return q;
 			};
 			conn = connectionFn();
-			topology = topologyFn( conn.instance, { replyQueue: false }, {}, undefined, Exchange, Queue );
+			topology = topologyFn( conn.instance, { replyQueue: false }, {}, undefined, undefined, Exchange, Queue );
 			topology.createQueue( { name: "badtimes" } )
 				.then( null, function( err ) {
 					error = err;
@@ -469,7 +469,7 @@ describe( "Topology", function() {
 			conn.mock.expects( "getChannel" )
 				.once()
 				.resolves( control );
-			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
 			topology.createExchange( { name: "noice" } )
 				.then( function( created ) {
 					exchange = created;
@@ -518,7 +518,7 @@ describe( "Topology", function() {
 			conn.mock.expects( "getChannel" )
 				.once()
 				.resolves( control );
-			topology = topologyFn( conn.instance, { replyQueue: false }, {}, undefined, Exchange, Queue );
+			topology = topologyFn( conn.instance, { replyQueue: false }, {}, undefined, undefined, Exchange, Queue );
 
 			process.nextTick( function() {
 				q.raise( "defined" );
@@ -566,7 +566,7 @@ describe( "Topology", function() {
 			conn.mock.expects( "getChannel" )
 				.once()
 				.resolves( control );
-			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
 			return topology.createBinding( { source: "from", target: "to" } );
 		} );
 
@@ -603,7 +603,7 @@ describe( "Topology", function() {
 			conn.mock.expects( "getChannel" )
 				.once()
 				.resolves( control );
-			topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
 			topology.createBinding( { source: "from", target: "to", keys: [ "a.*", "b.*" ], queue: true } );
 		} );
 
@@ -628,7 +628,7 @@ describe( "Topology", function() {
 					return q;
 				};
 				conn = connectionFn();
-				topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+				topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
 				process.nextTick( function() {
 					conn.instance.fail( new Error( "no such server!" ) );
 				} );
@@ -661,7 +661,7 @@ describe( "Topology", function() {
 					return q;
 				};
 				conn = connectionFn();
-				topology = topologyFn( conn.instance, {}, {}, undefined, Exchange, Queue );
+				topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
 				process.nextTick( function() {
 					conn.instance.fail( new Error( "no such server!" ) );
 				} );
