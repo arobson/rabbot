@@ -32,6 +32,7 @@
  * Bug fix - use reject instead of nack when queues are in noBatch
  * Bug fix - noop nacks and rejections when consuming in no-ack mode
  * Bug fix - channels closed by the broker should still be re-acquired with redefined primitives
+ * Bug fix - check for existence of headers before checking for direct-reply-to header. Thanks Matt Young (@mashu-daishi)
  * Breaking - no longer recover automatically from a user terminated connection
  * Breaking - limit number/duration of connection retries
  * Breaking - messages are not auto-re-published when a connection or channel fails
