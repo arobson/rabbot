@@ -41,7 +41,7 @@ function toArray( x, list ) {
 	return [ x ];
 }
 
-var Topology = function( connection, options, serializers, unhandledStrategies ) {
+var Topology = function( connection, options, serializers, unhandledStrategies, returnedStrategies ) {
 	var autoReplyTo = { name: [ replyId, "response", "queue" ].join( '.' ), autoDelete: true, subscribe: true };
 	var rabbitReplyTo = { name: "amq.rabbitmq.reply-to", subscribe: true, noAck: true };
 	var userReplyTo = _.isObject( options.replyQueue ) ? options.replyQueue : { name: options.replyQueue, autoDelete: true, subscribe: true };
@@ -59,6 +59,9 @@ var Topology = function( connection, options, serializers, unhandledStrategies )
 	this.serializers = serializers;
 	this.onUnhandled = function( message ) {
 		return unhandledStrategies.onUnhandled( message );
+	};
+	this.onReturned = function( message ) {
+		return returnedStrategies.onReturned( message );
 	};
 	var replyQueueName = '';
 
@@ -82,6 +85,23 @@ var Topology = function( connection, options, serializers, unhandledStrategies )
 	connection.on( "reconnected", function() {
 		this.createReplyQueue().then( null, onReplyQueueFailed );
 		this.onReconnect();
+	}.bind( this ) );
+
+	connection.on( "return", function(raw) {
+		raw.type = _.isEmpty( raw.properties.type ) ? raw.fields.routingKey : raw.properties.type;
+		var contentType = raw.properties.contentType || "application/octet-stream";
+		var serializer = this.serializers[ contentType ];
+		if( !serializer ) {
+			log.error( "Could not deserialize message id %s, connection '%s' - no serializer defined",
+				raw.properties.messageId, this.connection.name );
+		} else {
+			try {
+				raw.body = serializer.deserialize( raw.content, raw.properties.contentEncoding );
+			} catch( err ) {
+			}
+		}
+
+		this.onReturned(raw);
 	}.bind( this ) );
 
 	// delay creation to allow for subscribers to attach a handler
@@ -156,7 +176,7 @@ Topology.prototype.createBinding = function( options ) {
 						return channel[ call ]( target, source, key );
 					} ) );
 			}.bind( this ) );
-		
+
 	}
 	return promise;
 };
@@ -294,11 +314,11 @@ Topology.prototype.reset = function() {
 
 Monologue.mixInto( Topology );
 
-module.exports = function( connection, options, serializers, unhandledStrategies, exchangeFsm, queueFsm, defaultId ) {
+module.exports = function( connection, options, serializers, unhandledStrategies, returnedStrategies, exchangeFsm, queueFsm, defaultId ) {
 	// allows us to optionally provide mocks and control the default queue name
 	Exchange = exchangeFsm || require( "./exchangeFsm.js" );
 	Queue = queueFsm || require( "./queueFsm.js" );
 	replyId = defaultId || info.id;
 
-	return new Topology( connection, options, serializers, unhandledStrategies );
+	return new Topology( connection, options, serializers, unhandledStrategies, returnedStrategies );
 };

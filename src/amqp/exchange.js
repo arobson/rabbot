@@ -76,7 +76,8 @@ function publish( channel, options, topology, log, serializers, message ) {
 		timestamp: message.timestamp || Date.now(),
 		appId: message.appId || info.id,
 		headers: message.headers || {},
-		expiration: message.expiresAfter || undefined
+		expiration: message.expiresAfter || undefined,
+		mandatory: message.mandatory || false
 	};
 	if ( publishOptions.replyTo === "amq.rabbitmq.reply-to" ) {
 		publishOptions.headers[ "direct-reply-to" ] = "true";
