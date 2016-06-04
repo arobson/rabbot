@@ -1,6 +1,6 @@
 {
   "name": "rabbot",
-  "version": "1.0.0-13",
+  "version": "1.0.0",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/arobson/rabbot",
@@ -29,6 +29,10 @@
     {
       "name": "Joseph Frazier",
       "url": "https://github.com/josephfrazier"
+    },
+    {
+      "name": "Randy Groff",
+      "url": "http://randygroff.com"
     },
     {
       "name": "John Mathis",
