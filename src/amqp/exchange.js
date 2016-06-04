@@ -110,12 +110,25 @@ function publish( channel, options, topology, log, serializers, message ) {
 		return sequence;
 	}
 
-	return channel.publish(
-			channelName,
-			effectiveKey,
-			payload,
-			publishOptions
-		).then( onConfirmed, onRejected );
+	var deferred = when.defer();
+	var promise = deferred.promise;
+
+	channel.publish(
+		channelName,
+		effectiveKey,
+		payload,
+		publishOptions,
+		function( err, i ) {
+			if( err ) {
+				deferred.reject( err );
+			} else {
+				deferred.resolve( i );
+			}
+		}
+	);
+
+	return promise
+		.then( onConfirmed, onRejected );
 }
 
 module.exports = function( options, topology, publishLog, serializers ) {
