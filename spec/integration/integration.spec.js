@@ -682,18 +682,21 @@ describe( "Integration Test Suite", function() {
 		var harness;
 		before( function( done ) {
 			harness = harnessFn( done, 1 );
-			rabbit.publish( "rabbot-ex.topic", { routingKey: "completely.un.routable", body: "uh oh" } );
+			rabbit.publish( "rabbot-ex.direct", { routingKey: "completely.un.routable.1", body: "returned message #1" } );
+			rabbit.publish( "rabbot-ex.direct", { routingKey: "completely.un.routable.2", body: "returned message #2" } );
 		} );
 
 		it( "should capture messages returned by Rabbit", function() {
 			var results = _.map( harness.returned, function( m ) {
 				return {
+					type: m.type,
 					body: m.body
 				};
 			} );
 			results.should.eql(
 				[
-					{ body: "uh oh" }
+					{ body: "returned message #1", type: "completely.un.routable.1" },
+					{ body: "returned message #2", type: "completely.un.routable.2" }
 				] );
 		} );
 
