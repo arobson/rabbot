@@ -89,7 +89,7 @@ rabbit.addConnection( {
 __Equivalent URI Example__
 ```javascript
 rabbit.addConnection( {
-	uri: "amqp://someUser:sup3rs3cr3t@my-rqm.server:5672/?heartbeat=10"
+	uri: "amqp://someUser:sup3rs3cr3t@my-rqm.server:5672/%2f?heartbeat=10"
 } );
 ```
 
@@ -532,7 +532,7 @@ Binds the target queue to the source exchange. Messages flow from source to targ
 
 > Note: setting subscribe to true will result in subscriptions starting immediately upon queue creation.
 
-This example shows most of the available options described above.
+This example shows most of the available options described above as well as logging options available through [whistlepunk](https://github.com/leankit-labs/whistlepunk).
 ```javascript
 	var settings = {
 		connection: {
@@ -557,7 +557,15 @@ This example shows most of the available options described above.
 		bindings:[
 			{ exchange: "config-ex.1", target: "config-q.1", keys: [ "bob","fred" ] },
 			{ exchange: "config-ex.2", target: "config-q.2", keys: "test1" }
-		]
+		],
+		logging: {
+			adapters: {
+				stdOut: { // adds a console logger at the "info" level
+					level: 3,
+					bailIfDebug: true
+				}
+			}
+		}
 	};
 ```
 
@@ -621,6 +629,9 @@ rabbit.addQueue( "some.q", {
 This queue configuration will set a prefetch limit of 5 on the channel that is used for consuming this queue.
 
 **Note:** The queue `limit` is not the same as the `queueLimit` option - the latter of which sets the maximum number of messages allowed in the queue.
+
+## Logging
+As mentioned in the configuration, logging is provided by [whistlepunk](https://github.com/leankit-labs/whistlepunk). While you can easily write your own adapters for it, it supports a standard output adapter and a DEBUG based adapter by default. When troubleshooting, you can prefix starting your process with `DEBUG=rabbot.*` to see all rabbot related log messages. It's worth noting that the `rabbot.queue.#` and `rabbot.exchange.#` logging namespaces will be very high volume since that is where rabbot reports all messages published and subscribed at the debug level.
 
 ## A Note About Etiquette
 Rabbot was created to address a need at work. Any time I spend on it during work hours is to ensure that it does what my employer needs it to. The considerable amount of time I've spent on wascally and now rabbot outside of work hours is because I love open source software and the community want to contribute. I hope that you find this library useful and that it makes you feel like your job or project was easier.

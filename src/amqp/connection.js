@@ -51,7 +51,7 @@ function parseUri( uri ) {
 			pass: authSplit[ 1 ],
 			host: parsed.hostname,
 			port: parsed.port,
-			vhost: parsed.pathname ? encodeURIComponent( parsed.pathname ) : null,
+			vhost: parsed.pathname ? parsed.pathname.slice( 1 ) : undefined,
 			heartbeat: heartbeat
 		};
 	}

@@ -3,6 +3,11 @@
 
 ## 1.0.x
 
+### 1.0.1
+
+* Bug fix - uri parsing should not including leading slash between host specification and vhost
+* Add section to README about logging
+
 * Feature - add default and custom strategies for returned mandatory messages
 
 ### 1.0.0 - issues addressed from wascally
