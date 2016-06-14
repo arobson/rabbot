@@ -3,6 +3,10 @@
 
 ## 1.0.x
 
+### 1.0.2
+
+ * Bug fix - corrected bug causing connection.unreachable event not to be prefixed with connection name correctly (thanks @Cyri-L)
+
 ### 1.0.1
 
 * Bug fix - uri parsing should not including leading slash between host specification and vhost
