@@ -85,7 +85,7 @@ Broker.prototype.addConnection = function( options ) {
 		}.bind( this ) );
 		connection.on( "unreachable", function() {
 			this.emit( "unreachable", connection );
-			this.emit( name, ".connection.unreachable" );
+			this.emit( name + ".connection.unreachable" );
 			this.clearAckInterval();
 		}.bind( this ) );
 		connection.on( "return", function(raw) {
@@ -196,7 +196,7 @@ Broker.prototype.handle = function( messageType, handler, queueName, context ) {
 			queue: queueName || "*",
 			context: context,
 			autoNack: this.autoNack,
-			handler: handler 
+			handler: handler
 		}
 	} else {
 		options = messageType;
