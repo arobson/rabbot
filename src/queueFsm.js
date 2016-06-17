@@ -98,7 +98,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 						reject( err );
 					} else {
 						return this.queue.subscribe( exclusive )
-							.then( resolve, reject );	
+							.then( resolve, reject );
 					}
 				}.bind( this );
 				this.once( "failed", function( err ) {
@@ -112,7 +112,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 			options.subscribe = false;
 			var op = function( err ) {
 				this.queue.unsubscribe();
-			};
+			}.bind(this);
 			this.handle( "unsubscribe", op );
 		},
 
