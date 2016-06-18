@@ -160,13 +160,16 @@ Topology.prototype.configureExchanges = function( exchangeDef, list ) {
 
 Topology.prototype.createBinding = function( options ) {
 	var id = [ options.source, options.target ].join( "->" );
+	var keys = getKeys( options.keys );
+	if ( keys.length > 1 || keys[0] !== "" ) {
+		id += ":" + keys.join(':');
+	}
 	var promise = this.promises[ id ];
 	if( !promise ) {
 		this.definitions.bindings[ id ] = options;
 		var call = options.queue ? "bindQueue" : "bindExchange";
 		var source = options.source;
 		var target = options.target;
-		var keys = getKeys( options.keys );
 		this.promises[ id ] = promise = this.connection.getChannel( "control", false, "control channel for bindings" )
 			.then( function( channel ) {
 				log.info( "Binding %s '%s' to '%s' on '%s' with keys: %s",
