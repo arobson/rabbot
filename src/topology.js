@@ -161,7 +161,7 @@ Topology.prototype.configureExchanges = function( exchangeDef, list ) {
 Topology.prototype.createBinding = function( options ) {
 	var id = [ options.source, options.target ].join( "->" );
 	var keys = getKeys( options.keys );
-	if ( keys.length > 1 || keys[0] !== "" ) {
+	if ( keys[0] !== "" ) {
 		id += ":" + keys.join(':');
 	}
 	var promise = this.promises[ id ];
