@@ -278,33 +278,60 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 		.publish( options );
 };
 
-Broker.prototype.request = function( exchangeName, options, connectionName ) {
+Broker.prototype.request = function (exchangeName, options, connectionName) {
 	connectionName = connectionName || options.connectionName || 'default';
-	var requestId = uuid.v1();
-	options.messageId = requestId;
+	options.messageId = options.messageId || uuid.v1();
 	options.connectionName = connectionName;
-	var connection = this.connections[ connectionName ].options;
-	var exchange = this.getExchange( exchangeName, connectionName );
-	var publishTimeout = options.timeout || exchange.publishTimeout || connection.publishTimeout || 500;
-	var replyTimeout = options.replyTimeout || exchange.replyTimeout || connection.replyTimeout || ( publishTimeout * 2 );
 
-	return when.promise( function( resolve, reject, notify ) {
-		var timeout = setTimeout( function() {
-			subscription.unsubscribe();
-			reject( new Error( "No reply received within the configured timeout of " + replyTimeout + " ms" ) );
-		}, replyTimeout );
-		var subscription = responses.subscribe( requestId, function( message ) {
-			if ( message.properties.headers[ "sequence_end" ] ) { // jshint ignore:line
-				clearTimeout( timeout );
-				resolve( message );
+	var connection = this.connections[connectionName].options,
+		exchange = this.getExchange(exchangeName, connectionName),
+		publishTimeout = 500,
+		replyTimeout;
+
+	if (options.timeout != void 0) {
+		publishTimeout = options.timeout;
+	}
+	else if (exchange.publishTimeout != void 0) {
+		publishTimeout = exchange.publishTimeout;
+	}
+	else if (connection.publishTimeout != void 0) {
+		publishTimeout = connection.publishTimeout;
+	}
+	replyTimeout = publishTimeout * 2;
+	if (options.replyTimeout != void 0) {
+		replyTimeout = options.replyTimeout;
+	}
+	else if (exchange.replyTimeout != void 0) {
+		replyTimeout = exchange.replyTimeout;
+	}
+	else if (connection.replyTimeout != void 0) {
+		replyTimeout = connection.replyTimeout;
+	}
+
+	return when.promise(function (resolve, reject, notify) {
+		var timeout, subscription;
+
+		if (replyTimeout > 0) { //if replyTimeout == 0, unlimited timeout. if replyTimeout < 0, no timeout because of no expected response
+			timeout = setTimeout(function () {
 				subscription.unsubscribe();
-			} else {
-				notify( message );
-			}
-		} );
-		this.publish( exchangeName, options );
-
-	}.bind( this ) );
+				reject(new Error("No reply received within the configured timeout of " + replyTimeout + " ms"));
+			}, replyTimeout);
+		}
+		if (replyTimeout >= 0) {
+			subscription = responses.subscribe(options.messageId, function (message) {
+				if (message.properties.headers["sequence_end"]) { // jshint ignore:line
+					clearTimeout(timeout);
+					resolve(message);
+					subscription.unsubscribe();
+				} else {
+					notify(message);
+				}
+			}), this.publish(exchangeName, options).catch(reject);
+		}
+		else {
+			this.publish(exchangeName, options).then(resolve, reject);
+		}
+	}.bind(this));
 };
 
 Broker.prototype.reset = function() {
