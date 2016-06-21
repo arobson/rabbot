@@ -359,20 +359,22 @@ Broker.prototype.shutdown = function() {
 		}.bind( this ) );
 };
 
-Broker.prototype.startSubscription = function( queueName, exclusive, connectionName ) {
-	if ( !this.hasHandles ) {
-		console.warn( "Subscription to '" + queueName + "' was started without any handlers. This will result in lost messages!" );
+Broker.prototype.startSubscription = function (queueName, exclusive, connectionName) {
+	if (!this.hasHandles) {
+		console.warn("Subscription to '" + queueName + "' was started without any handlers. This will result in lost messages!");
 	}
-	if( _.isString( exclusive ) ) {
+	if (_.isString(exclusive)) {
 		connectionName = exclusive;
 		exclusive = false;
 	}
-	var queue = this.getQueue( queueName, connectionName );
-	if ( queue ) {
-		queue.subscribe( queue, exclusive );
-		return queue;
+	var queue = this.getQueue(queueName, connectionName);
+	if (queue) {
+		return queue.subscribe(queue, exclusive).then(function (r) {
+			r.queue = queue;
+			return r;
+		});
 	} else {
-		throw new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed." );
+		throw new Error("No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed.");
 	}
 };
 
