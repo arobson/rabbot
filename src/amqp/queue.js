@@ -272,7 +272,7 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 			options.exclusive = true;
 		}
 		raw.queue = channelName;
-		var parts = [ channelName.replace( /[.]/g, "-" ) ];
+		var parts = [ topology.connection.name.replace( /[.]/g, "-" ), channelName.replace( /[.]/g, "-" ) ];
 		if( raw.type ) {
 			parts.push( raw.type );
 		}

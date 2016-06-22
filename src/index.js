@@ -187,13 +187,14 @@ Broker.prototype.getQueue = function( name, connectionName ) {
 	return this.connections[ connectionName ].channels[ "queue:" + name ];
 };
 
-Broker.prototype.handle = function( messageType, handler, queueName, context ) {
+Broker.prototype.handle = function( messageType, handler, queueName, context, connectionName ) {
 	this.hasHandles = true;
 	var options;
 	if( _.isString( messageType ) ) {
 		options = {
 			type: messageType,
 			queue: queueName || "*",
+			connectionName: connectionName || "*",
 			context: context,
 			autoNack: this.autoNack,
 			handler: handler
@@ -202,9 +203,10 @@ Broker.prototype.handle = function( messageType, handler, queueName, context ) {
 		options = messageType;
 		options.autoNack = options.autoNack === false ? false : true;
 		options.queue = options.queue || (options.type ? '*' : '#');
+		options.connectionName = options.connectionName || "*";
 		options.handler = options.handler || handler;
 	}
-	var parts = [];
+	var parts = [options.connectionName.replace( /[.]/g, "-" )];
 	if( options.queue === "#" ) {
 		parts.push( "#" );
 	} else {

@@ -4,7 +4,7 @@
 [![npm Downloads](https://img.shields.io/npm/dm/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
 [![Dependencies](https://img.shields.io/david/arobson/rabbot.svg?style=flat)](https://david-dm.org/arobson/rabbot)
 
-This is a very opinionated abstraction over amqplib to help simplify the implementation of several messaging patterns on RabbitMQ. 
+This is a very opinionated abstraction over amqplib to help simplify the implementation of several messaging patterns on RabbitMQ.
 
 > !Important! - successful use of this library will require a conceptual knowledge of AMQP and an understanding of RabbitMQ.
 
@@ -206,13 +206,14 @@ rabbit.request( "request.exchange", {
 	} );
 ```
 
-### handle( typeName, handler, [queueName], [context] )
+### handle( typeName, handler, [queueName], [context], [connectionName] )
 ### handle( options, handler )
 
 > Notes:
 > * Handle calls should happen __before__ starting subscriptions.
 > * The message's routing key will be used if the type is missing or empty on incoming messages
 > * Specifying `queueName` will cause the handler to handle messages for that queue _only_
+> * Specifying `connectionName` will cause the handler to handle messages for that connection _only_
 > * `typeName` can use AMQP style wild-cards to handle multiple message types - use this with caution!
 
 Message handlers are registered to handle a message based on the typeName. Calling handle will return a reference to the handler that can later be removed. The message that is passed to the handler is the raw Rabbit payload. The body property contains the message body published. The message has `ack`, `nack` (requeue the message), `reply` and `reject` (don't requeue the message) methods control what Rabbit does with the message.
@@ -371,7 +372,7 @@ The following structure shows and briefly explains the format of the message tha
 
 ### stopSubscription( queueName, [connectionName] )
 
-> !Caution!: 
+> !Caution!:
 > * This does not affect bindings to the queue, it only stops the flow of messages from the queue to your service.
 > * If the queue is auto-delete, this will destroy the queue, dropping messages and losing any messages sent that would have been routed to it.
 > * If a network disruption has occurred or does occur, subscription will be restored to its last known state.
