@@ -15,10 +15,10 @@ module.exports = function () {
 
   // this handler will handle messages sent from the publisher
   rabbit.handle("#", function(msg) {
-  	console.log("Received:", JSON.stringify(msg.body));
+  	console.log("LEFT Received:", JSON.stringify(msg.body));
   	msg.ack();
   	if ((++received) === expected) {
-  		console.log("Received", received, "messages after", (Date.now() - started), "milliseconds");
+  		console.log("LEFT Received", received, "messages after", (Date.now() - started), "milliseconds");
   	}
   });
 
@@ -26,7 +26,7 @@ module.exports = function () {
   // services that will be using the same topology to avoid
   // scenarios where you have race conditions around when
   // exchanges, queues or bindings are in place
-  require("./topology.js")(rabbit, "right");
+  require("./topology.js")(rabbit, "right", "left");
 
   console.log('Set up LEFT OK');
 };
