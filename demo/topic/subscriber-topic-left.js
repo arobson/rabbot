@@ -25,7 +25,7 @@ module.exports = function() {
 	// services that will be using the same topology to avoid
 	// scenarios where you have race conditions around when
 	// exchanges, queues or bindings are in place
-	require("./topology.js")(rabbit, "right", "left");
+	require("./topology.js")(rabbit, "left", "left");
 
 	console.log('Set up LEFT OK');
 };
