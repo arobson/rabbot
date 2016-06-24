@@ -349,6 +349,7 @@ The following structure shows and briefly explains the format of the message tha
 	// metadata specific to routing & delivery
 	fields: {
 		consumerTag: "", // identifies the consumer to rabbit
+		connectionName: "", // identifies the connection name
 		deliveryTag: #, // identifies the message delivered for rabbit
 		redelivered: true|false, // indicates if the message was previously nacked or returned to the queue
 		exchange: "" // name of exchange the message was published to,

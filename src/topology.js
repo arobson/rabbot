@@ -100,7 +100,7 @@ var Topology = function( connection, options, serializers, unhandledStrategies, 
 			} catch( err ) {
 			}
 		}
-
+		raw.fields.connectionName = this.connection.name;
 		this.onReturned(raw);
 	}.bind( this ) );
 

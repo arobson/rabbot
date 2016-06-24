@@ -268,6 +268,7 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 		raw.reject = ops.reject;
 		raw.reply = getReply( channel, serializers, raw, topology.replyQueue.name, topology.connection.name );
 		raw.type = _.isEmpty( raw.properties.type ) ? raw.fields.routingKey : raw.properties.type;
+		raw.fields.connectionName = topology.connection.name;
 		if( exclusive ) {
 			options.exclusive = true;
 		}
