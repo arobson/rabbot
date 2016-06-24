@@ -15,7 +15,7 @@ module.exports = function () {
 
   // this handler will handle messages sent from the publisher
   rabbit.handle("#", function(msg) {
-  	console.log("RIGHT Received:", JSON.stringify(msg.body));
+  	console.log("RIGHT Received:", JSON.stringify(msg.body), "routingKey:", msg.fields.routingKey);
   	msg.ack();
   	if ((++received) === expected) {
   		console.log("RIGHT Received", received, "messages after", (Date.now() - started), "milliseconds");
