@@ -37,8 +37,9 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 			var onDefined = function() {
 				this.transition( "ready" );
 			}.bind( this );
-			this.queue.define()
-				.then( onDefined, onError );
+			when().then(function(){
+				this.queue.define()
+			}.bind(this)).then( onDefined, onError );
 		},
 
 		_listen: function() {
