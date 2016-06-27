@@ -1,5 +1,18 @@
-module.exports = function(rabbit, subscribeTo, connectionName) {
+module.exports = function(rabbit) {
+
 	return rabbit.configure({
+
+    // arguments used to establish a connection to a broker
+		connection: {
+			user: "guest",
+			pass: "guest",
+			server: [ "127.0.0.1" ],
+			port: 5672,
+			vhost: "%2f",
+			timeout: 1000,
+			failAfter: 30,
+			retryLimit: 400
+		},
 
 		// define the exchanges
 		exchanges: [{
@@ -13,11 +26,11 @@ module.exports = function(rabbit, subscribeTo, connectionName) {
 		queues: [{
 			name: "topic-example-left-q",
 			autoDelete: true,
-			subscribe: subscribeTo === "left"
+      subscribe: true
 		}, {
 			name: "topic-example-right-q",
 			autoDelete: true,
-			subscribe: subscribeTo === "right"
+      subscribe: true
 		}],
 
 		// binds exchanges and queues to one another
@@ -30,20 +43,7 @@ module.exports = function(rabbit, subscribeTo, connectionName) {
 			target: "topic-example-right-q",
 			keys: ["right"]
 		}]
-	}).then(function() {
-    var config = {
-      name: connectionName,
-			user: "guest",
-			pass: "guest",
-			server: [ "127.0.0.1" ],
-			port: 5672,
-			vhost: "%2f",
-			timeout: 1000,
-			failAfter: 30,
-			retryLimit: 400
-		};
-    return rabbit.addConnection(config);
-	}, function(err) {
+	}).then(null, function(err) {
     console.error('Could not connect or configure:', err);
   });
 };

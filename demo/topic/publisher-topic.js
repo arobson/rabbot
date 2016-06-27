@@ -23,6 +23,7 @@ function publish(total) {
     var direction = (0 === x % 2) ? 'left' : 'right';
     rabbit.publish("topic-example-x", {
       routingKey: direction,
+      type: direction,
       body: {
         message: "Message " + x
       }

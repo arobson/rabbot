@@ -1,4 +1,9 @@
 
+var rabbit = require("../../src/index.js");
 
-require('./subscriber-topic-left')();
-require('./subscriber-topic-right')();
+require('./topology')(rabbit)
+  .then(function () {
+    require('./subscriber-topic-left')(rabbit);
+    require('./subscriber-topic-right')(rabbit);
+  });
+

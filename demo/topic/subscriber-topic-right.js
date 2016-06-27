@@ -1,6 +1,5 @@
 
-module.exports = function () {
-  var rabbit = require("../../src/index.js");
+module.exports = function (rabbit) {
 
   // variable to hold starting time
   var started = Date.now();
@@ -14,7 +13,7 @@ module.exports = function () {
   // always setup your message handlers first
 
   // this handler will handle messages sent from the publisher
-  rabbit.handle("#", function(msg) {
+  rabbit.handle("right", function(msg) {
   	console.log("RIGHT Received:", JSON.stringify(msg.body), "routingKey:", msg.fields.routingKey);
   	msg.ack();
   	if ((++received) === expected) {
