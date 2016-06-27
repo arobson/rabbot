@@ -12,7 +12,10 @@ module.exports = function(rabbit) {
 	// always setup your message handlers first
 
 	// this handler will handle messages sent from the publisher
-	rabbit.handle("left", function(msg) {
+	rabbit.handle({
+    queue: 'topic-example-left-q',
+    type: '#'
+  }, function(msg) {
 		console.log("LEFT Received:", JSON.stringify(msg.body), "routingKey:", msg.fields.routingKey);
 		msg.ack();
 		if ((++received) === expected) {
