@@ -111,10 +111,20 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 
 		unsubscribe: function() {
 			options.subscribe = false;
-			var op = function( err ) {
-				this.queue.unsubscribe();
-			}.bind(this);
-			this.handle( "unsubscribe", op );
+			return when.promise( function( resolve, reject) {
+				var op = function( err ) {
+					if ( err ){
+						reject( err );
+					} else {
+						return this.queue.unsubscribe()
+							.then( resolve, reject );
+					}
+				}.bind( this );
+				this.once( "failed", function( err ) {
+					reject( err );
+				} );
+				this.handle( "unsubscribe", op );
+			}.bind( this ) );
 		},
 
 		initialState: "initializing",

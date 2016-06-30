@@ -134,10 +134,42 @@ Broker.prototype.bindExchange = function( source, target, keys, connectionName )
 	return this.connections[ connectionName ].createBinding( { source: source, target: target, keys: keys } );
 };
 
+Broker.prototype.addExchangeBinding = function( source, target, key, connectionName ) {
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].addBindingOperation(
+		{ source: source, target: target, key: key, adding:true },
+		connectionName
+	);
+};
+
+Broker.prototype.removeExchangeBinding = function( source, target, key, connectionName ) {
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].addBindingOperation(
+		{ source: source, target: target, key: key},
+		connectionName
+	);
+};
+
 Broker.prototype.bindQueue = function( source, target, keys, connectionName ) {
 	connectionName = connectionName || "default";
 	return this.connections[ connectionName ].createBinding(
 		{ source: source, target: target, keys: keys, queue: true },
+		connectionName
+	);
+};
+
+Broker.prototype.addQueueBinding = function( source, target, key, connectionName ) {
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].addBindingOperation(
+		{ source: source, target: target, key: key, queue: true, adding:true },
+		connectionName
+	);
+};
+
+Broker.prototype.removeQueueBinding = function( source, target, key, connectionName ) {
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].addBindingOperation(
+		{ source: source, target: target, key: key, queue: true },
 		connectionName
 	);
 };
@@ -185,6 +217,11 @@ Broker.prototype.getExchange = function( name, connectionName ) {
 Broker.prototype.getQueue = function( name, connectionName ) {
 	connectionName = connectionName || "default";
 	return this.connections[ connectionName ].channels[ "queue:" + name ];
+};
+
+Broker.prototype.getBindings = function(connectionName ) {
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].definitions.bindings;
 };
 
 Broker.prototype.handle = function( messageType, handler, queueName, context, connectionName ) {
@@ -383,8 +420,7 @@ Broker.prototype.startSubscription = function (queueName, exclusive, connectionN
 Broker.prototype.stopSubscription = function( queueName, connectionName ) {
 	var queue = this.getQueue( queueName, connectionName );
 	if( queue ) {
-		queue.unsubscribe();
-		return queue;
+		return queue.unsubscribe();
 	} else {
 		throw new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Unsubscribe failed." );
 	}
