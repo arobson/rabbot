@@ -63,7 +63,7 @@ var Broker = function() {
 Broker.prototype.addConnection = function( options ) {
     var self = this
 
-    return new Promise( function( resolve, reject ) {
+    return when.promise( function( resolve, reject ) {
 	    var name = options ? ( options.name || "default" ) : "default";
 	    options = options || {};
 	    options.name = name;
