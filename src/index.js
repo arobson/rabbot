@@ -97,7 +97,7 @@ Broker.prototype.addConnection = function( options ) {
                 return reject( new Error( "connection unreachable" ) )
 	        } );
 	        connection.on( "return", function(raw) {
-                self.emit( "return", raw);
+                self.emit( "return", raw );
 	        } );
             self.connections[ name ] = topology;
 	    } else {
