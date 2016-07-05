@@ -92,12 +92,11 @@ Broker.prototype.addConnection = function( options ) {
 			this.emit( "return", raw);
 		}.bind( this ) );
 		this.connections[ name ] = topology;
-		return topology;
 	} else {
-		connection = this.connections[ name ];
-		connection.connection.connect();
-		return connection;
+		topology = this.connections[ name ];
 	}
+	
+	return topology.connection.connect();
 };
 
 Broker.prototype.addExchange = function( name, type, options, connectionName ) {
