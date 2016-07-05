@@ -274,6 +274,9 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 	if( connection.publishTimeout ) {
 		options.connectionPublishTimeout = connection.publishTimeout;
 	}
+	if ( _.isNumber( options.body ) ) {
+    options.body = options.body.toString();
+  }
 	return this.getExchange( exchangeName, connectionName )
 		.publish( options );
 };
