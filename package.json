@@ -19,28 +19,24 @@
       "url": "http://github.com/arobson"
     },
     {
-      "name": "Doug Neiner",
-      "url": "http://code.dougneiner.com"
-    },
-    {
       "name": "Derick Bailey",
       "url": "http://derickbailey.com/"
-    },
-    {
-      "name": "Joseph Frazier",
-      "url": "https://github.com/josephfrazier"
     },
     {
       "name": "Randy Groff",
       "url": "http://randygroff.com"
     },
     {
-      "name": "John Mathis",
-      "url": "http://github.com/JohnDMathis"
+      "name": "Joseph Frazier",
+      "url": "https://github.com/josephfrazier"
     },
     {
-      "name": "Austin Young",
-      "url": "http://github.com/LeankitAustin"
+      "name": "Doug Neiner",
+      "url": "http://code.dougneiner.com"
+    },
+    {
+      "name": "Brian Edgerton",
+      "url": "https://github.com/brianedgerton"
     },
     {
       "name": "Ryan Niemeyer",
@@ -49,6 +45,10 @@
     {
       "name": "Jim Cowart",
       "url": "http://github.com/ifandelse"
+    },
+    {
+      "name": "Sean Corrales",
+      "url": "https://github.com/droidenator"
     },
     {
       "name": "Scott Walters",
@@ -69,6 +69,14 @@
     {
       "name": "Mario Kozjak",
       "url": "https://github.com/mkozjak"
+    },    
+    {
+      "name": "John Mathis",
+      "url": "http://github.com/JohnDMathis"
+    },
+    {
+      "name": "Austin Young",
+      "url": "http://github.com/LeankitAustin"
     }
   ],
   "license": "MIT",
