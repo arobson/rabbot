@@ -604,11 +604,50 @@ describe( "Topology", function() {
 				.once()
 				.resolves( control );
 			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
-			topology.createBinding( { source: "from", target: "to", keys: [ "a.*", "b.*" ], queue: true } );
+			topology.createBinding( { source: "from", target: "to", keys: undefined, queue: true } );
 		} );
 
 		it( "should add binding to definitions", function() {
 			topology.definitions.bindings[ "from->to" ].should.eql(
+				{ source: "from", target: "to", keys: undefined, queue: true }
+			);
+		} );
+	} );
+
+	describe( "when creating an exchange to queue binding with keys", function() {
+		var topology, conn, ex, q;
+
+		before( function() {
+			ex = emitter();
+			q = emitter();
+			var Exchange = function() {
+				return ex;
+			};
+			var Queue = function() {
+				return q;
+			};
+			conn = connectionFn();
+			var control = {
+				bindExchange: noOp,
+				bindQueue: noOp
+			};
+			var controlMock = sinon.mock( control );
+			controlMock.expects( "bindQueue" )
+				.withArgs( "to", "from", "a.*" )
+				.returns( when.resolve() );
+			controlMock.expects( "bindQueue" )
+				.withArgs( "to", "from", "b.*" )
+				.returns( when.resolve() );
+
+			conn.mock.expects( "getChannel" )
+				.once()
+				.resolves( control );
+			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
+			topology.createBinding( { source: "from", target: "to", keys: [ "a.*", "b.*" ], queue: true } );
+		} );
+
+		it( "should add binding to definitions", function() {
+			topology.definitions.bindings[ "from->to:a.*:b.*" ].should.eql(
 				{ source: "from", target: "to", keys: [ "a.*", "b.*" ], queue: true }
 			);
 		} );
