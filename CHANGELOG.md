@@ -3,6 +3,17 @@
 
 ## 1.0.x
 
+### 1.0.4
+
+ * Bug Fix - Publish no longer throws errors if made before calling addConnection or configure or if exchange does not exist
+
+### 1.0.3
+
+ * Bug Fix - #26 - fixed a bug preventing `bindQueue` from working on unique queues
+ * Bug Fix - #22 - addConnection did not return a promise (thanks @mkozjak)
+ * Enhancement - publishing a number as a body gets converted to a string (thanks @brandonpsmith)
+ * Enhancement - routing keys can be changed on binding (thanks @droidenator)
+
 ### 1.0.2
 
  * Bug fix - corrected bug causing connection.unreachable event not to be prefixed with connection name correctly (thanks @Cyri-L)

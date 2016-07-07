@@ -1,6 +1,6 @@
 {
   "name": "rabbot",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/arobson/rabbot",
@@ -57,7 +57,7 @@
     {
       "name": "Matthew Martin",
       "url": "http://matmar10.com"
-    }
+    },
     {
       "name": "Scott Walters",
       "url": "http://github.com/LeankitScott"

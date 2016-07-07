@@ -170,6 +170,12 @@ Topology.prototype.createBinding = function( options ) {
 		var call = options.queue ? "bindQueue" : "bindExchange";
 		var source = options.source;
 		var target = options.target;
+		if( options.queue ) {
+			var queue = this.definitions.queues[ options.target ];
+			if( queue && queue.uniqueName ) {
+				target = queue.uniqueName;		
+			}
+		}
 		this.promises[ id ] = promise = this.connection.getChannel( "control", false, "control channel for bindings" )
 			.then( function( channel ) {
 				log.info( "Binding %s '%s' to '%s' on '%s' with keys: %s",
