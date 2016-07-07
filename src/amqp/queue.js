@@ -134,10 +134,12 @@ function getReply( channel, serializers, raw, replyQueue, connectionName ) {
 			return when.reject( new Error( message ) );
 		}
 		var payload = serializer.serialize( reply );
-
 		var replyTo = raw.properties.replyTo;
-		raw.ack();
-		if ( replyTo ) {			
+
+		if(!position)
+			raw.ack();
+
+		if ( replyTo ) {
 			var publishOptions = {
 					type: replyType,
 					contentType: contentType,
@@ -197,7 +199,7 @@ function getUntrackedOps( channel, raw, messages ) {
 			log.error( "Tag %d on '%s' - '%s' cannot be nacked in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName );
 		},
 		reject: function() {
-			log.error( "Tag %d on '%s' - '%s' cannot be rejected in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName );	
+			log.error( "Tag %d on '%s' - '%s' cannot be rejected in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName );
 		}
 	};
 }
@@ -266,14 +268,15 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 		raw.reject = ops.reject;
 		raw.reply = getReply( channel, serializers, raw, topology.replyQueue.name, topology.connection.name );
 		raw.type = _.isEmpty( raw.properties.type ) ? raw.fields.routingKey : raw.properties.type;
+		raw.fields.connectionName = topology.connection.name;
 		if( exclusive ) {
 			options.exclusive = true;
 		}
 		raw.queue = channelName;
-		var parts = [ channelName.replace( /[.]/g, "-" ) ];
+		var parts = [ topology.connection.name.replace( /[.]/g, "-" ), channelName.replace( /[.]/g, "-" ) ];
 		if( raw.type ) {
 			parts.push( raw.type );
-		} 
+		}
 		var topic = parts.join( "." );
 		var contentType = raw.properties.contentType || "application/octet-stream";
 		var serializer = serializers[ contentType ];
@@ -288,7 +291,7 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 				ops.nack();
 			}
 		}
-		
+
 		var onPublish = function( data ) {
 			var handled;
 
@@ -336,7 +339,7 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 function unsubscribe( channel, options ) {
 	if ( channel.tag ) {
 		log.info( "Unsubscribing from queue '%s' with tag %s", options.name, channel.tag );
-		return channel.cancel( channel.tag );
+		return channel.cancel( channel.tag ); //cancel consumerTag
 	} else {
 		return when.resolve();
 	}

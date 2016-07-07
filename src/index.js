@@ -134,10 +134,42 @@ Broker.prototype.bindExchange = function( source, target, keys, connectionName )
 	return this.connections[ connectionName ].createBinding( { source: source, target: target, keys: keys } );
 };
 
+Broker.prototype.addExchangeBinding = function( source, target, key, connectionName ) {
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].addBindingOperation(
+		{ source: source, target: target, key: key, adding:true },
+		connectionName
+	);
+};
+
+Broker.prototype.removeExchangeBinding = function( source, target, key, connectionName ) {
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].addBindingOperation(
+		{ source: source, target: target, key: key},
+		connectionName
+	);
+};
+
 Broker.prototype.bindQueue = function( source, target, keys, connectionName ) {
 	connectionName = connectionName || "default";
 	return this.connections[ connectionName ].createBinding(
 		{ source: source, target: target, keys: keys, queue: true },
+		connectionName
+	);
+};
+
+Broker.prototype.addQueueBinding = function( source, target, key, connectionName ) {
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].addBindingOperation(
+		{ source: source, target: target, key: key, queue: true, adding:true },
+		connectionName
+	);
+};
+
+Broker.prototype.removeQueueBinding = function( source, target, key, connectionName ) {
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].addBindingOperation(
+		{ source: source, target: target, key: key, queue: true },
 		connectionName
 	);
 };
@@ -187,13 +219,19 @@ Broker.prototype.getQueue = function( name, connectionName ) {
 	return this.connections[ connectionName ].channels[ "queue:" + name ];
 };
 
-Broker.prototype.handle = function( messageType, handler, queueName, context ) {
+Broker.prototype.getBindings = function(connectionName ) {
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].definitions.bindings;
+};
+
+Broker.prototype.handle = function( messageType, handler, queueName, context, connectionName ) {
 	this.hasHandles = true;
 	var options;
 	if( _.isString( messageType ) ) {
 		options = {
 			type: messageType,
 			queue: queueName || "*",
+			connectionName: connectionName || "*",
 			context: context,
 			autoNack: this.autoNack,
 			handler: handler
@@ -202,9 +240,10 @@ Broker.prototype.handle = function( messageType, handler, queueName, context ) {
 		options = messageType;
 		options.autoNack = options.autoNack === false ? false : true;
 		options.queue = options.queue || (options.type ? '*' : '#');
+		options.connectionName = options.connectionName || "*";
 		options.handler = options.handler || handler;
 	}
-	var parts = [];
+	var parts = [options.connectionName.replace( /[.]/g, "-" )];
 	if( options.queue === "#" ) {
 		parts.push( "#" );
 	} else {
@@ -278,33 +317,60 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 		.publish( options );
 };
 
-Broker.prototype.request = function( exchangeName, options, connectionName ) {
+Broker.prototype.request = function (exchangeName, options, connectionName) {
 	connectionName = connectionName || options.connectionName || 'default';
-	var requestId = uuid.v1();
-	options.messageId = requestId;
+	options.messageId = options.messageId || uuid.v1();
 	options.connectionName = connectionName;
-	var connection = this.connections[ connectionName ].options;
-	var exchange = this.getExchange( exchangeName, connectionName );
-	var publishTimeout = options.timeout || exchange.publishTimeout || connection.publishTimeout || 500;
-	var replyTimeout = options.replyTimeout || exchange.replyTimeout || connection.replyTimeout || ( publishTimeout * 2 );
 
-	return when.promise( function( resolve, reject, notify ) {
-		var timeout = setTimeout( function() {
-			subscription.unsubscribe();
-			reject( new Error( "No reply received within the configured timeout of " + replyTimeout + " ms" ) );
-		}, replyTimeout );
-		var subscription = responses.subscribe( requestId, function( message ) {
-			if ( message.properties.headers[ "sequence_end" ] ) { // jshint ignore:line
-				clearTimeout( timeout );
-				resolve( message );
+	var connection = this.connections[connectionName].options,
+		exchange = this.getExchange(exchangeName, connectionName),
+		publishTimeout = 500,
+		replyTimeout;
+
+	if (options.timeout != void 0) {
+		publishTimeout = options.timeout;
+	}
+	else if (exchange.publishTimeout != void 0) {
+		publishTimeout = exchange.publishTimeout;
+	}
+	else if (connection.publishTimeout != void 0) {
+		publishTimeout = connection.publishTimeout;
+	}
+	replyTimeout = publishTimeout * 2;
+	if (options.replyTimeout != void 0) {
+		replyTimeout = options.replyTimeout;
+	}
+	else if (exchange.replyTimeout != void 0) {
+		replyTimeout = exchange.replyTimeout;
+	}
+	else if (connection.replyTimeout != void 0) {
+		replyTimeout = connection.replyTimeout;
+	}
+
+	return when.promise(function (resolve, reject, notify) {
+		var timeout, subscription;
+
+		if (replyTimeout > 0) { //if replyTimeout == 0, unlimited timeout. if replyTimeout < 0, no timeout because of no expected response
+			timeout = setTimeout(function () {
 				subscription.unsubscribe();
-			} else {
-				notify( message );
-			}
-		} );
-		this.publish( exchangeName, options );
-
-	}.bind( this ) );
+				reject(new Error("No reply received within the configured timeout of " + replyTimeout + " ms"));
+			}, replyTimeout);
+		}
+		if (replyTimeout >= 0) {
+			subscription = responses.subscribe(options.messageId, function (message) {
+				if (message.properties.headers["sequence_end"]) { // jshint ignore:line
+					clearTimeout(timeout);
+					resolve(message);
+					subscription.unsubscribe();
+				} else {
+					notify(message);
+				}
+			}), this.publish(exchangeName, options).catch(reject);
+		}
+		else {
+			this.publish(exchangeName, options).then(resolve, reject);
+		}
+	}.bind(this));
 };
 
 Broker.prototype.reset = function() {
@@ -332,28 +398,29 @@ Broker.prototype.shutdown = function() {
 		}.bind( this ) );
 };
 
-Broker.prototype.startSubscription = function( queueName, exclusive, connectionName ) {
-	if ( !this.hasHandles ) {
-		console.warn( "Subscription to '" + queueName + "' was started without any handlers. This will result in lost messages!" );
+Broker.prototype.startSubscription = function (queueName, exclusive, connectionName) {
+	if (!this.hasHandles) {
+		console.warn("Subscription to '" + queueName + "' was started without any handlers. This will result in lost messages!");
 	}
-	if( _.isString( exclusive ) ) {
+	if (_.isString(exclusive)) {
 		connectionName = exclusive;
 		exclusive = false;
 	}
-	var queue = this.getQueue( queueName, connectionName );
-	if ( queue ) {
-		queue.subscribe( queue, exclusive );
-		return queue;
+	var queue = this.getQueue(queueName, connectionName);
+	if (queue) {
+		return queue.subscribe(queue, exclusive).then(function (r) {
+			r.queue = queue;
+			return r;
+		});
 	} else {
-		throw new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed." );
+		throw new Error("No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed.");
 	}
 };
 
 Broker.prototype.stopSubscription = function( queueName, connectionName ) {
 	var queue = this.getQueue( queueName, connectionName );
 	if( queue ) {
-		queue.unsubscribe();
-		return queue;
+		return queue.unsubscribe();
 	} else {
 		throw new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Unsubscribe failed." );
 	}

@@ -37,8 +37,9 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 			var onDefined = function() {
 				this.transition( "ready" );
 			}.bind( this );
-			this.queue.define()
-				.then( onDefined, onError );
+			when().then(function(){
+				this.queue.define()
+			}.bind(this)).then( onDefined, onError );
 		},
 
 		_listen: function() {
@@ -98,7 +99,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 						reject( err );
 					} else {
 						return this.queue.subscribe( exclusive )
-							.then( resolve, reject );	
+							.then( resolve, reject );
 					}
 				}.bind( this );
 				this.once( "failed", function( err ) {
@@ -110,10 +111,20 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 
 		unsubscribe: function() {
 			options.subscribe = false;
-			var op = function( err ) {
-				this.queue.unsubscribe();
-			};
-			this.handle( "unsubscribe", op );
+			return when.promise( function( resolve, reject) {
+				var op = function( err ) {
+					if ( err ){
+						reject( err );
+					} else {
+						return this.queue.unsubscribe()
+							.then( resolve, reject );
+					}
+				}.bind( this );
+				this.once( "failed", function( err ) {
+					reject( err );
+				} );
+				this.handle( "unsubscribe", op );
+			}.bind( this ) );
 		},
 
 		initialState: "initializing",

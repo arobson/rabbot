@@ -54,6 +54,8 @@ var Topology = function( connection, options, serializers, unhandledStrategies, 
 		exchanges: {},
 		queues: {}
 	};
+	this.bindingsOperations = [];
+	this.bindingsRunning = false;
 	this.options = options;
 	this.replyQueue = { name: false };
 	this.serializers = serializers;
@@ -100,7 +102,7 @@ var Topology = function( connection, options, serializers, unhandledStrategies, 
 			} catch( err ) {
 			}
 		}
-
+		raw.fields.connectionName = this.connection.name;
 		this.onReturned(raw);
 	}.bind( this ) );
 
@@ -178,10 +180,55 @@ Topology.prototype.createBinding = function( options ) {
 					_.map( keys, function( key ) {
 						return channel[ call ]( target, source, key );
 					} ) );
-			}.bind( this ) );
+			}.bind( this ) ).tap(function(){
+				delete this.promises[ id ];
+			}.bind( this ));
 
 	}
 	return promise;
+};
+
+var execBindingOperations = function(){
+	this.bindingsRunning = true;
+	if (!this.bindingsOperations.length)
+		return (this.bindingsRunning = false);
+	var op = this.bindingsOperations.shift();
+	var call = op.queue ? "bindQueue" : "bindExchange";
+	if (!op.adding)
+		call = "un" + call;
+	var id = [op.source, op.target].join("->");
+	var definition = this.definitions.bindings[id];
+	if (!definition){
+		log.warn("BindingOperation impossible because BindingDefinition %s not created on %s", id, this.connection.name);
+		return execBindingOperations.call(this);
+	}
+	//If adding, key must not be present, if removing, key must be present
+	var find = definition.keys.indexOf(op.key);
+	if ((op.adding && find != -1) || (!op.adding && find == -1)) {
+		if(op.adding)
+			log.warn("failed to add BindingKey %s - already exists in BindingDefinition %s on %s", op.key, id, this.connection.name);
+		else
+			log.warn("failed to remove BindingKey %s - did not exist in BindingDefinition %s on %s", op.key, id, this.connection.name);
+		return execBindingOperations.call(this);
+	}
+	this.connection.getChannel("control", false, "control channel for bindings")
+		.then(function (channel) {
+			log.info("BindingOperation [%s] key %s for BindingDefinition %s on connection %s", op.adding ? "adding" : "removing", op.key, id, this.connection.name);
+			return channel[call](op.target, op.source, op.key);
+		}.bind( this )).then(function () {
+			if (op.adding)
+				definition.keys.push(op.key);
+			else
+				_.pullAt(definition.keys, [find]);
+			return execBindingOperations.call(this);
+		}.bind( this ));
+};
+
+//Add binding operation
+Topology.prototype.addBindingOperation = function( options ) {
+	this.bindingsOperations.push(options);
+	if(!this.bindingsRunning)
+		execBindingOperations.call(this);
 };
 
 Topology.prototype.createPrimitive = function( Primitive, primitiveType, options ) {
@@ -216,6 +263,8 @@ Topology.prototype.createPrimitive = function( Primitive, primitiveType, options
 				delete this.channels[ channelName ];
 				reject( errorFn( err ) );
 			}.bind( this ) );
+		}.bind( this ) ).tap(function(){
+			delete this.promises[ channelName ];
 		}.bind( this ) );
 	}
 	return promise;
@@ -249,7 +298,7 @@ Topology.prototype.createReplyQueue = function() {
 	return promise;
 };
 
-Topology.prototype.deleteExchange = function( name ) {
+Topology.prototype.deleteExchange = function( name ) { //todo:delete exchange from definitions
 	var key = "exchange:" + name;
 	var channel = this.channels[ key ];
 	if ( channel ) {
@@ -263,7 +312,7 @@ Topology.prototype.deleteExchange = function( name ) {
 		} );
 };
 
-Topology.prototype.deleteQueue = function( name ) {
+Topology.prototype.deleteQueue = function( name ) { //todo:delete queue from definitions
 	var key = "queue:" + name;
 	var channel = this.channels[ key ];
 	if ( channel ) {
