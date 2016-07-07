@@ -105,7 +105,7 @@ Broker.prototype.addConnection = function( options ) {
             connection.connection.connect();
             resolve( connection );
 	    }
-    } )
+    } );
 };
 
 Broker.prototype.addExchange = function( name, type, options, connectionName ) {

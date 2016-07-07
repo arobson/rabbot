@@ -171,7 +171,7 @@ describe( "Integration Test Suite", function() {
 			it( "should fail to connect", function() {
 				return rabbit.configure( config )
 					.should.be.rejectedWith(
-					"Failed to create exchange 'rabbot-ex.direct' on connection 'silly2' with 'No endpoints could be reached'"
+					"No endpoints could be reached"
 				);
 			} );
 

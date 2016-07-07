@@ -14,51 +14,62 @@ module.exports = function( Broker ) {
 		if( !logger && config.logging ) {
 			logger = require( "./log" )( config.logging || {} );
 		}
-		var connection;
 		var emit = this.emit;
 		this.configurations[ config.name || "default" ] = config;
 		return when.promise( function( resolve, reject ) {
 
-			function onExchangeError( err ) {
+			function onExchangeError( connection, err ) {
 				log.error( "Configuration of %s failed due to an error in one or more exchange settings: %s", connection.name, err );
 				reject( err );
 			}
 
-			function onQueueError( err ) {
+			function onQueueError( connection, err ) {
 				log.error( "Configuration of %s failed due to an error in one or more queue settings: %s", connection.name, err.stack );
 				reject( err );
 			}
 
-			function onBindingError( err ) {
+			function onBindingError( connection, err ) {
 				log.error( "Configuration of %s failed due to an error in one or more bindings: %s", connection.name, err.stack );
 				reject( err );
 			}
 
-			function createExchanges() {
+			function createExchanges( connection ) {
 				connection.configureExchanges( config.exchanges )
-					.then( createQueues, onExchangeError );
+					.then( 
+						createQueues.bind( null, connection ), 
+						onExchangeError.bind( null, connection )
+					);
 			}
 
-			function createQueues() {
+			function createQueues( connection ) {
 				connection.configureQueues( config.queues )
-					.then( createBindings, onQueueError );
+					.then( 
+						createBindings.bind( null, connection ), 
+						onQueueError.bind( null, connection )
+					);
 			}
 
-			function createBindings() {
+			function createBindings( connection ) {
 				connection.configureBindings( config.bindings, connection.name )
-					.then( finish, onBindingError );
+					.then( 
+						finish.bind( null, connection ), 
+						onBindingError.bind( null, connection )
+					);
 			}
 
-			function finish() {
+			function finish( connection ) {
 				emit( connection.name + ".connection.configured", connection );
 				resolve();
 			}
 
-			connection = this.addConnection( config.connection );
-			createExchanges();
-			connection.once( "unreachable", function() {
-				reject( new Error( format( "Configuration for '%s' failed - all nodes are unreachable.", connection.name ) ) );
-			} );
+			this.addConnection( config.connection )
+				.then( 
+					function( connection ) {
+						createExchanges( connection );
+						return connection;
+					},
+					reject
+				);
 		}.bind( this ) );
 	};
 };
