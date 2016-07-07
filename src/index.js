@@ -61,51 +61,51 @@ var Broker = function() {
 };
 
 Broker.prototype.addConnection = function( options ) {
-    var self = this
+	var self = this
 
-    return when.promise( function( resolve, reject ) {
-	    var name = options ? ( options.name || "default" ) : "default";
-	    options = options || {};
-	    options.name = name;
-	    options.retryLimit = options.retryLimit || 3;
-	    options.failAfter = options.failAfter || 60;
-	    var connection;
+	return when.promise( function( resolve, reject ) {
+		var name = options ? ( options.name || "default" ) : "default";
+		options = options || {};
+		options.name = name;
+		options.retryLimit = options.retryLimit || 3;
+		options.failAfter = options.failAfter || 60;
+		var connection;
 
-	    if ( !self.connections[ name ] ) {
-	        connection = connectionFn( options );
-	        var topology = topologyFn( connection, options || {}, serializers, unhandledStrategies, returnedStrategies );
-	        connection.on( "connected", function() {
-	            self.emit( "connected", connection );
-                self.emit( connection.name + ".connection.opened", connection );
-                self.setAckInterval( 500 );
-                return resolve( topology )
-	        } );
-	        connection.on( "closed", function() {
-                self.emit( "closed", connection );
-                self.emit( connection.name + ".connection.closed", connection );
-                return reject( new Error( "connection closed" ) )
-	        } );
-	        connection.on( "failed", function( err ) {
-                self.emit( "failed", connection );
-                self.emit( name + ".connection.failed", err );
-                return reject( err )
-	        } );
-	        connection.on( "unreachable", function() {
-                self.emit( "unreachable", connection );
-                self.emit( name + ".connection.unreachable" );
-                self.clearAckInterval();
-                return reject( new Error( "connection unreachable" ) )
-	        } );
-	        connection.on( "return", function(raw) {
-                self.emit( "return", raw );
-	        } );
-            self.connections[ name ] = topology;
-	    } else {
-            connection = self.connections[ name ];
-            connection.connection.connect();
-            resolve( connection );
-	    }
-    } );
+		if ( !self.connections[ name ] ) {
+			connection = connectionFn( options );
+			var topology = topologyFn( connection, options || {}, serializers, unhandledStrategies, returnedStrategies );
+			connection.on( "connected", function() {
+				self.emit( "connected", connection );
+				self.emit( connection.name + ".connection.opened", connection );
+				self.setAckInterval( 500 );
+				return resolve( topology )
+			} );
+			connection.on( "closed", function() {
+				self.emit( "closed", connection );
+				self.emit( connection.name + ".connection.closed", connection );
+				return reject( new Error( "connection closed" ) )
+			} );
+			connection.on( "failed", function( err ) {
+				self.emit( "failed", connection );
+				self.emit( name + ".connection.failed", err );
+				return reject( err )
+			} );
+			connection.on( "unreachable", function() {
+				self.emit( "unreachable", connection );
+				self.emit( name + ".connection.unreachable" );
+				self.clearAckInterval();
+				return reject( new Error( "connection unreachable" ) )
+			} );
+			connection.on( "return", function(raw) {
+				self.emit( "return", raw );
+			} );
+			self.connections[ name ] = topology;
+		} else {
+			connection = self.connections[ name ];
+			connection.connection.connect();
+			resolve( connection );
+		}
+	} );
 };
 
 Broker.prototype.addExchange = function( name, type, options, connectionName ) {
@@ -282,9 +282,9 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 	if( connection.publishTimeout ) {
 		options.connectionPublishTimeout = connection.publishTimeout;
 	}
-	if ( _.isNumber( options.body ) ) {
-    options.body = options.body.toString();
-  }
+	if( _.isNumber( options.body ) ) {
+		options.body = options.body.toString();
+	}
 	return this.getExchange( exchangeName, connectionName )
 		.publish( options );
 };
