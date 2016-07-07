@@ -16,7 +16,7 @@ describe( "Configuration", function() {
 	};
 
 	Broker.prototype.addConnection = function() {
-		return this.connection;
+		return when( this.connection );
 	};
 
 	Broker.prototype.emit = function() {};

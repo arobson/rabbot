@@ -61,43 +61,51 @@ var Broker = function() {
 };
 
 Broker.prototype.addConnection = function( options ) {
-	var name = options ? ( options.name || "default" ) : "default";
-	options = options || {};
-	options.name = name;
-	options.retryLimit = options.retryLimit || 3;
-	options.failAfter = options.failAfter || 60;
-	var connection;
-	if ( !this.connections[ name ] ) {
-		connection = connectionFn( options );
-		var topology = topologyFn( connection, options || {}, serializers, unhandledStrategies, returnedStrategies );
-		connection.on( "connected", function() {
-			this.emit( "connected", connection );
-			this.emit( connection.name + ".connection.opened", connection );
-			this.setAckInterval( 500 );
-		}.bind( this ) );
-		connection.on( "closed", function() {
-			this.emit( "closed", connection );
-			this.emit( connection.name + ".connection.closed", connection );
-		}.bind( this ) );
-		connection.on( "failed", function( err ) {
-			this.emit( "failed", connection );
-			this.emit( name + ".connection.failed", err );
-		}.bind( this ) );
-		connection.on( "unreachable", function() {
-			this.emit( "unreachable", connection );
-			this.emit( name + ".connection.unreachable" );
-			this.clearAckInterval();
-		}.bind( this ) );
-		connection.on( "return", function(raw) {
-			this.emit( "return", raw);
-		}.bind( this ) );
-		this.connections[ name ] = topology;
-		return topology;
-	} else {
-		connection = this.connections[ name ];
-		connection.connection.connect();
-		return connection;
-	}
+    var self = this
+
+    return when.promise( function( resolve, reject ) {
+	    var name = options ? ( options.name || "default" ) : "default";
+	    options = options || {};
+	    options.name = name;
+	    options.retryLimit = options.retryLimit || 3;
+	    options.failAfter = options.failAfter || 60;
+	    var connection;
+
+	    if ( !self.connections[ name ] ) {
+	        connection = connectionFn( options );
+	        var topology = topologyFn( connection, options || {}, serializers, unhandledStrategies, returnedStrategies );
+	        connection.on( "connected", function() {
+	            self.emit( "connected", connection );
+                self.emit( connection.name + ".connection.opened", connection );
+                self.setAckInterval( 500 );
+                return resolve( topology )
+	        } );
+	        connection.on( "closed", function() {
+                self.emit( "closed", connection );
+                self.emit( connection.name + ".connection.closed", connection );
+                return reject( new Error( "connection closed" ) )
+	        } );
+	        connection.on( "failed", function( err ) {
+                self.emit( "failed", connection );
+                self.emit( name + ".connection.failed", err );
+                return reject( err )
+	        } );
+	        connection.on( "unreachable", function() {
+                self.emit( "unreachable", connection );
+                self.emit( name + ".connection.unreachable" );
+                self.clearAckInterval();
+                return reject( new Error( "connection unreachable" ) )
+	        } );
+	        connection.on( "return", function(raw) {
+                self.emit( "return", raw );
+	        } );
+            self.connections[ name ] = topology;
+	    } else {
+            connection = self.connections[ name ];
+            connection.connection.connect();
+            resolve( connection );
+	    }
+    } );
 };
 
 Broker.prototype.addExchange = function( name, type, options, connectionName ) {
