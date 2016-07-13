@@ -78,28 +78,25 @@ Broker.prototype.addConnection = function( options ) {
 				self.emit( "connected", connection );
 				self.emit( connection.name + ".connection.opened", connection );
 				self.setAckInterval( 500 );
-				return resolve( topology )
 			} );
 			connection.on( "closed", function() {
 				self.emit( "closed", connection );
 				self.emit( connection.name + ".connection.closed", connection );
-				return reject( new Error( "connection closed" ) )
 			} );
 			connection.on( "failed", function( err ) {
 				self.emit( "failed", connection );
 				self.emit( name + ".connection.failed", err );
-				return reject( err )
 			} );
 			connection.on( "unreachable", function() {
 				self.emit( "unreachable", connection );
 				self.emit( name + ".connection.unreachable" );
 				self.clearAckInterval();
-				return reject( new Error( "connection unreachable" ) )
 			} );
 			connection.on( "return", function(raw) {
 				self.emit( "return", raw );
 			} );
 			self.connections[ name ] = topology;
+			resolve( topology );
 		} else {
 			connection = self.connections[ name ];
 			connection.connection.connect();
