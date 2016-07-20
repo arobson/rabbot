@@ -248,7 +248,7 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 		messages.listenForSignal();
 	}
 
-	options.consumerTag = info.createTag( channelName );
+	//options.consumerTag = info.createTag( channelName ); - let rabbitMQ server choose the consumerTag name
 	if( _.keys( channel.item.consumers ).length > 0 ) {
 		log.info( "Duplicate subscription to queue %s ignored", channelName );
 		return when( options.consumerTag );
@@ -336,10 +336,13 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 		} );
 }
 
+
 function unsubscribe( channel, options ) {
 	if ( channel.tag ) {
 		log.info( "Unsubscribing from queue '%s' with tag %s", options.name, channel.tag );
-		return channel.cancel( channel.tag ); //cancel consumerTag
+		return when().then(function(){
+			return channel.cancel( channel.tag ); //cancel consumerTag
+		});
 	} else {
 		return when.resolve();
 	}

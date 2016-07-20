@@ -313,8 +313,23 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 	if( connection.publishTimeout ) {
 		options.connectionPublishTimeout = connection.publishTimeout;
 	}
-	return this.getExchange( exchangeName, connectionName )
-		.publish( options );
+
+	options.headers._rabbot_idm = uuid.v4();
+	return when.promise(function(resolve, reject){
+		function checkUnroutable (raw){
+			if(raw.properties.headers._rabbot_idm == options.headers._rabbot_idm)
+				reject(new Error("unroutable"));
+		};
+		var s = this.connections[connectionName].connection.on( "return", checkUnroutable);
+		return this.getExchange( exchangeName, connectionName )
+			.publish( options )
+			.then(function(){
+				setTimeout(function(){
+					s.unsubscribe();
+					resolve();
+				}, 50);
+			}).catch(reject);
+	}.bind(this));
 };
 
 Broker.prototype.request = function (exchangeName, options, connectionName) {
