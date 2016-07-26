@@ -71,7 +71,6 @@ function publish( channel, options, topology, log, serializers, message ) {
 		contentType:contentType,
 		contentEncoding: "utf8",
 		correlationId: message.correlationId || "",
-		replyTo: message.replyTo || topology.replyQueue.name || "",
 		messageId: message.messageId || message.id || "",
 		timestamp: message.timestamp || Date.now(),
 		appId: message.appId || info.id,
@@ -79,6 +78,9 @@ function publish( channel, options, topology, log, serializers, message ) {
 		expiration: message.expiresAfter || undefined,
 		mandatory: message.mandatory || false
 	};
+	if ( topology.replyQueue.name !== false) {
+		publishOptions.replyTo = message.replyTo || topology.replyQueue.name || "";
+	}
 	if ( publishOptions.replyTo === "amq.rabbitmq.reply-to" ) {
 		publishOptions.headers[ "direct-reply-to" ] = "true";
 	}
