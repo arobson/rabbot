@@ -1,6 +1,6 @@
 {
   "name": "rabbot",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/arobson/rabbot",
@@ -93,7 +93,7 @@
     "sinon-as-promised": "^4.0.0"
   },
   "dependencies": {
-    "amqplib": "~0.4.0",
+    "amqplib": "~0.4.1",
     "debug": "^2.2.0",
     "lodash": "^3.10.1",
     "machina": "^1.1.2",
