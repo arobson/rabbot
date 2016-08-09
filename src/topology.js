@@ -185,10 +185,11 @@ Topology.prototype.createBinding = function( options ) {
 	return promise;
 };
 
+var currentBindingOperations;
 var execBindingOperations = function(){
 	this.bindingsRunning = true;
 	if (!this.bindingsOperations.length)
-		return (this.bindingsRunning = false);
+		return when((this.bindingsRunning = false)); //end of binding operations queue
 	var op = this.bindingsOperations.shift();
 	var call = op.queue ? "bindQueue" : "bindExchange";
 	if (!op.adding)
@@ -208,7 +209,7 @@ var execBindingOperations = function(){
 			log.warn("failed to remove BindingKey %s - did not exist in BindingDefinition %s on %s", op.key, id, this.connection.name);
 		return execBindingOperations.call(this);
 	}
-	this.connection.getChannel("control", false, "control channel for bindings")
+	return this.connection.getChannel("control", false, "control channel for bindings")
 		.then(function (channel) {
 			log.info("BindingOperation [%s] key %s for BindingDefinition %s on connection %s", op.adding ? "adding" : "removing", op.key, id, this.connection.name);
 			return channel[call](op.target, op.source, op.key);
@@ -225,7 +226,9 @@ var execBindingOperations = function(){
 Topology.prototype.addBindingOperation = function( options ) {
 	this.bindingsOperations.push(options);
 	if(!this.bindingsRunning)
-		execBindingOperations.call(this);
+		return (currentBindingOperations = execBindingOperations.call(this));
+	else
+		return currentBindingOperations;
 };
 
 Topology.prototype.createPrimitive = function( Primitive, primitiveType, options ) {
