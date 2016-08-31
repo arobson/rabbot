@@ -665,46 +665,40 @@ rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
 
 Running gulp will run both sets after every file change and display a coverage summary. To view a detailed report, run gulp coverage once to bring up the browser.
 
-### Vagrant
+### Docker
 
-rabbot now provides a sample `Vagrantfile` that will set up a virtual machine that runs RabbitMQ. Under the hood, it uses the official RabbitMQ Docker image. It will forward RabbitMQ's default ports to `localhost`.
+rabbot now provides a `Dockerfile` and npm scripts you can use to create an image and container to run the tests. If you're on Linux or have the new Docker for OS X/Windows, this should be very straight-forward. Under the hood, it uses the official RabbitMQ Docker image. It will forward RabbitMQ's default ports to `localhost`.
 
-**First, you will need to copy the sample file to a usable file:**
+*If you already have a working RabbitMQ container with 5672 forwarded to your localhost, you don't need any of this.*
 
+The first time, you can build the Docker image with the following:
 ```bash
-$ cp Vagrantfile.sample Vagrantfile
+$ npm run build-image
 ```
 
-Adjust any necessary settings. Then, from the root of the project, run:
-
+After that, create a daemonized container based off the image with:
 ```bash
-$ vagrant up
+$ npm run start-image
 ```
 
-This will create your box. Right now, it supports the `virtualbox` and `vmware_fusion` providers. To access the box, run:
+Now you have a daemonized rabbitmq Docker container with the port `5672` and management console at `15672` (the defaults) using `guest` and `guest` for the login, `/` as the vhost and the consistent hash exchange plugin enabled.
+
+You can access the management console at `http://localhost:15672`.
+
+Click here for more information on [Docker](http://docker.com) and [official RabbitMQ Docker image](https://registry.hub.docker.com/_/rabbitmq/).
+
+*To run tests once you have RabbitMQ up:*
 
 ```bash
-$ vagrant ssh
-```
-
-Once inside, you can view the RabbitMQ logs by executing:
-
-```bash
-$ docker logs rabbitmq
-```
-
-When the Vagrant box is running, RabbitMQ can be accessed at `localhost:5672` and the management console at `http://localhost:15672`.
-
-Click here for more information on [Vagrant](http://vagrantup.com), [Docker](http://docker.com), and [official RabbitMQ Docker image](https://registry.hub.docker.com/_/rabbitmq/).
-
-*To run tests using Vagrant:*
-
-Execute from the **host machine:**
-
-```bash
-$ vagrant up
 $ gulp
 ```
+
+OR
+
+```bash
+$ mocha spec/**
+```
+
 ### Style
 This project has both an `.editorconfig` and `.esformatter` file to help keep adherance to style simple. Please also take advantage of the `.jshintrc` file and avoid linter warnings.
 

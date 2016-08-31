@@ -6,7 +6,9 @@
   "repository": "https://github.com/arobson/rabbot",
   "scripts": {
     "lint": "jshint ./",
-    "test": "gulp test"
+    "test": "gulp test",
+    "build-image": "docker -t rabbot .",
+    "start-image": "docker run -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"

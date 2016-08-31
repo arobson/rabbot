@@ -3,6 +3,9 @@
 
 ## 1.0.x
 
+### 1.0.5
+ * Improvement - remove Vagrant in favor of just using Dockerfile, updated instructions
+
 ### 1.0.4
 
  * Bug Fix - Publish no longer throws errors if made before calling addConnection or configure or if exchange does not exist
