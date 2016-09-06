@@ -36,10 +36,16 @@ var serializers = {
 	},
 	"application/octet-stream": {
 		deserialize: function( bytes ) {
-			return bytes;
+      return bytes;
 		},
 		serialize: function( bytes ) {
-			return bytes;
+      if( Buffer.isBuffer( bytes ) ) {
+        return bytes;
+      } else if( _.isArray( bytes ) ) {
+        return Buffer.from( bytes );
+      } else {
+        throw new Error( "Cannot serialize unknown data type" );
+      }
 		}
 	},
 	"text/plain": {
@@ -116,6 +122,9 @@ Broker.prototype.addConnection = function( options ) {
 
 Broker.prototype.addExchange = function( name, type, options, connectionName ) {
 	connectionName = connectionName || "default";
+  if( !type && !options ) {
+    options = {};
+  }
 	if ( _.isObject( name ) ) {
 		options = name;
 		connectionName = type;
@@ -128,6 +137,7 @@ Broker.prototype.addExchange = function( name, type, options, connectionName ) {
 
 Broker.prototype.addQueue = function( name, options, connectionName ) {
 	connectionName = connectionName || "default";
+  options = options || {};
 	options.name = name;
 	if ( options.subscribe && !this.hasHandles ) {
 		console.warn( "Subscription to '" + name + "' was started without any handlers. This will result in lost messages!" );
@@ -293,7 +303,7 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 	if( _.isNumber( options.body ) ) {
 		options.body = options.body.toString();
 	}
-	
+
 	return this.connections[ connectionName ].promise
 		.then( function() {
 			var exchange = this.getExchange( exchangeName, connectionName );
@@ -369,7 +379,7 @@ Broker.prototype.startSubscription = function( queueName, exclusive, connectionN
 	}
 	var queue = this.getQueue( queueName, connectionName );
 	if ( queue ) {
-		queue.subscribe( queue, exclusive );
+		queue.subscribe( exclusive );
 		return queue;
 	} else {
 		throw new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed." );

@@ -1,10 +1,11 @@
 # rabbot
 
+[![Build Status](http://67.205.142.228/api/badges/arobson/rabbot/status.svg)](http://67.205.142.228/arobson/rabbot)
 [![Version npm](https://img.shields.io/npm/v/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
 [![npm Downloads](https://img.shields.io/npm/dm/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
 [![Dependencies](https://img.shields.io/david/arobson/rabbot.svg?style=flat)](https://david-dm.org/arobson/rabbot)
 
-This is a very opinionated abstraction over amqplib to help simplify the implementation of several messaging patterns on RabbitMQ. 
+This is a very opinionated abstraction over amqplib to help simplify the implementation of several messaging patterns on RabbitMQ.
 
 > !Important! - successful use of this library will require a conceptual knowledge of AMQP and an understanding of RabbitMQ.
 
@@ -371,7 +372,7 @@ The following structure shows and briefly explains the format of the message tha
 
 ### stopSubscription( queueName, [connectionName] )
 
-> !Caution!: 
+> !Caution!:
 > * This does not affect bindings to the queue, it only stops the flow of messages from the queue to your service.
 > * If the queue is auto-delete, this will destroy the queue, dropping messages and losing any messages sent that would have been routed to it.
 > * If a network disruption has occurred or does occur, subscription will be restored to its last known state.
@@ -578,7 +579,7 @@ To establish a connection with all settings in place and ready to go call config
 	} );
 ```
 
-## Closing Connections and Shutdown
+## Managing Connections - Retry, Close and Shutdown
 rabbot will attempt to resolve all outstanding publishes and recieved messages (ack/nack/reject) before closing the channels and connection intentionally. If you would like to defer certain actions until after everything has been safely resolved, then use the promise returned from either close call.
 
 > !!! CAUTION !!! - using reset is dangerous. All topology associated with the connection will be removed locally meaning rabbot will _not_ be able to re-establish it all should you decide to reconnect.
@@ -588,6 +589,19 @@ Closes the connection, optionally resetting all previously defined topology for 
 
 ### closeAll( [reset] )
 Closes __all__ connections, optionally resetting the topology for all of them.
+
+### retry()
+After an `unhandled` event is raised by rabbot, not further attempts to connect will be made unless `retry` is called.
+
+```js
+// How to create a zombie
+var rabbit = require( "rabbot" );
+
+rabbit.on( "unreachable", function() {
+  rabbit.retry();
+} );
+
+```
 
 ### shutdown()
 Once a connection is established, rabbot will keep the process running unless you call `shutdown`. This is because most services shouldn't automatically shutdown at the first accidental disconnection`. Shutdown attempts to provide the same guarantees as close - only allowing the process to exit after publishing and resolving received messages.

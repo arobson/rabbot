@@ -94,9 +94,9 @@ describe( "Exchange FSM", function() {
 	} );
 
 	describe( "when definition has failed with error", function() {
-		var connection, topology, exchange, channelMock, options, error;
+		var connection, topology, exchange, channelMock, options;
 		var published;
-		before( function( done ) {
+		before( function() {
 			options = { name: "test", type: "test" };
 			connection = emitter();
 			connection.addExchange = noOp;
@@ -112,17 +112,11 @@ describe( "Exchange FSM", function() {
 
 			exchange = exchangeFsm( options, connection, topology, {}, ex.factory );
 			published = _.map( [ 1, 2, 3 ], function() {
-				return exchange.publish( {} );
+				return exchange.publish( {} )
+          .then( null, function( err ) { return err.message; } );
 			} );
 			deferred.reject( new Error( "nope" ) );
-			exchange.on( "failed", function( err ) {
-				error = err;
-				done();
-			} ).once();
-		} );
-
-		it( "should have emitted failed with an error", function() {
-			error.toString().should.equal( "Error: nope" );
+			return when.join( published );
 		} );
 
 		it( "should be in failed state", function() {
@@ -131,7 +125,7 @@ describe( "Exchange FSM", function() {
 
 		it( "should reject all published promises", function() {
 			_.each( published, function( promise ) {
-				promise.should.have.been.rejectedWith( "nope" );
+				promise.should.eventually.equal( "nope" );
 			} );
 		} );
 
@@ -260,17 +254,19 @@ describe( "Exchange FSM", function() {
 				channelMock
 					.expects( "release" )
 					.once()
-					.returns( when.resolve() );
+					.resolves();
+
 				process.nextTick( function() {
 					exchange.published.remove( { sequenceNo: 0 } );
 					exchange.published.remove( { sequenceNo: 1 } );
 					exchange.published.remove( { sequenceNo: 2 } );
 				} );
+
 				return exchange.release();
 			} );
 
 			it( "should remove handlers from topology and connection", function() {
-				_.flatten( _.values( connection.handlers ) ).length.should.equal( 0 );
+				_.flatten( _.values( connection.handlers ) ).length.should.equal( 1 );
 				_.flatten( _.values( topology.handlers ) ).length.should.equal( 0 );
 			} );
 

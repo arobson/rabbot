@@ -14,7 +14,7 @@ module.exports = function( Broker ) {
 		if( !logger && config.logging ) {
 			logger = require( "./log" )( config.logging || {} );
 		}
-		var emit = this.emit;
+		var emit = this.emit.bind( this );
 		this.configurations[ config.name || "default" ] = config;
 		return when.promise( function( resolve, reject ) {
 
@@ -35,24 +35,24 @@ module.exports = function( Broker ) {
 
 			function createExchanges( connection ) {
 				connection.configureExchanges( config.exchanges )
-					.then( 
-						createQueues.bind( null, connection ), 
+					.then(
+						createQueues.bind( null, connection ),
 						onExchangeError.bind( null, connection )
 					);
 			}
 
 			function createQueues( connection ) {
 				connection.configureQueues( config.queues )
-					.then( 
-						createBindings.bind( null, connection ), 
+					.then(
+						createBindings.bind( null, connection ),
 						onQueueError.bind( null, connection )
 					);
 			}
 
 			function createBindings( connection ) {
 				connection.configureBindings( config.bindings, connection.name )
-					.then( 
-						finish.bind( null, connection ), 
+					.then(
+						finish.bind( null, connection ),
 						onBindingError.bind( null, connection )
 					);
 			}
@@ -63,7 +63,7 @@ module.exports = function( Broker ) {
 			}
 
 			this.addConnection( config.connection )
-				.then( 
+				.then(
 					function( connection ) {
 						createExchanges( connection );
 						return connection;

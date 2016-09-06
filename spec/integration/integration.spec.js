@@ -69,7 +69,7 @@ var harnessFactory = function( rabbit, cb, expected ) {
 };
 
 describe( "Integration Test Suite", function() {
-	var rabbit; 
+	var rabbit;
 	before( function() {
 		rabbit = require( "../../src/index.js" );
 	} );
@@ -708,7 +708,7 @@ describe( "Integration Test Suite", function() {
 			var harness;
 			before( function( done ) {
 				harness = harnessFn( done, 3 );
-				harness.handle( "", undefined, "rabbot-q-general1" );
+				harness.handle( "", undefined, "rabbot-q.general1" );
 				rabbit.publish( "rabbot-ex.fanout", { type: "", routingKey: "", body: "one" } );
 				rabbit.publish( "rabbot-ex.fanout", { type: "", routingKey: "", body: "two" } );
 				rabbit.publish( "rabbot-ex.fanout", { type: "", routingKey: "", body: "three" } );
@@ -760,6 +760,40 @@ describe( "Integration Test Suite", function() {
 				harness.clean();
 			} );
 		} );
+
+    describe( "with random queue name", function() {
+      var harness, queueName;
+      before( function( done ) {
+        harness = harnessFn( done, 3 );
+        harness.handle( "rando", undefined, queueName );
+        rabbit.addQueue( "", { autoDelete: true, subscribe: true } )
+          .then( function( queue ) {
+            queueName = queue.name;
+            rabbit.publish( "", { type: "rando", routingKey: queueName, body: "one" } );
+            rabbit.publish( "", { type: "rando", routingKey: queueName, body: Buffer.from( "two" ) } );
+            rabbit.publish( "", { type: "rando", routingKey: queueName, body: [ 0x62, 0x75, 0x66, 0x66, 0x65, 0x72 ] } );
+          } );
+      } );
+
+      it( "should handle only messages delivered to queue specified", function() {
+        var results = _.map( harness.received, function( m ) {
+          return {
+            body: m.body.toString(),
+            queue: m.queue
+          };
+        } );
+        _.sortBy( results, "body" ).should.eql(
+          [
+            { body: "buffer", queue: queueName },
+            { body: "one", queue: queueName },
+            { body: "two", queue: queueName }
+          ] );
+      } );
+
+      after( function() {
+        harness.clean();
+      } );
+    } );
 
 		after( function() {
 			this.timeout( 5000 );

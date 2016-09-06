@@ -63,7 +63,7 @@ module.exports = {
 		{
 			name: "rabbot-ex.no-ack",
 			type: "direct",
-			autoDelete: true	
+			autoDelete: true
 		}
 	],
 
@@ -81,7 +81,6 @@ module.exports = {
 		},
 		{
 			name: "rabbot-q.general1",
-			noAck: true,
 			autoDelete: true,
 			subscribe: true
 		},

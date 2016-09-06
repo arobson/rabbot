@@ -3,7 +3,19 @@
 
 ## 1.0.x
 
+### 1.0.6
+ * #38 - Correct race conditions in queueFsm and exchangeFsm causing errors during reconnection
+ * #37 - Add ability to capture Rabbit generated queue names
+ * #36 - Make options optional for addExchange and addQueue
+ * #19 - Add support for publishing arrays directly (as buffers)
+ * Added Drone build
+ * Update dependencies to latest
+ * Defect - queues and exchanges with the same name shared channels causing serious problems
+ * Improvement - add support for default exchange
+ * Improvement - changed from jshint to eslint
+
 ### 1.0.5
+
  * Improvement - remove Vagrant in favor of just using Dockerfile, updated instructions
 
 ### 1.0.4

@@ -1,6 +1,6 @@
 {
   "name": "rabbot",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/arobson/rabbot",
@@ -75,7 +75,7 @@
     {
       "name": "Michael Tuttle",
       "url": "https://github.com/openam"
-    },    
+    },
     {
       "name": "John Mathis",
       "url": "http://github.com/JohnDMathis"
@@ -95,14 +95,14 @@
     "sinon-as-promised": "^4.0.0"
   },
   "dependencies": {
-    "amqplib": "~0.4.1",
+    "amqplib": "~0.4.2",
     "debug": "^2.2.0",
-    "lodash": "^3.10.1",
-    "machina": "^1.1.2",
-    "monologue.js": "^0.3.4",
+    "lodash": "^4.15.0",
+    "machina": "^2.0.0",
+    "monologue.js": "^0.3.5",
     "node-uuid": "^1.4.7",
-    "postal": "^1.0.8",
-    "when": "^3.7.5",
+    "postal": "^2.0.4",
+    "when": "^3.7.7",
     "whistlepunk": "^0.3.2"
   }
 }

@@ -17,6 +17,12 @@ var format = require( "util" ).format;
 		* publish is rejected because exchange has reached the limit because of pending connection
  */
 
+function unhandle( handlers ) {
+  _.each( handlers, function( handle ) {
+    handle.unsubscribe();
+  } );
+}
+
 var Factory = function( options, connection, topology, serializers, exchangeFn ) {
 
 	// allows us to optionally provide a mock
@@ -27,43 +33,75 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 		type: options.type,
 		publishTimeout: options.publishTimeout || 0,
 		limit: ( options.limit || 100 ),
-		exchange: undefined,
-		handlers: [],
+    publisher: undefined,
+		releasers: [],
 		deferred: [],
 		published: publishLog(),
 
-		_define: function( stateOnDefined ) {
+		_define: function( exchange, stateOnDefined ) {
 			function onDefinitionError( err ) {
-				this.failedWith = err;
+        this.failedWith = err;
 				this.transition( "failed" );
 			}
 			function onDefined() {
 				this.transition( stateOnDefined );
 			}
-			this.exchange.define()
+			exchange.define()
 				.then( onDefined.bind( this ), onDefinitionError.bind( this ) );
 		},
 
 		_listen: function() {
-			this.handlers.push( connection.on( "unreachable", function( err ) {
-				err = err || new Error( "Could not establish a connection to any known nodes." );
-				this._onFailure( err );
-				this.transition( "unreachable" );
-			}.bind( this ) ) );
+			connection.on( "unreachable", function( err ) {
+        err = err || new Error( "Could not establish a connection to any known nodes." );
+        this._onFailure( err );
+        this.transition( "unreachable" );
+      }.bind( this ) );
 		},
 
 		_onAcquisition: function( transitionTo, exchange ) {
-			this.exchange = exchange;
-			this.handlers.push( this.exchange.channel.on( "acquired", function() {
-				this._define( "ready" );
+      var handlers = [];
+
+			handlers.push( exchange.channel.once( "released", function() {
+				this.handle( "released", exchange );
 			}.bind( this ) ) );
-			this.exchange.channel.once( "released", function() {
-				this.handle( "released" );
-			}.bind( this ) );
-			this.exchange.channel.once( "closed", function() {
-				this.handle( "closed" );
-			}.bind( this ) );
-			this._define( transitionTo );
+
+      handlers.push( exchange.channel.once( "closed", function() {
+				this.handle( "closed", exchange );
+			}.bind( this ) ) );
+
+      function cleanup() {
+        unhandle( handlers );
+        exchange.release()
+          .then( function() {
+              this.transition( "released" );
+            }.bind( this )
+          );
+      }
+
+      function onCleanupError() {
+        var count = this.published.count();
+        if ( count > 0 ) {
+          exLog.warn( "%s exchange '%s', connection '%s' was released with %d messages unconfirmed",
+            this.type,
+            this.name,
+            connection.name,
+            count );
+        }
+        cleanup.bind( this )();
+      }
+
+      var releaser = function() {
+        return this.published.onceEmptied()
+          .then( cleanup.bind( this ), onCleanupError.bind( this ) );
+      }.bind( this );
+
+      var publisher = function( message ) {
+        return exchange.publish( message )
+      }.bind( this );
+
+      this.publisher = publisher;
+      this.releasers.push( releaser );
+			this._define( exchange, transitionTo );
 		},
 
 		_onFailure: function( err ) {
@@ -81,6 +119,15 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 				this.deferred.splice( index, 1 );
 			}
 		},
+
+    _release: function( closed ) {
+      var release = this.releasers.shift();
+      if( release ) {
+        return release( closed );
+      } else {
+        return when();
+      }
+    },
 
 		check: function() {
 			var deferred = when.defer();
@@ -134,7 +181,7 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 							timeout = null;
 						}
 						if( !timedOut ) {
-							return this.exchange.publish( message )
+							return this.publisher( message )
 								.then( onPublished.bind( this ), onRejected.bind( this ) );
 						}
 					}
@@ -169,22 +216,16 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 				_onEnter: function() {
 					this._onFailure( this.failedWith );
 					this.emit( "failed", this.failedWith );
-					this.exchange = undefined;
 				},
 				check: function( deferred ) {
 					deferred.reject( this.failedWith );
 					this.emit( "failed", this.failedWith );
 				},
-				release: function() {
-					_.each( this.handlers, function( handle ) {
-						handle.unsubscribe();
-					} );
-					if( this.exchange ) {
-						this.exchange.release()
-							.then( function() {
-								this.transition( "released" );
-							} );
-					}
+				release: function( exchange ) {
+          this._release( exchange )
+            .then( function() {
+              this.transition( "released" );
+            }.bind( this ) );
 				},
 				publish: function( op ) {
 					op( this.failedWith );
@@ -240,30 +281,10 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 			},
 			releasing: {
 				_onEnter: function() {
-					function cleanup() {
-						_.each( this.handlers, function( handle ) {
-							handle.unsubscribe();
-						} );
-						this.exchange.release()
-							.then( function() {
-									this.transition( "released" );
-								}.bind( this )
-							);
-					}
-
-					function onError() {
-						var count = this.published.count();
-						if ( count > 0 ) {
-							exLog.warn( "%s exchange '%s', connection '%s' was released with %d messages unconfirmed",
-								this.type,
-								this.name,
-								connection.name,
-								count );
-						}
-						cleanup.bind( this )();
-					}
-					this.published.onceEmptied()
-						.then( cleanup.bind( this ), onError.bind( this ) );
+          this._release()
+            .then( function() {
+              this.transition( "released" );
+            }.bind( this ) );
 				},
 				publish: function() {
 					this.deferUntilTransition( "released" );
@@ -275,7 +296,6 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 			released: {
 				_onEnter: function() {
 					this.emit( "released" );
-					this.exchange = undefined;
 				},
 				check: function() {
 					this.deferUntilTransition( "ready" );
@@ -297,7 +317,6 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 			unreachable: {
 				_onEnter: function() {
 					this.emit( "failed", this.failedWith );
-					this.exchange = undefined;
 				},
 				check: function( deferred ) {
 					deferred.reject( this.failedWith );
