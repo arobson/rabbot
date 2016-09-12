@@ -32,6 +32,7 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 		name: options.name,
 		type: options.type,
 		publishTimeout: options.publishTimeout || 0,
+		replyTimeout: options.replyTimeout || 0,
 		limit: ( options.limit || 100 ),
     publisher: undefined,
 		releasers: [],
