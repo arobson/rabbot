@@ -424,7 +424,7 @@ Broker.prototype.startSubscription = function (queueName, exclusive, connectionN
 	var queue = this.getQueue(queueName, connectionName);
 	if (queue) {
 		return queue.subscribe(queue, exclusive).then(function (r) {
-			r.queue = queue;
+			_.isPlainObject(r) && (r.queue = queue);
 			return r;
 		});
 	} else {
