@@ -52,9 +52,6 @@ function define( channel, options, subscriber, connectionName ) {
 			if ( options.limit ) {
 				channel.prefetch( options.limit );
 			}
-			if ( options.subscribe ) {
-				subscriber();
-			}
 			return q;
 		} );
 }
@@ -243,8 +240,8 @@ function resolveTags( channel, queue, connection ) {
 function subscribe( channelName, channel, topology, serializers, messages, options, exclusive ) {
 	var shouldAck = !options.noAck;
 	var shouldBatch = !options.noBatch;
-  // this is done to support rabbit-assigned queue names
-  channelName = channelName || options.name
+  	// this is done to support rabbit-assigned queue names
+  	channelName = channelName || options.name
 	if ( shouldAck && shouldBatch ) {
 		messages.listenForSignal();
 	}
@@ -354,7 +351,8 @@ function unsubscribe( channel, options ) {
 }
 
 module.exports = function( options, topology, serializers ) {
-	return topology.connection.getChannel( options.uniqueName, false, "queue channel for " + options.name )
+	var channelName = [ "queue", options.uniqueName ].join( ":" );
+	return topology.connection.getChannel( channelName, false, "queue channel for " + options.name )
 		.then( function( channel ) {
 			var messages = new AckBatch( options.name, topology.connection.name, resolveTags( channel, options.name, topology.connection.name ) );
 			var subscriber = subscribe.bind( undefined, options.uniqueName, channel, topology, serializers, messages, options );
