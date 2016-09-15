@@ -1,12 +1,14 @@
 {
   "name": "rabbot",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/arobson/rabbot",
   "scripts": {
     "lint": "jshint ./",
-    "test": "gulp test"
+    "test": "gulp test",
+    "build-image": "docker -t rabbot .",
+    "start-image": "docker run -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
@@ -19,28 +21,28 @@
       "url": "http://github.com/arobson"
     },
     {
-      "name": "Doug Neiner",
-      "url": "http://code.dougneiner.com"
-    },
-    {
       "name": "Derick Bailey",
       "url": "http://derickbailey.com/"
-    },
-    {
-      "name": "Joseph Frazier",
-      "url": "https://github.com/josephfrazier"
     },
     {
       "name": "Randy Groff",
       "url": "http://randygroff.com"
     },
     {
-      "name": "John Mathis",
-      "url": "http://github.com/JohnDMathis"
+      "name": "Joseph Frazier",
+      "url": "https://github.com/josephfrazier"
     },
     {
-      "name": "Austin Young",
-      "url": "http://github.com/LeankitAustin"
+      "name": "Mario Kozjak",
+      "url": "https://github.com/mkozjak"
+    },
+    {
+      "name": "Doug Neiner",
+      "url": "http://code.dougneiner.com"
+    },
+    {
+      "name": "Brian Edgerton",
+      "url": "https://github.com/brianedgerton"
     },
     {
       "name": "Ryan Niemeyer",
@@ -49,6 +51,14 @@
     {
       "name": "Jim Cowart",
       "url": "http://github.com/ifandelse"
+    },
+    {
+      "name": "Sean Corrales",
+      "url": "https://github.com/droidenator"
+    },
+    {
+      "name": "Matthew Martin",
+      "url": "http://matmar10.com"
     },
     {
       "name": "Scott Walters",
@@ -65,6 +75,14 @@
     {
       "name": "Michael Tuttle",
       "url": "https://github.com/openam"
+    },
+    {
+      "name": "John Mathis",
+      "url": "http://github.com/JohnDMathis"
+    },
+    {
+      "name": "Austin Young",
+      "url": "http://github.com/LeankitAustin"
     }
   ],
   "license": "MIT",
@@ -77,14 +95,14 @@
     "sinon-as-promised": "^4.0.0"
   },
   "dependencies": {
-    "amqplib": "~0.4.0",
+    "amqplib": "~0.4.2",
     "debug": "^2.2.0",
-    "lodash": "^3.10.1",
-    "machina": "^1.1.2",
-    "monologue.js": "^0.3.4",
+    "lodash": "^4.15.0",
+    "machina": "^2.0.0",
+    "monologue.js": "^0.3.5",
     "node-uuid": "^1.4.7",
-    "postal": "^1.0.8",
-    "when": "^3.7.5",
+    "postal": "^2.0.4",
+    "when": "^3.7.7",
     "whistlepunk": "^0.3.2"
   }
 }

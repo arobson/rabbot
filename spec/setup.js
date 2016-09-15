@@ -5,3 +5,4 @@ global.should = chai.should();
 global.expect = chai.expect;
 global.sinon = require( "sinon" );
 require( "sinon-as-promised" );
+process.title = "rabbot-test";

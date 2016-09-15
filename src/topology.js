@@ -103,6 +103,7 @@ var Topology = function( connection, options, serializers, unhandledStrategies, 
 			}
 		}
 		raw.fields.connectionName = this.connection.name;
+
 		this.onReturned(raw);
 	}.bind( this ) );
 
@@ -363,6 +364,15 @@ Topology.prototype.reset = function() {
 		subscriptions: {}
 	};
 };
+
+Topology.prototype.renameQueue = function( newQueueName ) {
+  var queue = this.definitions.queues[ "" ];
+  var channel = this.channels [ "queue:" ];
+  this.definitions.queues[ newQueueName ] = queue;
+  this.channels[ [ "queue", newQueueName ].join( ":" ) ] = channel;
+  delete this.definitions.queues[ "" ];
+  delete this.channels[ "queue:" ];
+}
 
 Monologue.mixInto( Topology );
 

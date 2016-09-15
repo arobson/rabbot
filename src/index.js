@@ -8,6 +8,7 @@ var uuid = require( "node-uuid" );
 var dispatch = postal.channel( "rabbit.dispatch" );
 var responses = postal.channel( "rabbit.responses" );
 var signal = postal.channel( "rabbit.ack" );
+var format = require( "util" ).format;
 
 var unhandledStrategies = {
 	nackOnUnhandled: function( message ) {
@@ -35,10 +36,16 @@ var serializers = {
 	},
 	"application/octet-stream": {
 		deserialize: function( bytes ) {
-			return bytes;
+      return bytes;
 		},
 		serialize: function( bytes ) {
-			return bytes;
+      if( Buffer.isBuffer( bytes ) ) {
+        return bytes;
+      } else if( _.isArray( bytes ) ) {
+        return Buffer.from( bytes );
+      } else {
+        throw new Error( "Cannot serialize unknown data type" );
+      }
 		}
 	},
 	"text/plain": {
@@ -61,47 +68,63 @@ var Broker = function() {
 };
 
 Broker.prototype.addConnection = function( options ) {
+	var self = this
+
+	var connectionPromise;
 	var name = options ? ( options.name || "default" ) : "default";
 	options = options || {};
 	options.name = name;
 	options.retryLimit = options.retryLimit || 3;
 	options.failAfter = options.failAfter || 60;
 	var connection;
-	if ( !this.connections[ name ] ) {
-		connection = connectionFn( options );
-		var topology = topologyFn( connection, options || {}, serializers, unhandledStrategies, returnedStrategies );
-		connection.on( "connected", function() {
-			this.emit( "connected", connection );
-			this.emit( connection.name + ".connection.opened", connection );
-			this.setAckInterval( 500 );
-		}.bind( this ) );
-		connection.on( "closed", function() {
-			this.emit( "closed", connection );
-			this.emit( connection.name + ".connection.closed", connection );
-		}.bind( this ) );
-		connection.on( "failed", function( err ) {
-			this.emit( "failed", connection );
-			this.emit( name + ".connection.failed", err );
-		}.bind( this ) );
-		connection.on( "unreachable", function() {
-			this.emit( "unreachable", connection );
-			this.emit( name + ".connection.unreachable" );
-			this.clearAckInterval();
-		}.bind( this ) );
-		connection.on( "return", function(raw) {
-			this.emit( "return", raw);
-		}.bind( this ) );
-		this.connections[ name ] = topology;
-		return topology;
-	} else {
-		connection = this.connections[ name ];
-		connection.connection.connect();
-		return connection;
+
+	connectionPromise = when.promise( function( resolve, reject ) {
+		if ( !self.connections[ name ] ) {
+			connection = connectionFn( options );
+			var topology = topologyFn( connection, options || {}, serializers, unhandledStrategies, returnedStrategies );
+			connection.on( "connected", function() {
+				self.emit( "connected", connection );
+				self.emit( connection.name + ".connection.opened", connection );
+				self.setAckInterval( 500 );
+				return resolve( topology )
+			} );
+			connection.on( "closed", function() {
+				self.emit( "closed", connection );
+				self.emit( connection.name + ".connection.closed", connection );
+				return reject( new Error( "connection closed" ) )
+			} );
+			connection.on( "failed", function( err ) {
+				self.emit( "failed", connection );
+				self.emit( name + ".connection.failed", err );
+				return reject( err )
+			} );
+			connection.on( "unreachable", function() {
+				self.emit( "unreachable", connection );
+				self.emit( name + ".connection.unreachable" );
+				self.clearAckInterval();
+				return reject( new Error( "connection unreachable" ) )
+			} );
+			connection.on( "return", function(raw) {
+				self.emit( "return", raw );
+			} );
+			self.connections[ name ] = topology;
+		} else {
+			connection = self.connections[ name ];
+			connection.connection.connect();
+			resolve( connection );
+		}
+	} );
+	if( !this.connections[ name ].promise ) {
+		this.connections[ name ].promise = connectionPromise;
 	}
+	return connectionPromise;
 };
 
 Broker.prototype.addExchange = function( name, type, options, connectionName ) {
 	connectionName = connectionName || "default";
+  if( !type && !options ) {
+    options = {};
+  }
 	if ( _.isObject( name ) ) {
 		options = name;
 		connectionName = type;
@@ -114,6 +137,7 @@ Broker.prototype.addExchange = function( name, type, options, connectionName ) {
 
 Broker.prototype.addQueue = function( name, options, connectionName ) {
 	connectionName = connectionName || "default";
+  options = options || {};
 	options.name = name;
 	if ( options.subscribe && !this.hasHandles ) {
 		console.warn( "Subscription to '" + name + "' was started without any handlers. This will result in lost messages!" );
@@ -423,7 +447,7 @@ Broker.prototype.startSubscription = function (queueName, exclusive, connectionN
 	}
 	var queue = this.getQueue(queueName, connectionName);
 	if (queue) {
-		return queue.subscribe(queue, exclusive).then(function (r) {
+		return queue.subscribe(exclusive).then(function (r) {
 			_.isPlainObject(r) && (r.queue = queue);
 			return r;
 		});

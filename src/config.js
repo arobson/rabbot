@@ -14,58 +14,62 @@ module.exports = function( Broker ) {
 		if( !logger && config.logging ) {
 			logger = require( "./log" )( config.logging || {} );
 		}
-		var topology;
-		var emit = this.emit;
+		var emit = this.emit.bind( this );
 		this.configurations[ config.name || "default" ] = config;
 		return when.promise( function( resolve, reject ) {
 
-			function onExchangeError( err ) {
-				log.error( "Configuration of %s failed due to an error in one or more exchange settings: %s", topology.name, err );
+			function onExchangeError( connection, err ) {
+				log.error( "Configuration of %s failed due to an error in one or more exchange settings: %s", connection.name, err );
 				reject( err );
 			}
 
-			function onQueueError( err ) {
-				log.error( "Configuration of %s failed due to an error in one or more queue settings: %s", topology.name, err.stack );
+			function onQueueError( connection, err ) {
+				log.error( "Configuration of %s failed due to an error in one or more queue settings: %s", connection.name, err.stack );
 				reject( err );
 			}
 
-			function onBindingError( err ) {
-				log.error( "Configuration of %s failed due to an error in one or more bindings: %s", topology.name, err.stack );
+			function onBindingError( connection, err ) {
+				log.error( "Configuration of %s failed due to an error in one or more bindings: %s", connection.name, err.stack );
 				reject( err );
 			}
 
-			function createExchanges() {
-				topology.configureExchanges( config.exchanges )
-					.then( createQueues, onExchangeError );
+			function createExchanges( connection ) {
+				connection.configureExchanges( config.exchanges )
+					.then(
+						createQueues.bind( null, connection ),
+						onExchangeError.bind( null, connection )
+					);
 			}
 
-			function createQueues() {
-				topology.configureQueues( config.queues )
-					.then( createBindings, onQueueError );
+			function createQueues( connection ) {
+				connection.configureQueues( config.queues )
+					.then(
+						createBindings.bind( null, connection ),
+						onQueueError.bind( null, connection )
+					);
 			}
 
-			function createBindings() {
-				topology.configureBindings( config.bindings, topology.name )
-					.then( finish, onBindingError );
+			function createBindings( connection ) {
+				connection.configureBindings( config.bindings, connection.name )
+					.then(
+						finish.bind( null, connection ),
+						onBindingError.bind( null, connection )
+					);
 			}
 
-			function finish() {
-				log.info("Configuration succeeded %s", topology.name);
-				emit( topology.connection.name + ".connection.configured", topology.connection );
+			function finish( connection ) {
+				emit( connection.name + ".connection.configured", connection );
 				resolve();
 			}
 
-			topology = this.addConnection( config.connection );
-
-
-			topology.connection.once( "connected", function() {
-				createExchanges();
-			} );
-
-			topology.connection.once( "unreachable", function() {
-				reject( new Error( format( "Configuration for '%s' failed - all nodes are unreachable.", topology.name ) ) );
-			} );
-
+			this.addConnection( config.connection )
+				.then(
+					function( connection ) {
+						createExchanges( connection );
+						return connection;
+					},
+					reject
+				);
 		}.bind( this ) );
 	};
 };

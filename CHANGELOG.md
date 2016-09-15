@@ -3,6 +3,36 @@
 
 ## 1.0.x
 
+### 1.0.6
+ * #38 - Correct race conditions in queueFsm and exchangeFsm causing errors during reconnection
+ * #37 - Add ability to capture Rabbit generated queue names
+ * #36 - Make options optional for addExchange and addQueue
+ * #19 - Add support for publishing arrays directly (as buffers)
+ * Added Drone build
+ * Update dependencies to latest
+ * Defect - queues and exchanges with the same name shared channels causing serious problems
+ * Improvement - add support for default exchange
+ * Improvement - changed from jshint to eslint
+
+### 1.0.5
+
+ * Improvement - remove Vagrant in favor of just using Dockerfile, updated instructions
+
+### 1.0.4
+
+ * Bug Fix - Publish no longer throws errors if made before calling addConnection or configure or if exchange does not exist
+
+### 1.0.3
+
+ * Bug Fix - #26 - fixed a bug preventing `bindQueue` from working on unique queues
+ * Bug Fix - #22 - addConnection did not return a promise (thanks @mkozjak)
+ * Enhancement - publishing a number as a body gets converted to a string (thanks @brandonpsmith)
+ * Enhancement - routing keys can be changed on binding (thanks @droidenator)
+
+### 1.0.2
+
+ * Bug fix - corrected bug causing connection.unreachable event not to be prefixed with connection name correctly (thanks @Cyri-L)
+
 ### 1.0.1
 
 * Bug fix - uri parsing should not including leading slash between host specification and vhost

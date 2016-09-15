@@ -187,6 +187,10 @@ AckBatch.prototype.addMessage = function( message ) {
 	log.debug( "New pending tag %d on queue %s - %s", status.tag, this.name, this.connectionName );
 };
 
+AckBatch.prototype.changeName = function( name ) {
+  this.name = name;
+};
+
 AckBatch.prototype.getMessageOps = function( tag ) {
 	var message = {
 		tag: tag,
