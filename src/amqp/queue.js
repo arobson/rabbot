@@ -251,7 +251,6 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 	//options.consumerTag = info.createTag( channelName ); - let rabbitMQ server choose the consumerTag name
 	var consumers =  _.keys( channel.item.consumers );
 	if( consumers.length > 0 ) {
-		console.log("subscription ignored");
 		log.info( "Duplicate subscription to queue %s ignored", channelName );
 		return when( consumers[ 0 ] );
 	}
