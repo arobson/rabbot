@@ -153,6 +153,10 @@ Broker.prototype.batchAck = function() {
 	signal.publish( "ack", {} );
 };
 
+Broker.prototype.batchNack = function() {
+	signal.publish( "nack", {} );
+};
+
 Broker.prototype.bindExchange = function( source, target, keys, connectionName ) {
 	connectionName = connectionName || "default";
 	return this.connections[ connectionName ].createBinding( { source: source, target: target, keys: keys } );
@@ -452,7 +456,7 @@ Broker.prototype.startSubscription = function (queueName, exclusive, connectionN
 			return r;
 		});
 	} else {
-		throw new Error("No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed.");
+		return when.reject( new Error("No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed.") );
 	}
 };
 
@@ -461,7 +465,7 @@ Broker.prototype.stopSubscription = function( queueName, connectionName ) {
 	if( queue ) {
 		return queue.unsubscribe();
 	} else {
-		throw new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Unsubscribe failed." );
+		return when.reject( new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Unsubscribe failed." ) );
 	}
 }
 

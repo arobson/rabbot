@@ -144,6 +144,8 @@ AckBatch.prototype._resolveAll = function( status, first, last ) {
 					emitEmpty();
 				}
 				this.acking = false;
+			}.bind( this ) ).catch(function(err){
+				log.error( "An exception occurred while trying to resolve ALL ack/nack on %s - %s: %s", this.name, this.connectionName, err.stack );
 			}.bind( this ) );
 	}
 };
