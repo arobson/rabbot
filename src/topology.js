@@ -104,6 +104,7 @@ var Topology = function( connection, options, serializers, unhandledStrategies, 
 		this.onReturned(raw);
 	}.bind( this ) );
 
+  this.createDefaultExchange().then( null, _.noop );
 	// delay creation to allow for subscribers to attach a handler
 	process.nextTick( function() {
 		this.createReplyQueue().then( null, onReplyQueueFailed );
@@ -173,7 +174,7 @@ Topology.prototype.createBinding = function( options ) {
 		if( options.queue ) {
 			var queue = this.definitions.queues[ options.target ];
 			if( queue && queue.uniqueName ) {
-				target = queue.uniqueName;		
+				target = queue.uniqueName;
 			}
 		}
 		this.promises[ id ] = promise = this.connection.getChannel( "control", false, "control channel for bindings" )
@@ -226,6 +227,10 @@ Topology.prototype.createPrimitive = function( Primitive, primitiveType, options
 	}
 	return promise;
 };
+
+Topology.prototype.createDefaultExchange = function() {
+  return this.createExchange( { name: "", passive: true } );
+}
 
 Topology.prototype.createExchange = function( options ) {
 	return this.createPrimitive( Exchange, "exchange", options );
@@ -320,6 +325,15 @@ Topology.prototype.reset = function() {
 		subscriptions: {}
 	};
 };
+
+Topology.prototype.renameQueue = function( newQueueName ) {
+  var queue = this.definitions.queues[ "" ];
+  var channel = this.channels [ "queue:" ];
+  this.definitions.queues[ newQueueName ] = queue;
+  this.channels[ [ "queue", newQueueName ].join( ":" ) ] = channel;
+  delete this.definitions.queues[ "" ];
+  delete this.channels[ "queue:" ];
+}
 
 Monologue.mixInto( Topology );
 

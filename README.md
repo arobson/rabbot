@@ -1,10 +1,11 @@
 # rabbot
 
+[![Build Status](http://67.205.142.228/api/badges/arobson/rabbot/status.svg)](http://67.205.142.228/arobson/rabbot)
 [![Version npm](https://img.shields.io/npm/v/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
 [![npm Downloads](https://img.shields.io/npm/dm/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
 [![Dependencies](https://img.shields.io/david/arobson/rabbot.svg?style=flat)](https://david-dm.org/arobson/rabbot)
 
-This is a very opinionated abstraction over amqplib to help simplify the implementation of several messaging patterns on RabbitMQ. 
+This is a very opinionated abstraction over amqplib to help simplify the implementation of several messaging patterns on RabbitMQ.
 
 > !Important! - successful use of this library will require a conceptual knowledge of AMQP and an understanding of RabbitMQ.
 
@@ -371,7 +372,7 @@ The following structure shows and briefly explains the format of the message tha
 
 ### stopSubscription( queueName, [connectionName] )
 
-> !Caution!: 
+> !Caution!:
 > * This does not affect bindings to the queue, it only stops the flow of messages from the queue to your service.
 > * If the queue is auto-delete, this will destroy the queue, dropping messages and losing any messages sent that would have been routed to it.
 > * If a network disruption has occurred or does occur, subscription will be restored to its last known state.
@@ -578,7 +579,7 @@ To establish a connection with all settings in place and ready to go call config
 	} );
 ```
 
-## Closing Connections and Shutdown
+## Managing Connections - Retry, Close and Shutdown
 rabbot will attempt to resolve all outstanding publishes and recieved messages (ack/nack/reject) before closing the channels and connection intentionally. If you would like to defer certain actions until after everything has been safely resolved, then use the promise returned from either close call.
 
 > !!! CAUTION !!! - using reset is dangerous. All topology associated with the connection will be removed locally meaning rabbot will _not_ be able to re-establish it all should you decide to reconnect.
@@ -588,6 +589,19 @@ Closes the connection, optionally resetting all previously defined topology for 
 
 ### closeAll( [reset] )
 Closes __all__ connections, optionally resetting the topology for all of them.
+
+### retry()
+After an `unhandled` event is raised by rabbot, not further attempts to connect will be made unless `retry` is called.
+
+```js
+// How to create a zombie
+var rabbit = require( "rabbot" );
+
+rabbit.on( "unreachable", function() {
+  rabbit.retry();
+} );
+
+```
 
 ### shutdown()
 Once a connection is established, rabbot will keep the process running unless you call `shutdown`. This is because most services shouldn't automatically shutdown at the first accidental disconnection`. Shutdown attempts to provide the same guarantees as close - only allowing the process to exit after publishing and resolving received messages.
@@ -665,46 +679,40 @@ rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
 
 Running gulp will run both sets after every file change and display a coverage summary. To view a detailed report, run gulp coverage once to bring up the browser.
 
-### Vagrant
+### Docker
 
-rabbot now provides a sample `Vagrantfile` that will set up a virtual machine that runs RabbitMQ. Under the hood, it uses the official RabbitMQ Docker image. It will forward RabbitMQ's default ports to `localhost`.
+rabbot now provides a `Dockerfile` and npm scripts you can use to create an image and container to run the tests. If you're on Linux or have the new Docker for OS X/Windows, this should be very straight-forward. Under the hood, it uses the official RabbitMQ Docker image. It will forward RabbitMQ's default ports to `localhost`.
 
-**First, you will need to copy the sample file to a usable file:**
+*If you already have a working RabbitMQ container with 5672 forwarded to your localhost, you don't need any of this.*
 
+The first time, you can build the Docker image with the following:
 ```bash
-$ cp Vagrantfile.sample Vagrantfile
+$ npm run build-image
 ```
 
-Adjust any necessary settings. Then, from the root of the project, run:
-
+After that, create a daemonized container based off the image with:
 ```bash
-$ vagrant up
+$ npm run start-image
 ```
 
-This will create your box. Right now, it supports the `virtualbox` and `vmware_fusion` providers. To access the box, run:
+Now you have a daemonized rabbitmq Docker container with the port `5672` and management console at `15672` (the defaults) using `guest` and `guest` for the login, `/` as the vhost and the consistent hash exchange plugin enabled.
+
+You can access the management console at `http://localhost:15672`.
+
+Click here for more information on [Docker](http://docker.com) and [official RabbitMQ Docker image](https://registry.hub.docker.com/_/rabbitmq/).
+
+*To run tests once you have RabbitMQ up:*
 
 ```bash
-$ vagrant ssh
-```
-
-Once inside, you can view the RabbitMQ logs by executing:
-
-```bash
-$ docker logs rabbitmq
-```
-
-When the Vagrant box is running, RabbitMQ can be accessed at `localhost:5672` and the management console at `http://localhost:15672`.
-
-Click here for more information on [Vagrant](http://vagrantup.com), [Docker](http://docker.com), and [official RabbitMQ Docker image](https://registry.hub.docker.com/_/rabbitmq/).
-
-*To run tests using Vagrant:*
-
-Execute from the **host machine:**
-
-```bash
-$ vagrant up
 $ gulp
 ```
+
+OR
+
+```bash
+$ mocha spec/**
+```
+
 ### Style
 This project has both an `.editorconfig` and `.esformatter` file to help keep adherance to style simple. Please also take advantage of the `.jshintrc` file and avoid linter warnings.
 

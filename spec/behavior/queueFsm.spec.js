@@ -15,7 +15,8 @@ function channelFn( options ) {
 		finalize: noOp,
 		release: noOp,
 		getMessageCount: noOp,
-		subscribe: noOp
+    subscribe: noOp,
+		unsubscribe: noOp
 	};
 	var channelMock = sinon.mock( channel );
 
@@ -69,7 +70,7 @@ describe( "Queue FSM", function() {
 
 		describe( "when checking in failed state", function() {
 			it( "should reject check with an error", function() {
-				return queue.check().should.be.rejectedWith( /nope/ );
+        return queue.check().should.be.rejectedWith( /nope/ );
 			} );
 		} );
 
@@ -89,7 +90,7 @@ describe( "Queue FSM", function() {
 			channelMock
 				.expects( "define" )
 				.once()
-				.returns( when.resolve() );
+				.resolves( true );
 
 			queue = queueFsm( options, connection, topology, {}, ch.factory );
 			queue.once( "failed", function( err ) {
@@ -114,23 +115,46 @@ describe( "Queue FSM", function() {
 				channelMock
 					.expects( "subscribe" )
 					.once()
-					.returns( when( true ) );
+					.resolves( true );
 			} );
 
 			it( "should resolve subscribe without error", function() {
-				return queue.subscribe( {} ).should.be.fulfilled;
+        queue.subscribe();
+				return queue.subscribe().should.be.fulfilled;
 			} );
+
+      it( "should change options.subscribe to true", function() {
+        options.subscribe.should.equal( true );
+      } );
 		} );
 
-		describe( "when checking in ready state", function() {
-			it( "should be in ready state", function() {
-				return queue.state.should.equal( "ready" );
+		describe( "when checking after subscribed state", function() {
+			it( "should be in subscribed state", function() {
+				return queue.state.should.equal( "subscribed" );
 			} );
 
 			it( "should resolve check without error", function() {
 				return queue.check().should.be.fulfilled;
 			} );
 		} );
+
+    describe( "when unsubscribing", function() {
+      before( function() {
+        channelMock
+          .expects( "unsubscribe" )
+          .once()
+          .resolves( true );
+      } );
+
+      it( "should resolve unsubscribe without error", function() {
+        return queue.unsubscribe().should.be.fulfilled;
+      } );
+
+      it( "should change options.subscribe to false", function() {
+        options.subscribe.should.equal( false );
+      } );
+    } );
+
 
 		describe( "when channel is closed remotely", function() {
 			var channel;
@@ -191,7 +215,7 @@ describe( "Queue FSM", function() {
 			} );
 
 			describe( "when checking a released queue", function() {
-				
+
 				it( "should be released", function() {
 					return queue.state.should.equal( "released" );
 				} );

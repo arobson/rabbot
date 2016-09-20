@@ -9,23 +9,23 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-# Tabs in JS unless otherwise specified
+# spaces in JS unless otherwise specified
 [**.js]
-indent_style = tab
-indent_size = 4
+indent_style = space
+indent_size = 2
 
 [**.jsx]
-indent_style = tab
-indent_size = 4
+indent_style = space
+indent_size = 2
 
 [**.html]
-indent_style = tab
-indent_size = 4
+indent_style = space
+indent_size = 2
 
 [**.css]
-indent_style = tab
-indent_size = 4
+indent_style = space
+indent_size = 2
 
 [**.md]
-indent_style = tab
-indent_size = 4
+indent_style = space
+indent_size = 2

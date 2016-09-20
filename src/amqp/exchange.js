@@ -35,14 +35,19 @@ function define( channel, options, connectionName ) {
 		connectionName,
 		JSON.stringify( _.omit( valid, [ "name", "type" ] ) )
 	);
-	return channel.assertExchange( options.name, options.type, valid );
+  if( options.name === "" ) {
+    return when( true );
+  } else if( options.passive ) {
+    return channel.checkExchange( options.name );
+  } else {
+    return channel.assertExchange( options.name, options.type, valid );
+  }
 }
 
 function getContentType( message ) {
 	if( message.contentType ) {
 		return message.contentType;
-	}
-	else if( _.isString( message.body ) ) {
+	} else if( _.isString( message.body ) ) {
 		return "text/plain";
 	} else if( _.isObject( message.body ) && !message.body.length ) {
 		return "application/json";

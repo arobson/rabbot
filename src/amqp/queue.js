@@ -52,9 +52,6 @@ function define( channel, options, subscriber, connectionName ) {
 			if ( options.limit ) {
 				channel.prefetch( options.limit );
 			}
-			if ( options.subscribe ) {
-				subscriber();
-			}
 			return q;
 		} );
 }
@@ -137,7 +134,7 @@ function getReply( channel, serializers, raw, replyQueue, connectionName ) {
 
 		var replyTo = raw.properties.replyTo;
 		raw.ack();
-		if ( replyTo ) {			
+		if ( replyTo ) {
 			var publishOptions = {
 					type: replyType,
 					contentType: contentType,
@@ -197,7 +194,7 @@ function getUntrackedOps( channel, raw, messages ) {
 			log.error( "Tag %d on '%s' - '%s' cannot be nacked in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName );
 		},
 		reject: function() {
-			log.error( "Tag %d on '%s' - '%s' cannot be rejected in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName );	
+			log.error( "Tag %d on '%s' - '%s' cannot be rejected in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName );
 		}
 	};
 }
@@ -211,7 +208,7 @@ function release( channel, options, messages, released ) {
 					resolve();
 				} );
 			} else {
-				finalize( channel, messages );
+        finalize( channel, messages );
 				resolve();
 			}
 		}.bind( this ) );
@@ -241,7 +238,8 @@ function resolveTags( channel, queue, connection ) {
 function subscribe( channelName, channel, topology, serializers, messages, options, exclusive ) {
 	var shouldAck = !options.noAck;
 	var shouldBatch = !options.noBatch;
-
+  // this is done to support rabbit-assigned queue names
+  channelName = channelName || options.name
 	if ( shouldAck && shouldBatch ) {
 		messages.listenForSignal();
 	}
@@ -252,7 +250,7 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 		return when( options.consumerTag );
 	}
 	log.info( "Starting subscription to queue '%s' on '%s'", channelName, topology.connection.name );
-	return channel.consume( channelName, function( raw ) {
+  return channel.consume( channelName, function( raw ) {
 		if( !raw ) {
 			// this happens when the consumer has been cancelled
 			log.warn( "Queue '%s' was sent a consumer cancel notification" );
@@ -273,7 +271,7 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 		var parts = [ channelName.replace( /[.]/g, "-" ) ];
 		if( raw.type ) {
 			parts.push( raw.type );
-		} 
+		}
 		var topic = parts.join( "." );
 		var contentType = raw.properties.contentType || "application/octet-stream";
 		var serializer = serializers[ contentType ];
@@ -288,7 +286,7 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 				ops.nack();
 			}
 		}
-		
+
 		var onPublish = function( data ) {
 			var handled;
 
@@ -330,7 +328,10 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 		.then( function( result ) {
 			channel.tag = result.consumerTag;
 			return result;
-		} );
+		}, function( err ) {
+      console.log( "Error On Channel Consume", options );
+      throw err;
+    } );
 }
 
 function unsubscribe( channel, options ) {
@@ -343,7 +344,8 @@ function unsubscribe( channel, options ) {
 }
 
 module.exports = function( options, topology, serializers ) {
-	return topology.connection.getChannel( options.uniqueName, false, "queue channel for " + options.name )
+  var channelName = [ "queue", options.uniqueName ].join( ":" );
+	return topology.connection.getChannel( channelName, false, "queue channel for " + options.name )
 		.then( function( channel ) {
 			var messages = new AckBatch( options.name, topology.connection.name, resolveTags( channel, options.name, topology.connection.name ) );
 			var subscriber = subscribe.bind( undefined, options.uniqueName, channel, topology, serializers, messages, options );

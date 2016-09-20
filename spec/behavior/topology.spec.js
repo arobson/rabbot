@@ -286,7 +286,7 @@ describe( "Topology", function() {
 
 		it( "should not create reply queue", function() {
 			should.not.exist( replyQueue );
-			topology.channels.should.eql( {} );
+			topology.definitions.queues.should.eql( {} );
 		} );
 	} );
 
@@ -363,7 +363,7 @@ describe( "Topology", function() {
 		} );
 
 		it( "should not create duplicate exchanges", function() {
-			calls.should.equal( 1 );
+			calls.should.equal( 2 );
 		} );
 
 		it( "should add exchange to channels", function() {

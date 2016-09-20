@@ -57,7 +57,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 		},
 
 		_getChannel: function ( name, confirm, context ) {
-			var channel = channels[ name ];
+      var channel = channels[ name ];
 			if ( !channel ) {
 				return when.promise( function( resolve ) {
 					channel = channelFn.create( connection, name, confirm );
@@ -106,9 +106,9 @@ var Connection = function( options, connectionFn, channelFn ) {
 			}
 
 			when.all( reacquisitions )
-				.then( 
+				.then(
 					reacquired.bind( this ),
-					reacquireFailed.bind( this ) 
+					reacquireFailed.bind( this )
 				);
 		},
 
@@ -139,7 +139,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 				name: name,
 				confirm: confirm,
 				context: context,
-				deferred: deferred 
+				deferred: deferred
 			} );
 			return deferred.promise;
 		},
@@ -249,8 +249,8 @@ var Connection = function( options, connectionFn, channelFn ) {
 				},
 				channel: function( request ) {
 					this._getChannel( request.name, request.confirm, request.context )
-						.then( 
-							request.deferred.resolve, 
+						.then(
+							request.deferred.resolve,
 							request.deferred.reject
 						);
 				},
@@ -313,8 +313,8 @@ var Connection = function( options, connectionFn, channelFn ) {
 				},
 				channel: function( request ) {
 					log.warn( "Channel '%s' on '%s' was requested for '%s' during user initiated close. Request will be rejected." );
-					request.deferred.reject( new Error( 
-						format( "Illegal request for channel '%s' during close of connection '%s' initiated by user", 
+					request.deferred.reject( new Error(
+						format( "Illegal request for channel '%s' during close of connection '%s' initiated by user",
 							request.name,
 							this.name
 						)

@@ -58,8 +58,8 @@ module.exports = function( name, type, factory, target, close ) {
 			}.bind( this ) );
 			log.debug( "Attempting acquisition of %s '%s'", type, name );
 			factory()
-				.then( 
-					this._onAcquisition.bind( this ), 
+				.then(
+					this._onAcquisition.bind( this ),
 					this._onAcquisitionError.bind( this )
 				);
 		},

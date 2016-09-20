@@ -8,6 +8,7 @@ var uuid = require( "node-uuid" );
 var dispatch = postal.channel( "rabbit.dispatch" );
 var responses = postal.channel( "rabbit.responses" );
 var signal = postal.channel( "rabbit.ack" );
+var format = require( "util" ).format;
 
 var unhandledStrategies = {
 	nackOnUnhandled: function( message ) {
@@ -35,10 +36,16 @@ var serializers = {
 	},
 	"application/octet-stream": {
 		deserialize: function( bytes ) {
-			return bytes;
+      return bytes;
 		},
 		serialize: function( bytes ) {
-			return bytes;
+      if( Buffer.isBuffer( bytes ) ) {
+        return bytes;
+      } else if( _.isArray( bytes ) ) {
+        return Buffer.from( bytes );
+      } else {
+        throw new Error( "Cannot serialize unknown data type" );
+      }
 		}
 	},
 	"text/plain": {
@@ -63,14 +70,15 @@ var Broker = function() {
 Broker.prototype.addConnection = function( options ) {
 	var self = this
 
-	return when.promise( function( resolve, reject ) {
-		var name = options ? ( options.name || "default" ) : "default";
-		options = options || {};
-		options.name = name;
-		options.retryLimit = options.retryLimit || 3;
-		options.failAfter = options.failAfter || 60;
-		var connection;
+	var connectionPromise;
+	var name = options ? ( options.name || "default" ) : "default";
+	options = options || {};
+	options.name = name;
+	options.retryLimit = options.retryLimit || 3;
+	options.failAfter = options.failAfter || 60;
+	var connection;
 
+	connectionPromise = when.promise( function( resolve, reject ) {
 		if ( !self.connections[ name ] ) {
 			connection = connectionFn( options );
 			var topology = topologyFn( connection, options || {}, serializers, unhandledStrategies, returnedStrategies );
@@ -106,10 +114,17 @@ Broker.prototype.addConnection = function( options ) {
 			resolve( connection );
 		}
 	} );
+	if( !this.connections[ name ].promise ) {
+		this.connections[ name ].promise = connectionPromise;
+	}
+	return connectionPromise;
 };
 
 Broker.prototype.addExchange = function( name, type, options, connectionName ) {
 	connectionName = connectionName || "default";
+  if( !type && !options ) {
+    options = {};
+  }
 	if ( _.isObject( name ) ) {
 		options = name;
 		connectionName = type;
@@ -122,6 +137,7 @@ Broker.prototype.addExchange = function( name, type, options, connectionName ) {
 
 Broker.prototype.addQueue = function( name, options, connectionName ) {
 	connectionName = connectionName || "default";
+  options = options || {};
 	options.name = name;
 	if ( options.subscribe && !this.hasHandles ) {
 		console.warn( "Subscription to '" + name + "' was started without any handlers. This will result in lost messages!" );
@@ -278,15 +294,25 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 			connectionName: connectionName
 		};
 	}
-	var connection = this.connections[ connectionName ].options;
-	if( connection.publishTimeout ) {
-		options.connectionPublishTimeout = connection.publishTimeout;
+	if( !this.connections[ connectionName ] ) {
+		return when.reject( new Error( format( "Publish failed - no connection %s has been configured", connectionName ) ) );
+	}
+	if( this.connections[ connectionName ] && this.connections[ connectionName ].options.publishTimeout ) {
+		options.connectionPublishTimeout = this.connections[ connectionName ].options.publishTimeout;
 	}
 	if( _.isNumber( options.body ) ) {
 		options.body = options.body.toString();
 	}
-	return this.getExchange( exchangeName, connectionName )
-		.publish( options );
+
+	return this.connections[ connectionName ].promise
+		.then( function() {
+			var exchange = this.getExchange( exchangeName, connectionName );
+			if( exchange ) {
+				return exchange.publish( options );
+			} else {
+				return when.reject( new Error( format( "Publish failed - no exchange %s on connection %s is defined", exchangeName, connectionName ) ) );
+			}
+		}.bind( this ) );
 };
 
 Broker.prototype.request = function( exchangeName, options, connectionName ) {
@@ -353,7 +379,7 @@ Broker.prototype.startSubscription = function( queueName, exclusive, connectionN
 	}
 	var queue = this.getQueue( queueName, connectionName );
 	if ( queue ) {
-		queue.subscribe( queue, exclusive );
+		queue.subscribe( exclusive );
 		return queue;
 	} else {
 		throw new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed." );
