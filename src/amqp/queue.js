@@ -344,7 +344,7 @@ function unsubscribe( channel, options ) {
 		log.info( "Unsubscribing from queue '%s' with tag %s", options.name, channel.tag );
 		return when().then(function(){
 			return channel.cancel( channel.tag ); //cancel consumerTag
-		}).timeout(500, new Error("Cancelling Consumer Tag timed out"));
+		}).timeout(5000, new Error("Cancelling Consumer Tag timed out"));
 	} else {
 		return when.resolve();
 	}
