@@ -198,10 +198,19 @@ var execBindingOperations = function(){
 	var id = [op.source, op.target].join("->");
 	var definition = this.definitions.bindings[id];
 	if (!definition){
-		log.warn("BindingOperation impossible because BindingDefinition %s not created on %s", id, this.connection.name);
-		return execBindingOperations.call(this);
+		this.definitions.bindings[id] = {
+			source: op.source,
+			target: op.target,
+			keys: [],
+			queue: op.queue
+		};
+		if(op.queue)
+			this.definitions.bindings[id].queueAlias = this.definitions.bindings[id].target;
+		definition = this.definitions.bindings[id];
+		//log.warn("BindingOperation impossible because BindingDefinition %s not created on %s", id, this.connection.name);
+		//return execBindingOperations.call(this);
 	}
-	//If adding, key must not be present, if removing, key must be present
+	//If adding, key MUST NOT be present, if removing, key MUST BE present
 	var find = definition.keys.indexOf(op.key);
 	if ((op.adding && find != -1) || (!op.adding && find == -1)) {
 		if(op.adding)
