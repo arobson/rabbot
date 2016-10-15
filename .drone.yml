@@ -10,3 +10,4 @@ pipeline:
 services:
   rabbit:
     image: arobson/rabbot
+
