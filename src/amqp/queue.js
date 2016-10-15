@@ -329,7 +329,7 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 			channel.tag = result.consumerTag;
 			return result;
 		}, function( err ) {
-      console.log( "Error On Channel Consume", options );
+      log.error( "Error on channel consume", options );
       throw err;
     } );
 }
