@@ -35,8 +35,9 @@ function aliasOptions( options, aliases ) {
 		result[ alias || key ] = value;
 	} );
 	return _.omit( aliased, Array.prototype.slice.call( arguments, 2 ) );
-}
+};
 
+var subscriptionPromises = {};
 function define( channel, options, subscriber, connectionName ) {
 	var valid = aliasOptions( options, {
 		queuelimit: "maxLength",
@@ -49,12 +50,26 @@ function define( channel, options, subscriber, connectionName ) {
 		options.uniqueName, connectionName, JSON.stringify( _.omit( options, [ "name" ] ) ) );
 	return channel.assertQueue( options.uniqueName, valid )
 		.then( function( q ) {
+			let p = when();
 			if ( options.limit ) {
-				channel.prefetch( options.limit );
+				p = p.then( function () {
+					return channel.prefetch( options.limit )
+				} );
 			}
-			return q;
-		} );
-}
+			if ( options.subscribe ) {
+				p = p.then( function () {
+					if ( subscriptionPromises[ this.channelName ] == void 0 )
+						subscriptionPromises[ this.channelName ] = this.subscribe();
+					return subscriptionPromises[ this.channelName ];
+				}.bind( this ) );
+			}
+			p = p.then( function () {
+				delete subscriptionPromises[ this.channelName ];
+				return q;
+			}.bind( this ) );
+			return p;
+		}.bind( this ) );
+};
 
 function finalize( channel, messages ) {
 	messages.reset();
@@ -356,16 +371,19 @@ module.exports = function( options, topology, serializers ) {
 		.then( function( channel ) {
 			var messages = new AckBatch( options.name, topology.connection.name, resolveTags( channel, options.name, topology.connection.name ) );
 			var subscriber = subscribe.bind( undefined, options.uniqueName, channel, topology, serializers, messages, options );
-
-			return {
+			var res = {}
+			_.extend(res, {
 				channel: channel,
+				channelName: channelName,
 				messages: messages,
-				define: define.bind( undefined, channel, options, subscriber, topology.connection.name ),
-				finalize: finalize.bind( undefined, channel, messages ),
-				getMessageCount: getCount.bind( undefined, messages ),
-				release: release.bind( undefined, channel, options, messages ),
+				define: define.bind(res, channel, options, subscriber, topology.connection.name),
+				finalize: finalize.bind(res, channel, messages),
+				getMessageCount: getCount.bind(res, messages),
+				release: release.bind(res, channel, options, messages),
 				subscribe: subscriber,
-				unsubscribe: unsubscribe.bind( undefined, channel, options, messages )
-			};
+				unsubscribe: unsubscribe.bind(res, channel, options, messages)
+			});
+			return res;
+
 		} );
 };

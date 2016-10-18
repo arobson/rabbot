@@ -193,6 +193,7 @@ module.exports = function( name, type, factory, target, close ) {
 			},
 			acquired: {
 				_onEnter: function() {
+					//When an error is emitted by channel, we try to reacquire the latter
 					this.emit( "acquired" );
 				},
 				acquire: function() {
