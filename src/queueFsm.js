@@ -74,13 +74,17 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
       }.bind( this );
 
       var subscriber = function( exclusive ) {
-        queue.subscribe( !!exclusive )
-          .then(
-            onSubscribe,
-            function( err ) {
-              emit( "subscribeFailed", err )
-            }
-          );
+		return when.promise( function( resolve, reject ) {
+			queue.subscribe( !!exclusive )
+			  .then(
+				onSubscribe,
+				function( err ) {
+				  emit( "subscribeFailed", err )
+				  reject("subscribeFailed " + err);
+				}
+			  )
+			  .then(resolve);
+		});
       }.bind( this );
 
       var releaser = function( closed ) {
@@ -288,8 +292,8 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         },
         subscribe: function() {
           if( this.subscriber ) {
-            this.subscriber();
             this.transition( "subscribing" );
+			return  this.subscriber();
           }
         }
       },

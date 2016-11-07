@@ -379,8 +379,7 @@ Broker.prototype.startSubscription = function( queueName, exclusive, connectionN
 	}
 	var queue = this.getQueue( queueName, connectionName );
 	if ( queue ) {
-		queue.subscribe( exclusive );
-		return queue;
+		return queue.subscribe( exclusive );
 	} else {
 		throw new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed." );
 	}
