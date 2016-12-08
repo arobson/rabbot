@@ -72,20 +72,15 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         this.unsubscribers.push( unsubscriber );
         this.transition( "subscribed" );
       }.bind( this );
-
-      var subscriber = function( exclusive ) {
-		return when.promise( function( resolve, reject ) {
-			queue.subscribe( !!exclusive )
-			  .then(
-				onSubscribe,
-				function( err ) {
-				  emit( "subscribeFailed", err )
-				  reject("subscribeFailed " + err);
-				}
-			  )
-			  .then(resolve);
-		});
-      }.bind( this );
+	  
+	  var subscriber = function( exclusive ) {
+			return queue
+				.subscribe( !!exclusive )
+				.then(onSubscribe)
+				.catch(function(err) { 
+					emit( "subscribeFailed", err );
+				});
+      };
 
       var releaser = function( closed ) {
         // remove handlers established on queue
