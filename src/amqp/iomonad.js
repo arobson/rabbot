@@ -193,7 +193,7 @@ module.exports = function( name, type, factory, target, close ) {
 			},
 			acquired: {
 				_onEnter: function() {
-					//When an error is emitted by channel, we try to reacquire the latter
+					//@cyril: when an error is emitted by channel, we try to reacquire the latter
 					this.emit( "acquired" );
 				},
 				acquire: function() {
@@ -209,6 +209,7 @@ module.exports = function( name, type, factory, target, close ) {
 					this.transition( "failed" );
 				},
 				operate: function( call ) {
+					//@cyril: amqp calls console.log(call);
 					try {
 						var result = this.item[ call.operation ].apply( this.item, call.argList );
 						if ( result && result.then ) {
@@ -317,7 +318,7 @@ module.exports = function( name, type, factory, target, close ) {
 					this.deferUntilTransition( "released" );
 				},
 				operate: function() {
-					this.deferUntilTransition( "released" );
+					this.deferUntilTransition( "released" ); //@cyril: recall operate with same inputs only when state == released, and so an error is thrown
 				},
 				release: function() {
 					this.deferUntilTransition( "released" );

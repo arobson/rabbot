@@ -60,7 +60,7 @@ var serializers = {
 
 var Broker = function() {
 	this.connections = {};
-	this.hasHandles = false;
+	this.hasHandlers = false; //@cyril: fix the spelling mistake
 	this.autoNack = false;
 	this.serializers = serializers;
 	this.configurations = {};
@@ -139,7 +139,7 @@ Broker.prototype.addQueue = function( name, options, connectionName ) {
 	connectionName = connectionName || "default";
   options = options || {};
 	options.name = name;
-	if ( options.subscribe && !this.hasHandles ) {
+	if ( options.subscribe && !this.hasHandlers ) {
 		console.warn( "Subscription to '" + name + "' was started without any handlers. This will result in lost messages!" );
 	}
 	return this.connections[ connectionName ].createQueue( options, connectionName );
@@ -253,7 +253,7 @@ Broker.prototype.getBindings = function(connectionName ) {
 };
 
 Broker.prototype.handle = function( messageType, handler, queueName, context, connectionName ) {
-	this.hasHandles = true;
+	this.hasHandlers = true;
 	var options;
 	if( _.isString( messageType ) ) {
 		options = {
@@ -391,12 +391,12 @@ Broker.prototype.request = function (exchangeName, options, connectionName) {
 	}
 
 	return when.promise(function (resolve, reject, notify) {
-		var timeout, subscription;
+		var timeout, subscription, timeoutError = new Error("No reply received within the configured timeout of " + replyTimeout + " ms");
 
 		if (replyTimeout > 0) { //if replyTimeout == 0, unlimited timeout. if replyTimeout < 0, no timeout because of no expected response
 			timeout = setTimeout(function () {
 				subscription.unsubscribe();
-				reject(new Error("No reply received within the configured timeout of " + replyTimeout + " ms"));
+				reject(timeoutError);
 			}, replyTimeout);
 		}
 		if (replyTimeout >= 0) {
@@ -442,7 +442,7 @@ Broker.prototype.shutdown = function() {
 };
 
 Broker.prototype.startSubscription = function (queueName, exclusive, connectionName) {
-	if (!this.hasHandles) {
+	if (!this.hasHandlers) {
 		console.warn("Subscription to '" + queueName + "' was started without any handlers. This will result in lost messages!");
 	}
 	if (_.isString(exclusive)) {
@@ -451,7 +451,7 @@ Broker.prototype.startSubscription = function (queueName, exclusive, connectionN
 	}
 	var queue = this.getQueue(queueName, connectionName);
 	if (queue) {
-		return queue.subscribe(exclusive).then(function (r) {
+		return queue.subscribe(exclusive).then(function (r) { //@cyril:src/queueFsm
 			_.isPlainObject(r) && (r.queue = queue);
 			return r;
 		});
@@ -463,7 +463,7 @@ Broker.prototype.startSubscription = function (queueName, exclusive, connectionN
 Broker.prototype.stopSubscription = function( queueName, connectionName ) {
 	var queue = this.getQueue( queueName, connectionName );
 	if( queue ) {
-		return queue.unsubscribe();
+		return queue.unsubscribe(); //@cyril:src/queueFsm
 	} else {
 		return when.reject( new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Unsubscribe failed." ) );
 	}

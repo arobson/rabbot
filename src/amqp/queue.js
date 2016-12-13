@@ -37,8 +37,8 @@ function aliasOptions( options, aliases ) {
 	return _.omit( aliased, Array.prototype.slice.call( arguments, 2 ) );
 };
 
-var subscriptionPromises = {};
-function define( channel, options, subscriber, connectionName ) {
+function define( channel, options, subscriber, topology ) {
+	var connectionName = topology.connection.name;
 	var valid = aliasOptions( options, {
 		queuelimit: "maxLength",
 		queueLimit: "maxLength",
@@ -50,7 +50,7 @@ function define( channel, options, subscriber, connectionName ) {
 		options.uniqueName, connectionName, JSON.stringify( _.omit( options, [ "name" ] ) ) );
 	return channel.assertQueue( options.uniqueName, valid )
 		.then( function( q ) {
-			let p = when();
+			let p = topology.restoreQueueBindings(options.uniqueName);
 			if ( options.limit ) {
 				p = p.then( function () {
 					return channel.prefetch( options.limit )
@@ -58,13 +58,10 @@ function define( channel, options, subscriber, connectionName ) {
 			}
 			if ( options.subscribe ) {
 				p = p.then( function () {
-					if ( subscriptionPromises[ this.channelName ] == void 0 )
-						subscriptionPromises[ this.channelName ] = this.subscribe();
-					return subscriptionPromises[ this.channelName ];
+					return this.subscribe();
 				}.bind( this ) );
 			}
 			p = p.then( function () {
-				delete subscriptionPromises[ this.channelName ];
 				return q;
 			}.bind( this ) );
 			return p;
@@ -99,7 +96,7 @@ function getCount( messages ) {
 	}
 }
 
-function getNoBatchOps( channel, raw, messages, noAck ) {
+function getNoBatchOps( channel, raw, messages, noAck ) { //@cyril: if batch, see below
 	messages.receivedCount += 1;
 
 	var ack, nack, reject;
@@ -216,7 +213,7 @@ function getUntrackedOps( channel, raw, messages ) {
 	};
 }
 
-function release( channel, options, messages, released ) {
+function release( channel, options, messages, released ) { //called by queueFsm release
 	function onUnsubscribed() {
 		return when.promise( function( resolve ) {
 			if ( messages.messages.length && !released ) {
@@ -252,7 +249,8 @@ function resolveTags( channel, queue, connection ) {
 	};
 }
 
-function subscribe( channelName, channel, topology, serializers, messages, options, exclusive ) {
+function subscribe( channelName, channel, topology, serializers, messages, options, exclusive ) { //@cyril:called by queueFsm (line 303)
+	//@cyril:console.log("process subscribing..");
 	var shouldAck = !options.noAck;
 	var shouldBatch = !options.noBatch;
   	// this is done to support rabbit-assigned queue names
@@ -261,14 +259,15 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 		messages.listenForSignal();
 	}
 
-	//options.consumerTag = info.createTag( channelName ); - let rabbitMQ server choose the consumerTag name
+	//@cyril:options.consumerTag = info.createTag( channelName ); - let rabbitMQ server choose the consumerTag name
 	var consumers =  _.keys( channel.item.consumers );
+
 	if( consumers.length > 0 ) {
-		log.info( "Duplicate subscription to queue %s ignored", channelName );
+		log.info( "Duplicate subscription to queue %s ignored - tags:%s", channelName, consumers );
 		return when( consumers[ 0 ] );
 	}
 	log.info( "Starting subscription to queue '%s' on '%s'", channelName, topology.connection.name );
-	return channel.consume( channelName, function( raw ) {
+	return channel.consume( channelName, function( raw ) { //@cyril:tag is added to channel object here node_modules/amqplib/lib/channel BaseChannel.prototype.registerConsumer
 		if( !raw ) {
 			// this happens when the consumer has been cancelled
 			log.warn( "Queue '%s' was sent a consumer cancel notification" );
@@ -346,9 +345,10 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 	}, options )
 		.then( function( result ) {
 			channel.tag = result.consumerTag;
+			//@cyril:console.log("Consumer tag gotten", channel.tag);
 			return result;
 		}, function( err ) {
-      console.log( "Error On Channel Consume", options );
+      //@cyril:console.log( "Error On Channel Consume", options );
       throw err;
     } );
 }
@@ -359,13 +359,16 @@ function unsubscribe( channel, options ) {
 		log.info( "Unsubscribing from queue '%s' with tag %s", options.name, channel.tag );
 		return when().then(function(){
 			return channel.cancel( channel.tag ); //cancel consumerTag
-		}).timeout(5000, new Error("Cancelling Consumer Tag timed out"));
+		}).timeout(5000, new Error("Cancelling Consumer Tag timed out")).then(function(res){
+			delete channel.tag; //@cyril:delete tag from channel
+			return res;
+		});
 	} else {
 		return when.resolve();
 	}
 }
 
-module.exports = function( options, topology, serializers ) {
+module.exports = function( options, topology, serializers ) { //src/topology
 	var channelName = [ "queue", options.uniqueName ].join( ":" );
 	return topology.connection.getChannel( channelName, false, "queue channel for " + options.name )
 		.then( function( channel ) {
@@ -376,7 +379,7 @@ module.exports = function( options, topology, serializers ) {
 				channel: channel,
 				channelName: channelName,
 				messages: messages,
-				define: define.bind(res, channel, options, subscriber, topology.connection.name),
+				define: define.bind(res, channel, options, subscriber, topology),
 				finalize: finalize.bind(res, channel, messages),
 				getMessageCount: getCount.bind(res, messages),
 				release: release.bind(res, channel, options, messages),

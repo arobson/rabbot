@@ -37,7 +37,8 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
     releasers: [],
 
     _define: function( queue ) {
-      var onError = function( err ) {
+		//@cyril:about to define queue
+		var onError = function( err ) {
         this.failedWith = err;
         this.transition( "failed" );
       }.bind( this );
@@ -55,7 +56,9 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
     },
 
     _listen: function( queue ) {
-      var handlers = [];
+		//@cyril:console.log("*) listen");
+
+		var handlers = [];
       var emit = this.emit.bind( this );
 
       var unsubscriber = function() {
@@ -160,7 +163,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
           this.once( "unreachable", cleanReject ),
           this.once( "noqueue", cleanResolve )
         ];
-        this.handle( "release" );
+        this.handle( "release" ); //@cyril:src/amqp/queue line 223
       }.bind( this ) );
     },
 
@@ -168,7 +171,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
       this.transition( 'initializing' );
     },
 
-    subscribe: function( exclusive ) {
+    subscribe: function( exclusive ) { //called by src/index startSubscription()
       options.subscribe = true;
       options.exclusive = exclusive;
       return when.promise( function( resolve, reject ) {
@@ -187,15 +190,22 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
           this.once( "subscribeFailed", cleanReject.bind( this ) ),
           this.once( "failed", cleanReject.bind( this ) )
         ];
-        this.handle( "subscribe" );
+        //@cyril:console.log("asked subscribe");
+        this.handle( "subscribe" ); //@cyril: rabbot/node_modules/machina/lib/machina.js
       }.bind( this ) );
     },
 
     unsubscribe: function() {
-      options.subscribe = false;
-      var unsubscriber = this.unsubscribers.shift();
-      if( unsubscriber ) {
-        return unsubscriber();
+		//@cyril:console.log("asked unsubscribe");
+		options.subscribe = false;
+		if(this.unsubscribers.length > 1 || this.releasers.length != this.unsubscribers.length)
+			return when.reject( new Error( "Two or more subscriptions exist on the queue." ) );
+      if( this.unsubscribers.length ) {
+		  //console.log("unsubscribers & releasers...", this.unsubscribers.length, this.releasers.length);
+		  var unsubscriber = this.unsubscribers.shift();
+		  return unsubscriber().then(function(res){
+			  this.transition( "ready" );
+		  }.bind( this ));
       } else {
         return when.reject( new Error( "No active subscription presently exists on the queue" ) );
       }
@@ -213,7 +223,8 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
           this.transition( "initializing" );
         },
         subscribe: function() {
-          this.deferUntilTransition( "ready" );
+			//@cyril:console.log(this.initialState + " subscribe, defer until ready");
+			this.deferUntilTransition( "ready" );
         }
       },
       failed: {
@@ -239,7 +250,8 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
           this.transition( "released" );
         },
         subscribe: function() {
-          this.emit( "subscribeFailed", this.failedWith );
+			//@cyril:console.log(this.initialState + " subscribe");
+			this.emit( "subscribeFailed", this.failedWith );
         }
       },
       initializing: {
@@ -251,6 +263,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
             }.bind( this ) );
         },
         acquired: function( queue ) {
+			//@cyril:console.log("resource  about to be defined");
           this.receivedMessages = queue.messages;
           this._define( queue );
           this._listen( queue );
@@ -265,7 +278,8 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
           this.deferUntilTransition( "ready" );
         },
         subscribe: function() {
-          this.deferUntilTransition( "ready" );
+			//@cyril:console.log(this.initialState + " subscribe, defer until ready");
+			this.deferUntilTransition( "ready" );
         }
       },
       ready: {
@@ -287,6 +301,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
           this.transition( "initializing" );
         },
         subscribe: function() {
+			//@cyril:console.log(this.initialState + " subscribe");
           if( this.subscriber ) {
             this.subscriber();
             this.transition( "subscribing" );
@@ -312,7 +327,8 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
           deferred.reject( new Error( format( "Cannot establish queue '%s' after intentionally closing its connection", this.name ) ) );
         },
         subscribe: function() {
-          this.emit( "subscribeFailed", new Error( format( "Cannot subscribe to queue '%s' after intentionally closing its connection", this.name ) ) );
+			//@cyril:console.log(this.initialState + " subscribe, failed");
+			this.emit( "subscribeFailed", new Error( format( "Cannot subscribe to queue '%s' after intentionally closing its connection", this.name ) ) );
         }
       },
       subscribing: {
@@ -328,7 +344,8 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
           this.transition( "initializing" );
         },
         subscribe: function() {
-          this.deferUntilTransition( "subscribed" );
+			//@cyril:console.log("SUBSCRIBING !!!! DEFER UNTIL SUBSCRIBED !");
+			this.deferUntilTransition( "subscribed" );
         }
       },
       subscribed: {
@@ -347,7 +364,8 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
           this.transition( "initializing" );
         },
         subscribe: function() {
-          this.emit( "subscribed" );
+			//@cyril:console.log(this.initialState + " subscribe, emit subscribed");
+			this.emit( "subscribed" );
         }
       },
       unreachable: {
@@ -355,7 +373,8 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
           deferred.reject( new Error( format( "Cannot establish queue '%s' when no nodes can be reached", this.name ) ) );
         },
         subscribe: function( sub ) {
-          this.emit( "subscribeFailed", new Error( format( "Cannot subscribe to queue '%s' when no nodes can be reached", this.name ) ) );
+			//@cyril:console.log(this.initialState + " subscribe, emit subscribeFailed");
+			this.emit( "subscribeFailed", new Error( format( "Cannot subscribe to queue '%s' when no nodes can be reached", this.name ) ) );
         }
       }
     }

@@ -144,6 +144,11 @@ var Connection = function( options, connectionFn, channelFn ) {
 			return deferred.promise;
 		},
 
+		//@cyril: to be able to call createQueue() after calling deleteQueue()
+		removeChannel : function( name ) {
+			delete channels[ name ];
+		},
+
 		close: function( reset ) {
 			log.info( "Close initiated on connection '%s'", this.name );
 			var deferred = when.defer();

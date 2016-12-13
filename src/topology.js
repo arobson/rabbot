@@ -161,6 +161,15 @@ Topology.prototype.configureExchanges = function( exchangeDef, list ) {
 	}
 };
 
+Topology.prototype.restoreQueueBindings = function ( queueName ){
+	let exchangeToQueuesBindings = _.groupBy(_.map(this.definitions.bindings), "target")[ queueName ];
+	if(exchangeToQueuesBindings != void 0)
+		return when.all(_.map(exchangeToQueuesBindings, function(options){
+			return this.createBinding(options);
+		}.bind( this )));
+	return when();
+};
+
 Topology.prototype.createBinding = function( options ) {
 	var id = [ options.source, options.target ].join( "->" );
 	var promise = this.promises[ id ];
@@ -308,7 +317,7 @@ Topology.prototype.createReplyQueue = function() {
 	return promise;
 };
 
-Topology.prototype.deleteExchange = function( name ) { //todo:delete exchange from definitions
+Topology.prototype.deleteExchange = function( name ) { //@cyril:don't delete it from definitions (restore bindings needed even after a deletion, autoDelete) !
 	var key = "exchange:" + name;
 	var channel = this.channels[ key ];
 	if ( channel ) {
@@ -322,13 +331,13 @@ Topology.prototype.deleteExchange = function( name ) { //todo:delete exchange fr
 		} );
 };
 
-Topology.prototype.deleteQueue = function( name ) { //todo:delete queue from definitions
+Topology.prototype.deleteQueue = function( name ) { //@cyril:don't delete it from definitions (restore bindings needed even after a deletion, autoDelete) !
 	var key = "queue:" + name;
 	var channel = this.channels[ key ];
 	if ( channel ) {
-		channel.release();
+		channel.release(); //@cyril:src/queueFsm line 150 -> it also unsubscribes from it
 		delete this.channels[ key ];
-		log.info( "Deleting queue '%s' on connection '%s'", name, this.connection.name );
+		log.info( "Deleting queue '%s' on connection '%s' AND unsubscribe from it", name, this.connection.name );
 	}
 	return this.connection.getChannel( "control", false, "control channel for bindings"  )
 		.then( function( channel ) {
