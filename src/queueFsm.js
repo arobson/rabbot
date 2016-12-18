@@ -198,9 +198,11 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
     unsubscribe: function() {
 		//@cyril:console.log("asked unsubscribe");
 		options.subscribe = false;
-		if(this.unsubscribers.length > 1 || this.releasers.length != this.unsubscribers.length)
+		if(this.unsubscribers.length > 1)
 			return when.reject( new Error( "Two or more subscriptions exist on the queue." ) );
-      if( this.unsubscribers.length ) {
+		if(this.releasers.length != this.unsubscribers.length)
+			return when.reject( new Error( "Amount of Releasers ("+this.releasers.length+") & Unsubscribers ("+this.unsubscribers.length+") are different" ) );
+		if( this.unsubscribers.length ) {
 		  //console.log("unsubscribers & releasers...", this.unsubscribers.length, this.releasers.length);
 		  var unsubscriber = this.unsubscribers.shift();
 		  return unsubscriber().then(function(res){
