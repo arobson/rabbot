@@ -1,6 +1,6 @@
 {
   "name": "rabbot",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/arobson/rabbot",
@@ -79,6 +79,10 @@
     {
       "name": "John Mathis",
       "url": "http://github.com/JohnDMathis"
+    },
+    {
+      "name": "Dj Walker-Morgan",
+      "url": "http://www.codepope.com"
     },
     {
       "name": "Austin Young",
