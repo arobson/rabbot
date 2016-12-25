@@ -355,7 +355,7 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 
 
 function unsubscribe( channel, options ) {
-	if ( channel.tag ) {
+	if ( channel.item.consumers[ channel.tag ] != void 0 ) {
 		log.info( "Unsubscribing from queue '%s' with tag %s", options.name, channel.tag );
 		return when().then(function(){
 			return channel.cancel( channel.tag ); //cancel consumerTag
@@ -364,6 +364,7 @@ function unsubscribe( channel, options ) {
 			return res;
 		});
 	} else {
+		delete channel.tag;
 		return when.resolve();
 	}
 }
