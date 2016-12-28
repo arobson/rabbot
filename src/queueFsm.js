@@ -72,16 +72,15 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         this.unsubscribers.push( unsubscriber );
         this.transition( "subscribed" );
       }.bind( this );
-
-      var subscriber = function( exclusive ) {
-        queue.subscribe( !!exclusive )
-          .then(
-            onSubscribe,
-            function( err ) {
-              emit( "subscribeFailed", err )
-            }
-          );
-      }.bind( this );
+	  
+	  var subscriber = function( exclusive ) {
+			return queue
+				.subscribe( !!exclusive )
+				.then(onSubscribe)
+				.catch(function(err) { 
+					emit( "subscribeFailed", err );
+				});
+      };
 
       var releaser = function( closed ) {
         // remove handlers established on queue
@@ -288,8 +287,8 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         },
         subscribe: function() {
           if( this.subscriber ) {
-            this.subscriber();
             this.transition( "subscribing" );
+			return  this.subscriber();
           }
         }
       },

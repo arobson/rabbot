@@ -3,6 +3,11 @@
 
 ## 1.0.x
 
+### 1.0.7
+ * #50 - deleting queue after starting subscription causes channel error
+ * bug fix - ensure correct SNI is used with SSL connections when using multiple endpoints
+ * improvement - switch UUID lib to `uuid` since `node-uuid` is deprecated
+
 ### 1.0.6
  * #38 - Correct race conditions in queueFsm and exchangeFsm causing errors during reconnection
  * #37 - Add ability to capture Rabbit generated queue names

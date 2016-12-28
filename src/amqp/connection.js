@@ -157,7 +157,7 @@ Adapter.prototype.connect = function() {
 				}
 			}
 			if ( _.indexOf( attempted, nextUri ) < 0 ) {
-				amqp.connect( nextUri, this.options )
+				amqp.connect( nextUri, Object.assign( { servername: url.parse(nextUri).hostname }, this.options ))
 					.then( onConnection.bind( this ), onConnectionError.bind( this ) );
 			} else {
 				log.info( "Cannot connect to `%s` - all endpoints failed", this.name );
