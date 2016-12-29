@@ -72,20 +72,19 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         this.unsubscribers.push( unsubscriber );
         this.transition( "subscribed" );
       }.bind( this );
-	  
-	  var subscriber = function( exclusive ) {
-			return queue
-				.subscribe( !!exclusive )
-				.then(onSubscribe)
-				.catch(function(err) { 
-					emit( "subscribeFailed", err );
-				});
+
+      var subscriber = function( exclusive ) {
+        return queue
+          .subscribe( !!exclusive )
+          .then( onSubscribe )
+          .catch( function( err ) {
+            emit( "subscribeFailed", err );
+          } );
       };
 
       var releaser = function( closed ) {
         // remove handlers established on queue
         unhandle( handlers );
-
         if( queue && queue.getMessageCount() > 0 ) {
           log.warn( "!!! Queue %s - %s was released with %d pending messages !!!",
             options.name, connection.name, queue.getMessageCount() );
@@ -288,7 +287,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         subscribe: function() {
           if( this.subscriber ) {
             this.transition( "subscribing" );
-			return  this.subscriber();
+      return  this.subscriber();
           }
         }
       },

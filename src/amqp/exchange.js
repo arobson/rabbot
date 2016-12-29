@@ -49,7 +49,7 @@ function getContentType( message ) {
 		return message.contentType;
 	} else if( _.isString( message.body ) ) {
 		return "text/plain";
-	} else if( _.isObject( message.body ) && !message.body.length ) {
+	} else if( _.isObject( message.body ) && !Buffer.isBuffer( message.body ) ) {
 		return "application/json";
 	} else {
 		return "application/octet-stream";

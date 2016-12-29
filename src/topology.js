@@ -221,6 +221,7 @@ Topology.prototype.createPrimitive = function( Primitive, primitiveType, options
 			primitive.once( "failed", function( err ) {
 				delete definitions[ options.name ];
 				delete this.channels[ channelName ];
+        delete this.promises[ channelName ];
 				reject( errorFn( err ) );
 			}.bind( this ) );
 		}.bind( this ) );

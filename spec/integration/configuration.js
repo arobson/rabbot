@@ -13,44 +13,44 @@ module.exports = {
 		{
 			name: "rabbot-ex.direct",
 			type: "direct",
-			autoDelete: true
+			// autoDelete: true
 		},
 		{
 			name: "rabbot-ex.topic",
 			type: "topic",
 			alternate: "rabbot-ex.alternate",
-			autoDelete: true
+			// autoDelete: true
 		},
 		{
 			name: "rabbot-ex.fanout",
 			type: "fanout",
-			autoDelete: true
+			// autoDelete: true
 		},
 		{
 			name: "rabbot-ex.request",
 			type: "fanout",
-			autoDelete: true
+			// autoDelete: true
 		},
 		{
 			name: "rabbot-ex.deadend",
 			type: "fanout",
 			alternate: "rabbot-ex.alternate",
-			autoDelete: true
+			// autoDelete: true
 		},
 		{
 			name: "rabbot-ex.alternate",
 			type: "fanout",
-			autoDelete: true
+			// autoDelete: true
 		},
 		{
 			name: "rabbot-ex.deadletter",
 			type: "fanout",
-			autoDelete: true
+			// autoDelete: true
 		},
 		{
 			name: "rabbot-ex.consistent-hash",
 			type: "x-consistent-hash",
-			autoDelete: true,
+			// autoDelete: true,
 			arguments: {
 				"hash-header": "CorrelationId"
 			}
@@ -58,83 +58,83 @@ module.exports = {
 		{
 			name: "rabbot-ex.no-batch",
 			type: "direct",
-			autoDelete: true
+			// autoDelete: true
 		},
 		{
 			name: "rabbot-ex.no-ack",
 			type: "direct",
-			autoDelete: true
+			// autoDelete: true
 		}
 	],
 
 	queues: [
 		{
 			name: "rabbot-q.direct",
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true
 		},
 		{
 			name: "rabbot-q.topic",
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true,
 			deadletter: "rabbot-ex.deadletter"
 		},
 		{
 			name: "rabbot-q.general1",
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true
 		},
 		{
 			name: "rabbot-q.general2",
 			noAck: true,
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true
 		},
 		{
 			name: "rabbot-q.request",
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true
 		},
 		{
 			name: "rabbot-q.alternate",
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true
 		},
 		{
 			name: "rabbot-q.deadletter",
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true
 		},
 		{
 			name: "rabbot-q.hashed1",
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true
 		},
 		{
 			name: "rabbot-q.hashed2",
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true
 		},
 		{
 			name: "rabbot-q.hashed3",
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true
 		},
 		{
 			name: "rabbot-q.hashed4",
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true
 		},
 		{
 			name: "rabbot-q.no-batch",
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true,
 			noBatch: true,
 			limit: 5
 		},
 		{
 			name: "rabbot-q.no-ack",
-			autoDelete: true,
+			// autoDelete: true,
 			subscribe: true,
 			noAck: true,
 			limit: 5

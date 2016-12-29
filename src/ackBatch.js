@@ -115,16 +115,18 @@ AckBatch.prototype._processBatch = function() {
 AckBatch.prototype._resolveAll = function( status, first, last ) {
 	var count = this.messages.length;
 	var emitEmpty = function() {
-		process.nextTick( function() {
+		// process.nextTick( function() {
+    setTimeout( function() {
 			this.emit( "empty" );
-		}.bind( this ) );
+		}.bind( this ), 10 );
 	}.bind( this );
 	if ( this.messages.length !== 0 ) {
 		var lastTag = this._lastByStatus( status ).tag;
-		log.debug( "%s ALL (%d) tags on %s - %s.",
+		log.debug( "%s ALL (%d) tags on %s up to %d - %s.",
 			status,
 			this.messages.length,
 			this.name,
+      lastTag,
 			this.connectionName );
 		this.resolver( status, { tag: lastTag, inclusive: true } )
 			.then( function() {

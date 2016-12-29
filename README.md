@@ -64,7 +64,7 @@ Options is a hash that can contain the following:
  * `protocol` - the connection protocol to use. Defaults to "amqp://".
  * `user` - the username used for authentication / authorization with this connection. Defaults to "guest".
  * `pass` - the password for the specified user. Defaults to "guest".
- * `timeout` - how long to wait for a connection to be established. No default value.
+ * `timeout` - how long to wait for a connection to be established. 2 second default.
  * `heartbeat` - how often the client and server check to see if they can still reach each other, specified in seconds. Defaults to `30` (seconds).
  * `replyQueue` - the name of the reply queue to use. Defaults to a queue name unique to the process.
  * `publishTimeout` - the default timeout in milliseconds for a publish call.
@@ -159,7 +159,7 @@ You can register your own serializers using `addSerializer` but make sure to do 
 Things to remember when publishing a message:
  * A type sepcifier is required so that the recipient knows what kind of message its getting and which handler should process it
  * If `contentType` is provided, then that will be used for the message's contentType
- * If `body` is an object, it will be serialized as JSON and `contentType` will be "application/json"
+ * If `body` is an object or an array, it will be serialized as JSON and `contentType` will be "application/json"
  * If `body` is a string, it will be sent as a utf8 encoded string and `contentType` will be "text/plain"
  * If `body` is a Buffer, it will be sent as a byte array and `contentType` will be "application/octet-stream"
  * By default, the type specifier will be used if no routing key is undefined

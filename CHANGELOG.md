@@ -3,6 +3,12 @@
 
 ## 1.0.x
 
+### 1.0.8
+ * #52 - serialize arrays as JSON by default
+ * Change connection timeout to default to 2 seconds
+ * #49 - bug fix for exchange recreation when reconnecting
+ * #33, #54 - bug fixes around graceful shutdown
+
 ### 1.0.7
  * #50 - deleting queue after starting subscription causes channel error
  * bug fix - ensure correct SNI is used with SSL connections when using multiple endpoints

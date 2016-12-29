@@ -784,7 +784,7 @@ describe( "Integration Test Suite", function() {
         } );
         _.sortBy( results, "body" ).should.eql(
           [
-            { body: "buffer", queue: queueName },
+            { body: "98,117,102,102,101,114", queue: queueName },
             { body: "one", queue: queueName },
             { body: "two", queue: queueName }
           ] );
