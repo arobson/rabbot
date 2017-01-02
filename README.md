@@ -468,7 +468,7 @@ The deserialize function takes both the raw bytes and the encoding sent. While "
 var yaml = require( "js-yaml" );
 
 rabbit.addSerializer( "application/yaml", {
-	deserializer: function( bytes, encoding ) {
+	deserialize: function( bytes, encoding ) {
 		return yaml.safeLoad( bytes.toString( encoding || "utf8" ) );
 	},
 	serialize: function( object ) {
