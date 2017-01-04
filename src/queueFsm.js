@@ -200,13 +200,16 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
 		options.subscribe = false;
 		if(this.unsubscribers.length > 1)
 			return when.reject( new Error( "Two or more subscriptions exist on the queue." ) );
-		if(this.releasers.length != this.unsubscribers.length)
-			return when.reject( new Error( "Amount of Releasers ("+this.releasers.length+") & Unsubscribers ("+this.unsubscribers.length+") are different" ) );
+		//if(this.releasers.length != this.unsubscribers.length)
+		//	return when.reject( new Error( "Amount of Releasers ("+this.releasers.length+") & Unsubscribers ("+this.unsubscribers.length+") are different" ) );
 		if( this.unsubscribers.length ) {
 		  //console.log("unsubscribers & releasers...", this.unsubscribers.length, this.releasers.length);
-		  var unsubscriber = this.unsubscribers.shift();
+		  var unsubscriber = this.unsubscribers.shift(); //@cyril: src/amqp/queue.js
 		  return unsubscriber().then(function(res){
 			  this.transition( "ready" );
+		  }.bind( this )).catch(function(err){ //@cyril: re-insert the un-subscriber as it failed
+		  	this.unsubscribers.push( unsubscriber );
+		  	throw err;
 		  }.bind( this ));
       } else {
         return when.reject( new Error( "No active subscription presently exists on the queue" ) );
