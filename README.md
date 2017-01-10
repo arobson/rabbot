@@ -507,6 +507,7 @@ Options is a hash that can contain the following:
  * limit 			2^16			max number of unacked messages allowed for consumer
  * noAck			true|false 		the server will remove messages from the queue as soon as they are delivered
  * noBatch			true|false 		causes ack, nack & reject to take place immediately
+ * noCacheKeys		true|false 		disable cache of matched routing keys to prevent unbounded memory growth
  * queueLimit		2^32			max number of ready messages a queue can hold
  * messageTtl		2^32			time in ms before a message expires on the queue
  * expires			2^32			time in ms before a queue with 0 consumers expires

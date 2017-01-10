@@ -11,9 +11,6 @@ var topLog = require( "../log" )( "rabbot.topology" );
 var unhandledLog = require( "../log" )( "rabbot.unhandled" );
 var noOp = function() {};
 
-// Disable routing key caching to prevent memory leak
-postal.configuration.resolverNoCache = true
-
 /* log
 	* `rabbot.amqp-queue`
 	  * `debug`
@@ -241,6 +238,7 @@ function resolveTags( channel, queue, connection ) {
 function subscribe( channelName, channel, topology, serializers, messages, options, exclusive ) {
 	var shouldAck = !options.noAck;
 	var shouldBatch = !options.noBatch;
+	var shouldCacheKeys = !options.noCacheKeys
   // this is done to support rabbit-assigned queue names
   channelName = channelName || options.name
 	if ( shouldAck && shouldBatch ) {
@@ -324,6 +322,9 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 		} else {
 			dispatch.publish( {
 				topic: topic,
+				headers: {
+					resolverNoCache: !shouldCacheKeys
+				},
 				data: raw
 			}, onPublish );
 		}
