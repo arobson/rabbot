@@ -105,21 +105,21 @@ var Adapter = function( parameters ) {
 		this.options.timeout = timeout;
 	}
 	if ( certPath ) {
-		this.options.cert = fs.readFileSync( certPath );
+		this.options.cert = fs.existsSync(certPath)? fs.readFileSync( certPath ) : certPath;
 	}
 	if ( keyPath ) {
-		this.options.key = fs.readFileSync( keyPath );
+		this.options.key = fs.existsSync(keyPath)? fs.readFileSync( keyPath ) : keyPath;
 	}
 	if ( passphrase ) {
 		this.options.passphrase = passphrase;
 	}
 	if ( pfxPath ) {
-		this.options.pfx = fs.readFileSync( pfxPath );
+		this.options.pfx = fs.existsSync(pfxPath)? fs.readFileSync( pfxPath ) : pfxPath;
 	}
 	if ( caPaths ) {
 		var list = caPaths.split( ',' );
 		this.options.ca = _.map( list, function( caPath ) {
-			return fs.readFileSync( caPath );
+			return fs.existsSync(caPath)? fs.readFileSync( caPath ) : caPath;
 		} );
 	}
 	if ( useSSL ) {
