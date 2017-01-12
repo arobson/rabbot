@@ -1,13 +1,13 @@
 {
   "name": "rabbot",
-  "version": "1.0.6",
+  "version": "1.0.8",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/arobson/rabbot",
   "scripts": {
     "lint": "jshint ./",
     "test": "gulp test",
-    "build-image": "docker -t rabbot .",
+    "build-image": "docker build -t rabbot .",
     "start-image": "docker run -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot"
   },
   "publishConfig": {
@@ -81,6 +81,10 @@
       "url": "http://github.com/JohnDMathis"
     },
     {
+      "name": "Dj Walker-Morgan",
+      "url": "http://www.codepope.com"
+    },
+    {
       "name": "Austin Young",
       "url": "http://github.com/LeankitAustin"
     }
@@ -95,7 +99,7 @@
     "sinon-as-promised": "^4.0.0"
   },
   "dependencies": {
-    "amqplib": "~0.4.2",
+    "amqplib": "~0.5.1",
     "debug": "^2.2.0",
     "lodash": "^4.15.0",
     "machina": "^2.0.0",
