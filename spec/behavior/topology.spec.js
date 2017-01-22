@@ -604,7 +604,8 @@ describe( "Topology", function() {
 				.once()
 				.resolves( control );
 			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
-			topology.createBinding( { source: "from", target: "to", keys: undefined, queue: true } );
+			topology.createBinding( { source: "from", target: "to", keys: undefined, queue: true } )
+				.catch( _.noop );
 		} );
 
 		it( "should add binding to definitions", function() {
