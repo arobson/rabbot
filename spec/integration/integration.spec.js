@@ -1,5 +1,6 @@
 require( "../setup.js" );
 var _ = require( "lodash" );
+var request = require("request");
 
 var harnessFactory = function( rabbit, cb, expected ) {
 	var handlers = [];
@@ -788,6 +789,49 @@ describe( "Integration Test Suite", function() {
             { body: "one", queue: queueName },
             { body: "two", queue: queueName }
           ] );
+      } );
+
+      after( function() {
+        harness.clean();
+      } );
+    } );
+
+    describe( "with no-name exchange", function() {
+      var queueName,queueStats, harness;
+      this.timeout(6000);
+      before( function( done ) {
+        harness = harnessFn( done, 3 );
+        harness.handle( "persist.1", undefined, queueName );
+        rabbit.addQueue( "persist.test", { autoDelete: true, subscribe: false } )
+          .then( function( queue ) {
+            queueName = queue.name;
+            Promise.all(
+              [
+                rabbit.publish( "", { type: "persist.1", persistent:true, routingKey: queueName, body: "one" } ),
+                rabbit.publish( "", { type: "persist.1", routingKey: queueName, body: Buffer.from( "two" ) } ),
+                rabbit.publish( "", { type: "persist.1", routingKey: queueName, body: [ 0x62, 0x75, 0x66, 0x66, 0x65, 0x72 ] } )
+              ]
+            ).then( function() {
+              ///crummy solution, but making the API request for stats immediately after publishing misses the messages
+              global.setTimeout(function () {
+                request.get({
+                  url: "http://guest:guest@localhost:15672/api/queues/%2f/persist.test",
+                  json:true
+                }, function (err, resp, body) {
+                  if (!err && resp.statusCode===200) {
+                    queueStats = body;
+                  }
+                  //have to consume the messages for queue to get auto-deleted
+                  rabbit.startSubscription("persist.test",false);
+                });
+              },2000);
+              }
+            );
+          } );
+      } );
+      it( "should have 1 persistent and 3 total messages", function() {
+        queueStats.messages.should.be.equal(3);
+        queueStats.messages_persistent.should.be.equal(1);
       } );
 
       after( function() {
