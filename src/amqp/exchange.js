@@ -90,7 +90,7 @@ function publish( channel, options, topology, log, serializers, message ) {
 	if ( !message.sequenceNo ) {
 		log.add( message );
 	}
-	if ( options.persistent ) {
+	if ( options.persistent || message.persistent ) {
 		publishOptions.persistent = true;
 	}
 
