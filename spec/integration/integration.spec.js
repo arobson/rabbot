@@ -149,7 +149,7 @@ describe( "Integration Test Suite", function() {
 						server: "shfifty-five.gov",
 						publishTimeout: 50,
 						timeout: 500
-					} );
+					} ).catch( _.noop );
 
 					rabbit.addExchange( { name: "silly-ex" }, "silly" ).then( null, _.noop );
 				} );
