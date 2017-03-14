@@ -3,6 +3,15 @@
 
 ## 1.0.x
 
+### 1.1.0
+ * feature (#72) - support sending persistent messages to default exchanges (thanks @bmatson!)
+ * feature (#66) - support passing SSL certs as string (thanks @mrfelton!)
+ making progress callback an optional argument
+ * #71 - leave error handler attached to connection object to try and prevent errors from being thrown from the AMQP library
+ * #69 - fixes an issue where the `*.connection.configured` event was not correctly being raised
+ * #64 - added mention of `deadLetterRoutingKey` option to queue declaration
+ * #57 - fixes (with breaking change) by removing dependency on deprecated when feature and
+
 ### 1.0.8
  * #52 - serialize arrays as JSON by default
  * Change connection timeout to default to 2 seconds

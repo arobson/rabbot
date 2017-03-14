@@ -1,6 +1,6 @@
 {
   "name": "rabbot",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "repository": "https://github.com/arobson/rabbot",
@@ -59,6 +59,14 @@
     {
       "name": "Matthew Martin",
       "url": "http://matmar10.com"
+    },
+    {
+      "name": "Tom Kirkpatrick",
+      "url": "https://github.com/mrfelton"
+    },
+    {
+      "name": "Bill Matson",
+      "url": "https://github.com/bmatson"
     },
     {
       "name": "Scott Walters",
