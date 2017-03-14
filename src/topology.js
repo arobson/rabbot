@@ -313,6 +313,7 @@ Topology.prototype.onReconnect = function() {
 				.then( function() {
 					log.info( "Topology rebuilt for connection '%s'", this.connection.name );
 					this.emit( "bindings-completed", this.definitions );
+          this.emit( this.connection.name + ".connection.configured", this.connection );
 				}.bind( this ) );
 		}.bind( this ) );
 };
