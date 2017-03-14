@@ -88,7 +88,7 @@ module.exports = function( name, type, factory, target, close ) {
 				this._clearEventHandlers();
 				this.handle( "released", info );
 			}.bind( this ) );
-			this.item.once( "error", function( err ) {
+			this.item.on( "error", function( err ) {
 				log.error( "Error emitted by %s '%s' - '%s'", type, name, err.stack );
 				this._clearEventHandlers();
 				this.emit( "failed", err );
