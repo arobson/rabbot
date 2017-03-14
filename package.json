@@ -95,6 +95,7 @@
     "chai": "^3.4.1",
     "chai-as-promised": "^5.1.0",
     "gulp": "^3.9.0",
+    "request": "^2.79.0",
     "sinon": "^1.17.2",
     "sinon-as-promised": "^4.0.0"
   },

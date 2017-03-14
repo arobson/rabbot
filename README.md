@@ -164,6 +164,7 @@ Things to remember when publishing a message:
  * If `body` is a Buffer, it will be sent as a byte array and `contentType` will be "application/octet-stream"
  * By default, the type specifier will be used if no routing key is undefined
  * Use a routing key of `""` to prevent the type specifier from being used as the routing key
+ * Non-persistent messages in a queue will be lost on server restart, default is non-persistent.  Persistence can be set on either an exchange when it is created via addExchange, or when sending a message (needed when using "default" exchanges since non-persistent publish is the default)
 
 This example shows all of the available properties (including those which get set by default):
 
@@ -179,6 +180,7 @@ rabbit.publish( "exchange.name",
 		expiresAfter: 1000 // TTL in ms, in this example 1 second
 		timestamp: // posix timestamp (long)
 		mandatory: true, //Must be set to true for onReturned to receive unqueued message
+		persistent: true, //If either message or exchange defines persistent=true queued messages will be saved to disk.
 		headers: {
 			random: "application specific value"
 		},
