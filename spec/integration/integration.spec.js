@@ -417,11 +417,14 @@ describe( "Integration Test Suite", function() {
 					part.ack();
 					harness.add( part );
 				}
-				rabbit.request( "rabbot-ex.request", { type: "crazy", body: "do you like my yak-hair-shirt?" } )
-					.progress( onPart )
-					.then( function( response ) {
-						onPart( response );
-					} );
+				rabbit.request(
+          "rabbot-ex.request",
+          { type: "crazy", body: "do you like my yak-hair-shirt?" },
+          onPart
+        )
+				.then( function( response ) {
+					onPart( response );
+				} );
 			} );
 
 			it( "should handle all requests", function() {

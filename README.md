@@ -196,14 +196,13 @@ This works just like a publish except that the promise returned provides the res
 > Note: the default replyTimeout will be double the publish timeout or 1 second if no publish timeout was ever specified.
 
 ```javascript
-// when multiple responses are provided, all but the last will be provided via the .progress callback.
+// when multiple responses are provided, all but the last will be passed to an optional progress callback.
 // the last/only reply will always be provided to the .then callback
 rabbit.request( "request.exchange", {
 		// see publish example to see options for the outgoing message
-	} )
-	.progress( function( reply ) {
-		// if multiple replies are provided, all but the last will be sent via the progress callback
-	} )
+	}, function ( reply ) {
+    // if multiple replies are provided, all but the last will be sent to this callback
+  } )
 	.then( function( final ) {
 		// the last message in a series OR the only reply will be sent to this callback
 	} );
