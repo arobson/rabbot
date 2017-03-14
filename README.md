@@ -513,6 +513,7 @@ Options is a hash that can contain the following:
  * messageTtl		2^32			time in ms before a message expires on the queue
  * expires			2^32			time in ms before a queue with 0 consumers expires
  * deadLetter 		"dlx.exchange"	the exchange to dead-letter messages to
+ * deadLetterRoutingKey   ""    the routing key to add to a dead-lettered message
  * maxPriority		2^8				the highest priority this queue supports
  * unique			'hash'|'id'|'consistent' creates a unique queue name by including the client id or hash in the name
 
