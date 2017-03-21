@@ -1,0 +1,12 @@
+language: node_js
+node_js: 6
+sudo: required
+
+script: npm test
+
+services:
+  - rabbitmq
+
+install:
+  - sudo rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
+  - npm install
