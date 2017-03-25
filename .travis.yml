@@ -11,6 +11,9 @@ node_js:
 sudo: required
 services:
   - docker
+  
+before_install:
+- npm install jshint -g
 
 # start RabbitMQ
 before_script:
