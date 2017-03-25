@@ -112,8 +112,7 @@ describe( "Integration Test Suite", function() {
 			} );
 
 			after( function() {
-				return
-					rabbit.deleteExchange( "simple.ex" )
+				return rabbit.deleteExchange( "simple.ex", "temp" )
 						.then( function() {
 							rabbit.reset();
 							return rabbit.shutdown();

@@ -26,16 +26,20 @@ rabbit.on( "unreachable", function() {
 	process.exit();
 } );
 
+function publishMessage( index ) {
+    rabbit.publish( "wascally-pubsub-messages-x", {
+        type: "publisher.message",
+        body: { 
+            message: "Message " + index 
+        }
+    }).then(function() {
+        console.log( "published message", index );	
+    });
+}
+
 function publish( total ) {
 	for( var i = 0; i < total; i ++ ) {
-		( function( x ) {
-			rabbit.publish( "wascally-pubsub-messages-x", {
-				type: "publisher.message",
-				body: { message: "Message " + i }
-			} ).then( function() {
-				console.log( "published message", x );	
-			} );
-		} )( i );
+		publishMessage(i);
 	}
 	rabbit.shutdown();
 }

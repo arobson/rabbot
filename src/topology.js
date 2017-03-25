@@ -231,7 +231,7 @@ Topology.prototype.createPrimitive = function( Primitive, primitiveType, options
 
 Topology.prototype.createDefaultExchange = function() {
   return this.createExchange( { name: "", passive: true } );
-}
+};
 
 Topology.prototype.createExchange = function( options ) {
 	return this.createPrimitive( Exchange, "exchange", options );
@@ -335,7 +335,7 @@ Topology.prototype.renameQueue = function( newQueueName ) {
   this.channels[ [ "queue", newQueueName ].join( ":" ) ] = channel;
   delete this.definitions.queues[ "" ];
   delete this.channels[ "queue:" ];
-}
+};
 
 Monologue.mixInto( Topology );
 

@@ -1,3 +1,4 @@
+/* jshint expr:true */
 require( "../setup.js" );
 var when = require( "when" );
 var Monad = require( "../../src/amqp/iomonad.js" );

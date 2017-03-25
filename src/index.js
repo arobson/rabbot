@@ -68,7 +68,7 @@ var Broker = function() {
 };
 
 Broker.prototype.addConnection = function( options ) {
-	var self = this
+	var self = this;
 
 	var connectionPromise;
 	var name = options ? ( options.name || "default" ) : "default";
@@ -86,23 +86,23 @@ Broker.prototype.addConnection = function( options ) {
 				self.emit( "connected", connection );
 				self.emit( connection.name + ".connection.opened", connection );
 				self.setAckInterval( 500 );
-				return resolve( topology )
+				return resolve( topology );
 			} );
 			connection.on( "closed", function() {
 				self.emit( "closed", connection );
 				self.emit( connection.name + ".connection.closed", connection );
-				return reject( new Error( "connection closed" ) )
+				return reject( new Error( "connection closed" ) );
 			} );
 			connection.on( "failed", function( err ) {
 				self.emit( "failed", connection );
 				self.emit( name + ".connection.failed", err );
-				return reject( err )
+				return reject( err );
 			} );
 			connection.on( "unreachable", function() {
 				self.emit( "unreachable", connection );
 				self.emit( name + ".connection.unreachable" );
 				self.clearAckInterval();
-				return reject( new Error( "connection unreachable" ) )
+				return reject( new Error( "connection unreachable" ) );
 			} );
 			connection.on( "return", function(raw) {
 				self.emit( "return", raw );
@@ -221,7 +221,7 @@ Broker.prototype.handle = function( messageType, handler, queueName, context ) {
 			context: context,
 			autoNack: this.autoNack,
 			handler: handler
-		}
+		};
 	} else {
 		options = messageType;
 		options.autoNack = options.autoNack === false ? false : true;
@@ -397,7 +397,7 @@ Broker.prototype.stopSubscription = function( queueName, connectionName ) {
 	} else {
 		throw new Error( "No queue named '" + queueName + "' for connection '" + connectionName + "'. Unsubscribe failed." );
 	}
-}
+};
 
 require( "./config.js" )( Broker );
 

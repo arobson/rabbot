@@ -97,7 +97,7 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
       }.bind( this );
 
       var publisher = function( message ) {
-        return exchange.publish( message )
+        return exchange.publish( message );
       }.bind( this );
 
       this.publisher = publisher;
