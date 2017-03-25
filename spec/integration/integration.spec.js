@@ -826,7 +826,7 @@ describe( "Integration Test Suite", function() {
                   //have to consume the messages for queue to get auto-deleted
                   rabbit.startSubscription("persist.test",false);
                 });
-              },2000);
+              },5000);
               }
             );
           } );
