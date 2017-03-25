@@ -6,3 +6,17 @@ node_js:
   - "6"
   - "5"
   - "4"
+
+# add Docker
+sudo: required
+services:
+  - docker
+
+# start RabbitMQ
+before_script:
+- npm run build_image
+- npm run start-image
+
+script:
+- npm lint
+- npm test
