@@ -18,5 +18,5 @@ before_script:
 - npm run start-image
 
 script:
-- npm lint
+- npm run lint
 - npm test
