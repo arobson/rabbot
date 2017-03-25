@@ -8,7 +8,7 @@ gulp.task( "coverage-watch", function() {
 } );
 
 gulp.task( "default", [ "coverage", "coverage-watch" ] );
-gulp.task( "test", [ "coverage" ] );
+gulp.task( "test", bg.testAllOnce() );
 gulp.task( "show-coverage", function() {
     return bg.showCoverage();
 } );
