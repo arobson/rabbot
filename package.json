@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "repository": "https://github.com/arobson/rabbot",
   "scripts": {
-    "lint": "jshint ./",
+    "lint": "jshint src spec demo",
     "test": "gulp test",
     "build-image": "docker build -t rabbot .",
     "start-image": "docker run -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot"
@@ -95,6 +95,10 @@
     {
       "name": "Austin Young",
       "url": "http://github.com/LeankitAustin"
+    },
+    {
+      "name": "Roland Németh",
+      "url": "https://github.com/6uliver"
     }
   ],
   "license": "MIT",

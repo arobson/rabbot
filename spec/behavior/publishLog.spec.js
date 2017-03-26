@@ -1,3 +1,4 @@
+/* jshint expr:true */
 require( "../setup.js" );
 var publishLog = require( "../../src/publishLog" );
 var _ = require( "lodash" );

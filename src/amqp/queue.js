@@ -238,9 +238,9 @@ function resolveTags( channel, queue, connection ) {
 function subscribe( channelName, channel, topology, serializers, messages, options, exclusive ) {
 	var shouldAck = !options.noAck;
 	var shouldBatch = !options.noBatch;
-	var shouldCacheKeys = !options.noCacheKeys
+	var shouldCacheKeys = !options.noCacheKeys;
   // this is done to support rabbit-assigned queue names
-  channelName = channelName || options.name
+  channelName = channelName || options.name;
 	if ( shouldAck && shouldBatch ) {
 		messages.listenForSignal();
 	}

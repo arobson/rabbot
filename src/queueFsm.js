@@ -278,7 +278,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         },
         release: function() {
           this.transition( "releasing" );
-          this.handle( "release" )
+          this.handle( "release" );
         },
         released: function() {
           this._release( true );
@@ -319,7 +319,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         },
         release: function() {
           this.transition( "releasing" );
-          this.handle( "release" )
+          this.handle( "release" );
         },
         released: function() {
           this._release( true );
@@ -338,7 +338,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         },
         release: function() {
           this.transition( "releasing" );
-          this.handle( "release" )
+          this.handle( "release" );
         },
         released: function() {
           this._release( true );

@@ -1,3 +1,4 @@
+/* jshint expr:true */
 require( "../setup.js" );
 var _ = require( "lodash" );
 var when = require( "when" );

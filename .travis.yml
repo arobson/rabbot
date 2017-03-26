@@ -1,0 +1,24 @@
+language: node_js
+node_js:
+  - "node"
+  - "7"
+  - "6"
+  - "5"
+  - "4"
+
+# add Docker
+sudo: required
+services:
+  - docker
+  
+before_install:
+- npm install jshint -g
+
+# start RabbitMQ
+before_script:
+- npm run build-image
+- npm run start-image
+
+script:
+- npm run lint
+- npm test
