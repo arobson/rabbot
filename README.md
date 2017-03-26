@@ -1,6 +1,6 @@
 # rabbot
 
-[![Build Status](https://travis-ci.org/6uliver/rabbot.svg?branch=master)](https://travis-ci.org/6uliver/rabbot)
+[![Build Status](https://travis-ci.org/arobson/rabbot.svg?branch=master)](https://travis-ci.org/arobson/rabbot)
 [![Version npm](https://img.shields.io/npm/v/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
 [![npm Downloads](https://img.shields.io/npm/dm/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
 [![Dependencies](https://img.shields.io/david/arobson/rabbot.svg?style=flat)](https://david-dm.org/arobson/rabbot)
