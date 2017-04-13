@@ -121,10 +121,8 @@ Broker.prototype.addConnection = function( options ) {
 };
 
 Broker.prototype.addExchange = function( name, type, options, connectionName ) {
+	options = options || {};
 	connectionName = connectionName || "default";
-  if( !type && !options ) {
-    options = {};
-  }
 	if ( _.isObject( name ) ) {
 		options = name;
 		connectionName = type;
