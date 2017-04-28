@@ -78,8 +78,10 @@ function trim( x ) {
 var Adapter = function( parameters ) {
 
 	this.connectionIndex = 0;
-  this.uris = split( getOption( parameters, "uri" ) );
-  if ( this.uris.length === 1) {
+  this.uris = [];
+  var uri = getOption( parameters, "uri", "" )
+  if ( uri ) {
+    this.uris = split( uri );
     var uriOpts = parseUri( this.getNextUri() );
     _.merge( parameters, uriOpts );
   }
@@ -135,7 +137,7 @@ var Adapter = function( parameters ) {
 		process: info.process(),
 		lib: info.lib()
 	};
-	this.limit = _.max( [ this.servers.length, this.ports.length ] );
+	this.limit = _.max( [ this.uris.length, this.servers.length, this.ports.length ] );
 };
 
 Adapter.prototype.connect = function() {
@@ -182,7 +184,7 @@ Adapter.prototype.bumpIndex = function() {
 };
 
 Adapter.prototype.getNextUri = function() {
-  if ( this.uris ) {
+  if ( this.uris.lenght >= 1 ) {
     return this.getNext( this.uris );
   }
 	var server = this.getNext( this.servers );
