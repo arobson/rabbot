@@ -41,7 +41,7 @@ function getUri( protocol, user, pass, server, port, vhost, heartbeat ) {
 }
 
 function parseUri( uri ) {
-	if( uri ) {
+	if ( uri ) {
 		var parsed = url.parse( uri );
 		var authSplit = parsed.auth ? parsed.auth.split( ":" ) : [ null, null ];
 		var heartbeat = parsed.query ? parsed.query.split( "&" )[ 0 ].split( "=" )[ 1 ] : null;
@@ -76,8 +76,16 @@ function trim( x ) {
 }
 
 var Adapter = function( parameters ) {
-	var uriOpts = parseUri( parameters.uri );
-	_.merge( parameters, uriOpts );
+
+	this.connectionIndex = 0;
+  this.uris = [];
+  var uri = getOption( parameters, "uri", "" )
+  if ( uri ) {
+    this.uris = split( uri );
+    var uriOpts = parseUri( this.getNextUri() );
+    _.merge( parameters, uriOpts );
+  }
+
 	var hosts = getOption( parameters, "host" );
 	var servers = getOption( parameters, "server" );
 	var brokers = getOption( parameters, "RABBIT_BROKER" );
@@ -85,7 +93,6 @@ var Adapter = function( parameters ) {
 	var portList = getOption( parameters, "RABBIT_PORT" ) || getOption( parameters, "port", 5672 );
 
 	this.name = parameters ? ( parameters.name || "default" ) : "default";
-	this.connectionIndex = 0;
 	this.servers = split( serverList );
 	this.ports = split( portList );
 	this.heartbeat = getOption( parameters, "RABBIT_HEARTBEAT" ) || getOption( parameters, "heartbeat", 30 );
@@ -130,7 +137,7 @@ var Adapter = function( parameters ) {
 		process: info.process(),
 		lib: info.lib()
 	};
-	this.limit = _.max( [ this.servers.length, this.ports.length ] );
+	this.limit = _.max( [ this.uris.length, this.servers.length, this.ports.length ] );
 };
 
 Adapter.prototype.connect = function() {
@@ -177,6 +184,9 @@ Adapter.prototype.bumpIndex = function() {
 };
 
 Adapter.prototype.getNextUri = function() {
+  if ( this.uris.lenght >= 1 ) {
+    return this.getNext( this.uris );
+  }
 	var server = this.getNext( this.servers );
 	var port = this.getNext( this.ports );
 	var uri = getUri( this.protocol, this.user, escape( this.pass ), server, port, this.vhost, this.heartbeat );
@@ -186,9 +196,8 @@ Adapter.prototype.getNextUri = function() {
 Adapter.prototype.getNext = function( list ) {
 	if ( this.connectionIndex >= list.length ) {
 		return list[ 0 ];
-	} else {
-		return list[ this.connectionIndex ];
 	}
+	return list[ this.connectionIndex ];
 };
 
 module.exports = function( options ) {
