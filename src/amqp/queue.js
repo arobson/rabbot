@@ -103,7 +103,7 @@ function getNoBatchOps( channel, raw, messages, noAck ) {
 		};
 		nack = function() {
 			log.debug( "Nacking tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName );
-			channel.nack( { fields: { deliveryTag: raw.fields.deliveryTag } }, true );
+			channel.nack( { fields: { deliveryTag: raw.fields.deliveryTag } }, false );
 		};
 		reject = function() {
 			log.debug( "Rejecting tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName );
