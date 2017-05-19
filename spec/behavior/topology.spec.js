@@ -160,7 +160,6 @@ describe( "Topology", function() {
 					replyQueue = queue;
 				} );
 				topology.once( "bindings.completed", function( bindings ) {
-          console.log( "okokokok" );
 					done();
 				} );
 				conn.instance.raise( "reconnected" );
