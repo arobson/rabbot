@@ -260,9 +260,9 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 		var correlationId = raw.properties.correlationId;
 		var ops = getResolutionOperations( channel, raw, messages, options );
 
-		raw.ack = ops.ack;
-		raw.nack = ops.nack;
-		raw.reject = ops.reject;
+		raw.ack = ops.ack.bind( ops );
+    raw.reject = ops.reject.bind( ops );
+    raw.nack = ops.nack.bind( ops );
 		raw.reply = getReply( channel, serializers, raw, topology.replyQueue.name, topology.connection.name );
 		raw.type = _.isEmpty( raw.properties.type ) ? raw.fields.routingKey : raw.properties.type;
 		if( exclusive ) {
@@ -295,7 +295,7 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 				handled = true;
 			}
 			if ( shouldAck && shouldBatch ) {
-				messages.addMessage( ops.message );
+				messages.addMessage( ops );
 			}
 
 			if ( !handled ) {

@@ -141,6 +141,13 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
       return deferred.promise;
     },
 
+    reconnect: function() {
+      if( /releas/.test( this.state ) ) {
+        this.transition( "initializing" );
+      }
+      return this.check();
+    },
+
     release: function() {
       return when.promise( function( resolve, reject ) {
         var _handlers;
@@ -163,7 +170,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
     },
 
     retry: function() {
-      this.transition( 'initializing' );
+      this.transition( "initializing" );
     },
 
     subscribe: function( exclusive ) {
@@ -287,7 +294,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         subscribe: function() {
           if( this.subscriber ) {
             this.transition( "subscribing" );
-      return  this.subscriber();
+            return  this.subscriber();
           }
         }
       },
@@ -303,11 +310,11 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         _onEnter: function() {
           this.emit( "released" );
         },
-        release: function() {
-          this.emit( "released" );
-        },
         check: function( deferred ) {
           deferred.reject( new Error( format( "Cannot establish queue '%s' after intentionally closing its connection", this.name ) ) );
+        },
+        release: function() {
+          this.emit( "released" );
         },
         subscribe: function() {
           this.emit( "subscribeFailed", new Error( format( "Cannot subscribe to queue '%s' after intentionally closing its connection", this.name ) ) );
@@ -338,7 +345,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         },
         release: function() {
           this.transition( "releasing" );
-          this.handle( "release" )
+          this.handle( "release" );
         },
         released: function() {
           this._release( true );

@@ -13,7 +13,7 @@ module.exports = function( rabbit, subscribeTo ) {
 		},
 
 		// define the exchanges
-		exchanges: [ 
+		exchanges: [
 			{
 				name: "wascally-pubsub-requests-x",
 				type: "direct",
@@ -22,13 +22,14 @@ module.exports = function( rabbit, subscribeTo ) {
 			{
 				name: "wascally-pubsub-messages-x",
 				type: "fanout",
-				autoDelete: true
+				autoDelete: true,
+        noConfirm: true
 			}
 		],
 
 		// setup the queues, only subscribing to the one this service
 		// will consume messages from
-		queues: [ 
+		queues: [
 			{
 				name: "wascally-pubsub-requests-q",
 				autoDelete: true,
@@ -43,7 +44,7 @@ module.exports = function( rabbit, subscribeTo ) {
 		],
 
 		// binds exchanges and queues to one another
-		bindings: [ 
+		bindings: [
 			{
 				exchange: "wascally-pubsub-requests-x",
 				target: "wascally-pubsub-requests-q",

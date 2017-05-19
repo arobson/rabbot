@@ -58,6 +58,43 @@ describe( "Configuration", function() {
 		} );
 	} );
 
+  describe( "with an initially failed connection", function() {
+    var config = {
+      exchanges: [ {} ],
+      queues: [ {} ],
+      bindings: [ {} ]
+    };
+    var connectionMock;
+    before( function() {
+      connectionMock = sinon.mock( connection );
+      connectionMock.expects( "configureExchanges" )
+        .once()
+        .withArgs( config.exchanges )
+        .returns( when( true ) );
+      connectionMock.expects( "configureQueues" )
+        .once()
+        .withArgs( config.queues )
+        .returns( when( true ) );
+      connectionMock.expects( "configureBindings" )
+        .once()
+        .withArgs( config.bindings, "test" )
+        .returns( when( true ) );
+      require( "../../src/config" )( Broker );
+
+      var broker = new Broker( connection );
+
+      return broker.configure( config );
+    } );
+
+    it( "should make expected calls", function() {
+      connectionMock.verify();
+    } );
+
+    after( function() {
+      connectionMock.restore();
+    } );
+  } );
+
 	describe( "when exchange creation fails", function() {
 		var config = {
 			exchanges: [ {} ],

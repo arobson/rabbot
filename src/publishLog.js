@@ -21,7 +21,7 @@ function getEmptyPromise( state ) {
 		return deferred.promise;
 	} else {
 		return when.resolve();
-	}	
+	}
 }
 
 function resolveWaiting( state ) {
@@ -85,6 +85,14 @@ function publishLog() {
 		remove: remove.bind( undefined, state ),
 		state: state
 	};
+  // return {
+  //   add: () => {},
+  //   count: () => 0,
+  //   onceEmptied: () => Promise.resolve(),
+  //   reset: () => Promise.resolve(),
+  //   remove: () => true,
+  //   state
+  // };
 }
 
 module.exports = publishLog;

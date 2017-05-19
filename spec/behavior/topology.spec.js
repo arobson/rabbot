@@ -160,6 +160,7 @@ describe( "Topology", function() {
 					replyQueue = queue;
 				} );
 				topology.once( "bindings-completed", function( bindings ) {
+          console.log( "okokokok" );
 					done();
 				} );
 				conn.instance.raise( "reconnected" );
@@ -231,8 +232,8 @@ describe( "Topology", function() {
 		describe( "when recovering from disconnection", function() {
 			before( function( done ) {
 				replyQueue = undefined;
-				topology.once( "replyQueue.ready", function( queue ) {
-					replyQueue = queue;
+        topology.once( "replyQueue.ready", function( queue ) {
+          replyQueue = queue;
 					done();
 				} );
 				conn.instance.raise( "reconnected" );
