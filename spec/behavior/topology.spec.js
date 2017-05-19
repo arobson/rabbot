@@ -159,7 +159,7 @@ describe( "Topology", function() {
 				topology.once( "replyQueue.ready", function( queue ) {
 					replyQueue = queue;
 				} );
-				topology.once( "bindings-completed", function( bindings ) {
+				topology.once( "bindings.completed", function( bindings ) {
           console.log( "okokokok" );
 					done();
 				} );

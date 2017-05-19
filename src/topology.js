@@ -104,7 +104,7 @@ Topology.prototype.completeRebuild = function() {
   return this.configureBindings( this.definitions.bindings, true )
     .then( () => {
       log.info( "Topology rebuilt for connection '%s'", this.connection.name );
-      this.emit( "bindings-completed", this.definitions );
+      this.emit( "bindings.completed", this.definitions );
       this.emit( this.connection.name + ".connection.configured", this.connection );
     } );
 }
@@ -317,7 +317,7 @@ Topology.prototype.onReconnect = function() {
   this.createReplyQueue().then( null, this.onReplyQueueFailed );
   this.createDefaultExchange().then( null, noop );
   const channelPromises = this.reconnectChannels();
-  return Promise.all( channelPromises )
+  return Promise.all( channelPromises || [] )
     .then( this.completeRebuild.bind( this ) );
 };
 
