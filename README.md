@@ -675,7 +675,7 @@ Gregor Hophe and Bobby Woolf's definitive work on messaging. The [site](http://w
 I can't recommend this book highly enough; understanding the patterns will provide you with the conceptual tools need to be successful.
 
 ## Contributing
-PRs with insufficient coverage, broken tests or deviation from the style will not be accepted.
+PRs that don't include tests, break existing tests or deviate from the style will not be accepted. I _highly_ recommend installing an [Editor Config](http://editorconfig.org/) plugin for your editor/IDE of choice.
 
 ### Behavior & Integration Tests
 PRs should include modified or additional test coverage in both integration and behavioral specs. Integration tests assume RabbitMQ is running on localhost with guest/guest credentials and the consistent hash exchange plugin enabled. You can enable the plugin with the following command:
@@ -711,13 +711,7 @@ Click here for more information on [Docker](http://docker.com) and [official Rab
 *To run tests once you have RabbitMQ up:*
 
 ```bash
-$ gulp
-```
-
-OR
-
-```bash
-$ mocha spec/**
+$ npm test
 ```
 
 ### Style

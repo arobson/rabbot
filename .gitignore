@@ -10,3 +10,4 @@ plato/
 .vagrant/
 /Vagrantfile
 tmp/
+.nyc_output/
