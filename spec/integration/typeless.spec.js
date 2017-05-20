@@ -5,10 +5,10 @@ const config = require( "./configuration" );
 /*
   Demonstrates handling Messages With No Type Provided
 */
-describe( "No Type Handling", () => {
+describe( "No Type Handling", function() {
   var harness;
 
-  before( ( done ) => {
+  before( function( done ) {
     rabbit.configure( {
       connection: config.connection,
       exchanges: [
@@ -41,7 +41,7 @@ describe( "No Type Handling", () => {
     } );
   } );
 
-  it( "should handle messages based on the message topic instead of type", () => {
+  it( "should handle messages based on the message topic instead of type", function() {
     const results = harness.received.map( ( m ) =>
       ( {
         body: m.body,
@@ -54,5 +54,7 @@ describe( "No Type Handling", () => {
       ] );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" );
+  } );
 } );

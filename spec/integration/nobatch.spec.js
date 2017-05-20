@@ -2,11 +2,11 @@ require( "../setup" );
 const rabbit = require( "../../src/index.js" );
 const config = require( "./configuration" );
 
-describe( "Batch Acknowledgments Disabled (noBatch: true)", () => {
+describe( "Batch Acknowledgments Disabled (noBatch: true)", function() {
   var messagesToSend;
   var harness;
 
-  before( ( done ) => {
+  before( function( done ) {
     rabbit.configure( {
       connection: config.connection,
       exchanges: [
@@ -53,9 +53,11 @@ describe( "Batch Acknowledgments Disabled (noBatch: true)", () => {
     } );
   } );
 
-  it( "should receive all messages", () => {
+  it( "should receive all messages", function() {
     harness.received.length.should.equal( messagesToSend );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" );
+  } );
 } );

@@ -7,10 +7,10 @@ const config = require( "./configuration" );
   so that it will register the harness's handler only for one
   of the bound fanout queue's.
 */
-describe( "Queue Specific Handler", () => {
+describe( "Queue Specific Handler", function() {
   var harness;
 
-  before( ( done ) => {
+  before( function( done ) {
     rabbit.configure( {
       connection: config.connection,
       exchanges: [
@@ -55,7 +55,7 @@ describe( "Queue Specific Handler", () => {
     harness.handle( "", undefined, "rabbot-q.general1" );
   } );
 
-  it( "should only handle messages for the specified queue", () => {
+  it( "should only handle messages for the specified queue", function() {
     const results = harness.received.map( ( m ) => ( {
         body: m.body,
         queue: m.queue
@@ -68,9 +68,11 @@ describe( "Queue Specific Handler", () => {
       ] );
   } );
 
-  it( "should show the other messages as unhandled", () => {
+  it( "should show the other messages as unhandled", function() {
     harness.unhandled.length.should.eql( 3 );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" );
+  } );
 } );

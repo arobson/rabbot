@@ -7,10 +7,10 @@ const config = require( "./configuration" );
   Note that only 3 of four messages published match the pattern
   provided.
 */
-describe( "Wild Card Type Handling", () => {
+describe( "Wild Card Type Handling", function() {
   var harness;
 
-  before( ( done ) => {
+  before( function( done ) {
     rabbit.configure( {
       connection: config.connection,
       exchanges: [
@@ -46,7 +46,7 @@ describe( "Wild Card Type Handling", () => {
     } );
   } );
 
-  it( "should handle all message types ending in \"a\"", () => {
+  it( "should handle all message types ending in \"a\"", function() {
     const results = harness.received.map( ( m ) =>
       ( {
         body: m.body,
@@ -61,10 +61,12 @@ describe( "Wild Card Type Handling", () => {
       ] );
   } );
 
-  it( "should not handle message types that don't match the pattern", () => {
+  it( "should not handle message types that don't match the pattern", function() {
     harness.unhandled.length.should.equal( 1 );
     harness.unhandled[ 0 ].body.should.eql( "four" );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" );
+  } );
 } );

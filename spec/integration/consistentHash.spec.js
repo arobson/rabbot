@@ -2,11 +2,11 @@ require( "../setup" );
 const rabbit = require( "../../src/index.js" );
 const config = require( "./configuration" );
 
-describe( "Consistent Hash Exchange", () => {
+describe( "Consistent Hash Exchange", function() {
   var limit;
   var harness;
 
-  before( ( done ) => {
+  before( function ( done ) {
     rabbit.configure( {
       connection: config.connection,
       exchanges: [
@@ -80,7 +80,7 @@ describe( "Consistent Hash Exchange", () => {
     } );
   } );
 
-  it( "should distribute messages across queues within margin for error", () => {
+  it( "should distribute messages across queues within margin for error", function() {
     const consumers = harness.received.reduce( ( acc, m ) => {
       const key = m.fields.consumerTag;
       if( acc[ key ] ) {
@@ -101,5 +101,7 @@ describe( "Consistent Hash Exchange", () => {
       .should.equal( limit );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" );
+  } );
 } );

@@ -2,10 +2,10 @@ require( "../setup" );
 const rabbit = require( "../../src/index.js" );
 const config = require( "./configuration" );
 
-describe( "Request & Response", () => {
+describe( "Request & Response", function() {
   var harness;
-  before( () =>
-    rabbit.configure( {
+  before( function() {
+    return rabbit.configure( {
       connection: config.connection,
       exchanges: [
         {
@@ -29,25 +29,30 @@ describe( "Request & Response", () => {
         }
       ]
     } )
-  );
+  } );
 
-  describe( "when getting a response within the timeout", () => {
+  describe( "when getting a response within the timeout", function() {
     var response1;
     var response2;
     var response3;
 
-    before( ( done ) => {
-      harness = harnessFactory( rabbit, done, 8 );
+    before( function( done ) {
+      this.timeout( 3000 );
+      harness = harnessFactory( rabbit, done, 9 );
+
       harness.handle( "polite", ( q ) => {
         q.reply( ":D" );
       } );
+
       harness.handle( "rude", ( q ) => {
         q.reply( ">:@" );
       } );
-      harness.handle( "crazy", ( q ) => {
+
+      harness.handle( "silly", ( q ) => {
         q.reply( '...', { more: true } );
         q.reply( '...', { more: true } );
-        q.reply( '...' );
+        q.reply( '...', { more: true } );
+        setTimeout( () => q.reply( '...' ), 10 );
       } );
 
       rabbit.request( "rabbot-ex.request", { type: "polite", body: "how are you?" } )
@@ -65,26 +70,26 @@ describe( "Request & Response", () => {
         } );
 
       function onPart( part ) {
+        console.log( part.body );
         response3 = ( response3 || '' ) + part.body;
         part.ack();
         harness.add( part );
       }
+
       rabbit.request(
         "rabbot-ex.request",
-        { type: "crazy", body: "do you like my yak-hair-shirt?" },
+        { type: "silly", body: "do you like my yak-hair-shirt?" },
         onPart
-      )
-      .then( ( response ) => {
-        onPart( response );
-      } );
+      ).then( onPart );
     } );
 
-    it( "should receive multiple responses", () => {
+    it( "should receive multiple responses", function() {
       var results = harness.received.map( ( m ) => ( {
           body: m.body
         } ) );
       sortBy( results, "body" ).should.eql(
         [
+          { body: "..." },
           { body: "..." },
           { body: "..." },
           { body: "..." },
@@ -96,31 +101,33 @@ describe( "Request & Response", () => {
         ] );
     } );
 
-    it( "should capture responses corresponding to the originating request", () => {
+    it( "should capture responses corresponding to the originating request", function() {
       response1.should.equal( ":D" );
       response2.should.equal( ">:@" );
-      response3.should.equal( "........." );
+      response3.should.equal( "............" );
     } );
 
-    after( () => {
+    after( function() {
       harness.clean();
     } );
   } );
 
-  describe( "when the request times out", () => {
+  describe( "when the request times out", function() {
     var timeoutError;
     const timeout = 100;
-    before( () =>
-      rabbit.request( "rabbot-ex.request", { type: "polite", body: "how are you?", replyTimeout: timeout } )
+    before( function() {
+      return rabbit.request( "rabbot-ex.request", { type: "polite", body: "how are you?", replyTimeout: timeout } )
         .then( null, ( err ) => {
           timeoutError = err;
         } )
-    );
+    } );
 
-    it( "should receive rejection with timeout error", () => {
+    it( "should receive rejection with timeout error", function() {
       timeoutError.message.should.eql( `No reply received within the configured timeout of ${timeout} ms` );
     } );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" )
+  } );
 } );

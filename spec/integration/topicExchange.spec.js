@@ -11,10 +11,10 @@ const config = require( "./configuration" );
   routing techniques within rabbit and also test that all of
   this works when in use in rabbot.
 */
-describe( "Topic Exchange With Alternate Bindings", () => {
+describe( "Topic Exchange With Alternate Bindings", function() {
   var harness;
 
-  before( ( done ) => {
+  before( function( done ) {
     rabbit.configure( {
       connection: config.connection,
       exchanges: [
@@ -68,7 +68,7 @@ describe( "Topic Exchange With Alternate Bindings", () => {
     harness.handle( "topic" );
   } );
 
-  it( "should receive matched an unmatched topics due to alternate exchange", () => {
+  it( "should receive matched an unmatched topics due to alternate exchange", function() {
     const results = harness.received.map( ( m ) => ( {
         body: m.body,
         key: m.fields.routingKey,
@@ -82,5 +82,7 @@ describe( "Topic Exchange With Alternate Bindings", () => {
       ] );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" );
+  } );
 } );

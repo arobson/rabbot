@@ -10,11 +10,11 @@ queue (when bound).
 You can easily break this by removing the binding between
 the deadletter exchange and deadletter queue (for example)
 */
-describe( "Rejecting Messages To A Deadletter", () => {
+describe( "Rejecting Messages To A Deadletter", function() {
   var limit;
   var harness;
 
-  before( ( done ) => {
+  before( function( done ) {
     rabbit.configure( {
       connection: config.connection,
       exchanges: [
@@ -78,7 +78,7 @@ describe( "Rejecting Messages To A Deadletter", () => {
     } );
   } );
 
-  it( "should receive the message from bound queue and dead-letter queue", () => {
+  it( "should receive the message from bound queue and dead-letter queue", function() {
     const results = harness.received.map( ( m ) =>
       ( {
         body: m.body,
@@ -93,5 +93,7 @@ describe( "Rejecting Messages To A Deadletter", () => {
       ] );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" );
+  } );
 } );

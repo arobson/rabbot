@@ -2,10 +2,10 @@ require( "../setup" );
 const rabbit = require( "../../src/index.js" );
 const config = require( "./configuration" );
 
-describe( "Fanout Exchange With Multiple Subscribed Queues", () => {
+describe( "Fanout Exchange With Multiple Subscribed Queues", function() {
   var harness;
 
-  before( ( done ) => {
+  before( function( done ) {
     rabbit.configure( {
       connection: config.connection,
       exchanges: [
@@ -48,7 +48,7 @@ describe( "Fanout Exchange With Multiple Subscribed Queues", () => {
     harness.handle( "fanned" );
   } );
 
-  it( "should handle messages on all subscribed queues", () => {
+  it( "should handle messages on all subscribed queues", function() {
     const results = harness.received.map( ( m ) => ( {
         body: m.body,
         key: m.fields.routingKey
@@ -60,5 +60,7 @@ describe( "Fanout Exchange With Multiple Subscribed Queues", () => {
       ] );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" );
+  } );
 } );

@@ -2,7 +2,7 @@ require( "../setup" );
 const rabbit = require( "../../src/index.js" );
 const config = require( "./configuration" );
 
-describe( "Unhandled Strategies", () => {
+describe( "Unhandled Strategies", function() {
 
   /*
   This specification only works because the harness supplies
@@ -17,10 +17,10 @@ describe( "Unhandled Strategies", () => {
   This allows it to capture any unhandled messages as such
   and test accordingly.
   */
-  describe( "Custom Strategy - Capturing Messages With No Handler", () => {
+  describe( "Custom Strategy - Capturing Messages With No Handler", function() {
     var harness;
 
-    before( ( done ) => {
+    before( function( done ) {
       rabbit.configure( {
         connection: config.connection,
         exchanges: [
@@ -52,7 +52,7 @@ describe( "Unhandled Strategies", () => {
       harness = harnessFactory( rabbit, done, 2 );
     } );
 
-    it( "should capture all unhandled messages via custom unhandled message strategy", () => {
+    it( "should capture all unhandled messages via custom unhandled message strategy", function() {
       var results = harness.unhandled.map( ( m ) => ( {
           body: m.body,
           type: m.type
@@ -64,7 +64,9 @@ describe( "Unhandled Strategies", () => {
         ] );
     } );
 
-    after( () => harness.clean( "default" ) );
+    after( function() {
+      return harness.clean( "default" );
+    } );
   } );
 
   /*
@@ -72,11 +74,11 @@ describe( "Unhandled Strategies", () => {
   how one might reject unhandled messages to a catch-all queue
   via deadlettering for logging or processing.
   */
-  describe( "Rejecting Unhandled Messages To A Deadletter", () => {
+  describe( "Rejecting Unhandled Messages To A Deadletter", function() {
     var limit;
     var harness;
 
-    before( ( done ) => {
+    before( function( done ) {
       rabbit.configure( {
         connection: config.connection,
         exchanges: [
@@ -132,7 +134,7 @@ describe( "Unhandled Strategies", () => {
       } );
     } );
 
-    it( "should reject and then receive the message from dead-letter queue", () => {
+    it( "should reject and then receive the message from dead-letter queue", function() {
       const results = harness.received.map( ( m ) =>
         ( {
           body: m.body,
@@ -146,6 +148,8 @@ describe( "Unhandled Strategies", () => {
         ] );
     } );
 
-    after( () => harness.clean( "default" ) );
+    after( function() {
+      return harness.clean( "default" );
+    } );
   } );
 } );

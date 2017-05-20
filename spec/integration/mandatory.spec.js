@@ -7,10 +7,10 @@ This specificationd demonstrates the returned callback strategy.
 The harness provides a default returned handler that captures
 returned messages and adds them to a list.
 */
-describe( "Undeliverable & Mandatory: true", () => {
+describe( "Undeliverable & Mandatory: true", function() {
   var harness;
 
-  before( ( done ) => {
+  before( function( done ) {
     rabbit.configure( {
       connection: config.connection,
       exchanges: [
@@ -42,7 +42,7 @@ describe( "Undeliverable & Mandatory: true", () => {
     harness = harnessFactory( rabbit, done, 2 );
   } );
 
-  it( "should capture all unhandled messages via custom unhandled message strategy", () => {
+  it( "should capture all unhandled messages via custom unhandled message strategy", function() {
     const results = harness.returned.map( ( m ) => ( {
         type: m.type,
         body: m.body
@@ -54,5 +54,7 @@ describe( "Undeliverable & Mandatory: true", () => {
       ] );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" );
+  } );
 } );

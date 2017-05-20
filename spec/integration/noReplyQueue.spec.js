@@ -2,11 +2,11 @@ require( "../setup" );
 const rabbit = require( "../../src/index.js" );
 const config = require( "./configuration" );
 
-describe( "No Reply Queue (replyQueue: false)", () => {
+describe( "No Reply Queue (replyQueue: false)", function () {
   var messagesToSend;
   var harness;
 
-  before( ( done ) => {
+  before( function ( done ) {
     rabbit.configure( {
       connection: config.noReplyQueue,
       exchanges: [
@@ -45,9 +45,11 @@ describe( "No Reply Queue (replyQueue: false)", () => {
     harness = harnessFactory( rabbit, done, messagesToSend );
   } );
 
-  it( "should receive all messages", () => {
+  it( "should receive all messages", function() {
     harness.received.length.should.equal( messagesToSend );
   } );
 
-  after( () => harness.clean( "noReplyQueue" ) );
+  after( function() {
+    return harness.clean( "noReplyQueue" );
+  } );
 } );

@@ -2,10 +2,10 @@ require( "../setup" );
 const rabbit = require( "../../src/index.js" );
 const config = require( "./configuration" );
 
-describe( "Unroutable Messages - Alternate Exchanges", () => {
+describe( "Unroutable Messages - Alternate Exchanges", function() {
   var harness;
 
-  before( ( done ) => {
+  before( function( done ) {
     rabbit.configure( {
       connection: config.connection,
       exchanges: [
@@ -45,7 +45,7 @@ describe( "Unroutable Messages - Alternate Exchanges", () => {
     harness.handle( "deadend" );
   } );
 
-  it( "should capture all unrouted messages via the alternate exchange and queue", () => {
+  it( "should capture all unrouted messages via the alternate exchange and queue", function() {
     const results = harness.received.map( ( m ) => ( {
         body: m.body,
         key: m.fields.routingKey
@@ -58,5 +58,7 @@ describe( "Unroutable Messages - Alternate Exchanges", () => {
       ] );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" );
+  } );
 } );

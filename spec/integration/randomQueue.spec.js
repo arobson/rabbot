@@ -11,7 +11,7 @@ Demonstrates a few things:
 
 It shows that you _can_ move messages between services with minimal configuration.
 */
-describe( "Random Queue Name", () => {
+describe( "Random Queue Name", function() {
   var harness;
   var queueName;
   before( ( done ) => {
@@ -36,7 +36,7 @@ describe( "Random Queue Name", () => {
     harness = harnessFactory( rabbit, done, 3 );
   } );
 
-  it( "should deliver all messages to the randomly generated queue", () => {
+  it( "should deliver all messages to the randomly generated queue", function() {
     const results = harness.received.map( ( m ) => ( {
       body: m.body.toString(),
       queue: m.queue
@@ -49,5 +49,7 @@ describe( "Random Queue Name", () => {
       ] );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" );
+  } );
 } );

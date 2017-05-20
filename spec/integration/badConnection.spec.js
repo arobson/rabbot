@@ -1,9 +1,9 @@
 require( "../setup" );
 const rabbit = require( "../../src/index.js" );
 
-describe( "Bad Connection", () => {
+describe( "Bad Connection", function() {
   const noop = () => {};
-  describe( "when attempting a connection", () => {
+  describe( "when attempting a connection", function() {
     var error;
     before( ( done ) => {
       rabbit.once( "#.connection.failed", ( err ) => {
@@ -33,7 +33,7 @@ describe( "Bad Connection", () => {
     after( () => rabbit.close( "silly", true ) );
   } );
 
-  describe( "when configuring against a bad connection", () => {
+  describe( "when configuring against a bad connection", function() {
     var config;
     before( () => {
       config = {
@@ -66,11 +66,13 @@ describe( "Bad Connection", () => {
       };
     } );
 
-    it( "should fail to connect", () =>
-      rabbit.configure( config )
+    it( "should fail to connect", function() {
+      return rabbit.configure( config )
         .should.be.rejectedWith( "No endpoints could be reached" )
-    );
+    } );
 
-    after( () => rabbit.close( "silly2", true ) );
+    after( function() {
+      return rabbit.close( "silly2", true );
+    } );
   } );
 } );

@@ -6,10 +6,10 @@ const config = require( "./configuration" );
 A promise, twice made, is not a promise for more,
 it's simply reassurance for the insecure.
 */
-describe( "Duplicate Subscription", () => {
+describe( "Duplicate Subscription", function() {
   var harness;
 
-  before( ( done ) => {
+  before( function( done ) {
     rabbit.configure( {
       connection: config.connection,
       exchanges: [
@@ -45,7 +45,7 @@ describe( "Duplicate Subscription", () => {
     harness = harnessFactory( rabbit, done, 3 );
   } );
 
-  it( "should handle all messages once", () => {
+  it( "should handle all messages once", function() {
     const results = harness.received.map( ( m ) =>
       ( {
         body: m.body,
@@ -60,5 +60,7 @@ describe( "Duplicate Subscription", () => {
       ] );
   } );
 
-  after( () => harness.clean( "default" ) );
+  after( function() {
+    return harness.clean( "default" );
+  } );
 } );
