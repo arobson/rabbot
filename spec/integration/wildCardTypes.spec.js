@@ -11,6 +11,8 @@ describe( "Wild Card Type Handling", function() {
   var harness;
 
   before( function( done ) {
+    harness = harnessFactory( rabbit, done, 3 );
+    harness.handle( "#.a" );
     rabbit.configure( {
       connection: config.connection,
       exchanges: [
@@ -37,8 +39,6 @@ describe( "Wild Card Type Handling", function() {
         }
       ]
     } ).then( () => {
-      harness = harnessFactory( rabbit, done, 3 );
-      harness.handle( "#.a" );
       rabbit.publish( "rabbot-ex.topic", { type: "one.a", routingKey: "this.is.one", body: "one" } );
       rabbit.publish( "rabbot-ex.topic", { type: "two.i.a", routingKey: "this.is.two", body: "two" } );
       rabbit.publish( "rabbot-ex.topic", { type: "three-b.a", routingKey: "this.is.three", body: "three" } );
