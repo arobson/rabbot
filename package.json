@@ -12,7 +12,8 @@
     "test": "./node_modules/mocha/bin/mocha spec/**/*.spec.js",
     "coverage": "nyc npm test",
     "build-image": "docker build -t rabbot .",
-    "start-image": "docker run -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot"
+    "start-image": "docker run -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot",
+    "stop-image": "docker kill rabbot"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"

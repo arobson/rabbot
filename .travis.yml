@@ -15,3 +15,6 @@ before_script:
 
 script:
   - nyc npm test && nyc report --reporter=text-lcov | coveralls
+
+after_script:
+  - npm run stop-image
