@@ -7,6 +7,7 @@ describe( "No Reply Queue (replyQueue: false)", function () {
   var harness;
 
   before( function ( done ) {
+    harness = harnessFactory( rabbit, done, messagesToSend );
     rabbit.configure( {
       connection: config.noReplyQueue,
       exchanges: [
@@ -42,7 +43,6 @@ describe( "No Reply Queue (replyQueue: false)", function () {
         } );
       }
     } );
-    harness = harnessFactory( rabbit, done, messagesToSend );
   } );
 
   it( "should receive all messages", function() {

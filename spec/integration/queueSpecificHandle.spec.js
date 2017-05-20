@@ -51,7 +51,7 @@ describe( "Queue Specific Handler", function() {
       rabbit.publish( "rabbot-ex.fanout", { type: "", routingKey: "", body: "three" } );
     } );
 
-    harness = harnessFactory( rabbit, done, 3 );
+    harness = harnessFactory( rabbit, done, 6 );
     harness.handle( "", undefined, "rabbot-q.general1" );
   } );
 

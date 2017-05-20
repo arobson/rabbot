@@ -70,7 +70,6 @@ describe( "Request & Response", function() {
         } );
 
       function onPart( part ) {
-        console.log( part.body );
         response3 = ( response3 || '' ) + part.body;
         part.ack();
         harness.add( part );
