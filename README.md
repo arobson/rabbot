@@ -540,7 +540,7 @@ Binds the target queue to the source exchange. Messages flow from source to targ
 
 > Note: setting subscribe to true will result in subscriptions starting immediately upon queue creation.
 
-This example shows most of the available options described above as well as logging options available through [whistlepunk](https://github.com/leankit-labs/whistlepunk).
+This example shows most of the available options described above.
 ```javascript
 	var settings = {
 		connection: {
@@ -565,15 +565,7 @@ This example shows most of the available options described above as well as logg
 		bindings:[
 			{ exchange: "config-ex.1", target: "config-q.1", keys: [ "bob","fred" ] },
 			{ exchange: "config-ex.2", target: "config-q.2", keys: "test1" }
-		],
-		logging: {
-			adapters: {
-				stdOut: { // adds a console logger at the "info" level
-					level: 3,
-					bailIfDebug: true
-				}
-			}
-		}
+		]
 	};
 ```
 
@@ -652,7 +644,24 @@ This queue configuration will set a prefetch limit of 5 on the channel that is u
 **Note:** The queue `limit` is not the same as the `queueLimit` option - the latter of which sets the maximum number of messages allowed in the queue.
 
 ## Logging
-As mentioned in the configuration, logging is provided by [whistlepunk](https://github.com/leankit-labs/whistlepunk). While you can easily write your own adapters for it, it supports a standard output adapter and a DEBUG based adapter by default. When troubleshooting, you can prefix starting your process with `DEBUG=rabbot.*` to see all rabbot related log messages. It's worth noting that the `rabbot.queue.#` and `rabbot.exchange.#` logging namespaces will be very high volume since that is where rabbot reports all messages published and subscribed at the debug level.
+As of v2, logging uses [bole](https://github.com/rvagg/bole) because it defaults to machine parsable logs, minimalistic and easy to write stream adapters for.
+
+A DEBUG adapter that works just like before is already included in rabbot, so you can still prefix the service with `DEBUG=rabbot.*` to get rabbot specific output.
+
+> Note: `rabbot.queue.*` and `rabbot.exchange.*` are high volume namespaces since that is where all published and subscribed messages get reported.
+
+### Attaching Custom Loggers
+A log call is now exposed directly to make it easier to attach streams to the bole instance:
+
+```js
+const rabbot = require( "rabbot" );
+
+// works like bole's output call
+rabbot.log( [
+  { level: "info", stream: process.stdout },
+  { level: "debug", stream: fs.createWriteStream( "./debug.log" ), objectMode: true }
+] );
+```
 
 ## A Note About Etiquette
 Rabbot was created to address a need at work. Any time I spend on it during work hours is to ensure that it does what my employer needs it to. The considerable amount of time I've spent on wascally and now rabbot outside of work hours is because I love open source software and the community want to contribute. I hope that you find this library useful and that it makes you feel like your job or project was easier.

@@ -9,6 +9,7 @@ const dispatch = postal.channel( "rabbit.dispatch" );
 const responses = postal.channel( "rabbit.responses" );
 const signal = postal.channel( "rabbit.ack" );
 const format = require( "util" ).format;
+const log = require( "./log" );
 
 const DEFAULT = "default";
 
@@ -68,6 +69,7 @@ var Broker = function() {
   this.autoNack = false;
   this.serializers = serializers;
   this.configurations = {};
+  this.log = log;
   _.bindAll( this );
 };
 

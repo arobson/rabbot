@@ -8,12 +8,8 @@ var log = require( "./log" )( "rabbot.configuration" );
       * configuration failed (in exchange, queue or bindings)
 */
 
-var logger;
 module.exports = function( Broker ) {
   Broker.prototype.configure = function( config ) {
-    if( !logger && config.logging ) {
-      logger = require( "./log" )( config.logging || {} );
-    }
     var emit = this.emit.bind( this );
     this.configurations[ config.name || "default" ] = config;
     return when.promise( function( resolve, reject ) {
