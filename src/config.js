@@ -11,6 +11,7 @@ var log = require( "./log" )( "rabbot.configuration" );
 var logger;
 module.exports = function( Broker ) {
 	Broker.prototype.configure = function( config ) {
+    config = config || {};
 		if( !logger && config.logging ) {
 			logger = require( "./log" )( config.logging || {} );
 		}
