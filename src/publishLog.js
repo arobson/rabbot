@@ -1,5 +1,6 @@
+var Promise = require("bluebird")
 var _ = require( "lodash" );
-var when = require( "when" );
+var defer = require("bluebird-defer")
 
 function add( state, m ) {
 	if ( !state.messages.sequenceNo ) {
@@ -16,12 +17,12 @@ function next( state ) {
 
 function getEmptyPromise( state ) {
 	if( state.count ) {
-		var deferred = when.defer();
+		var deferred = defer();
 		state.waiting = deferred;
 		return deferred.promise;
 	} else {
-		return when.resolve();
-	}	
+		return Promise.resolve();
+	}
 }
 
 function resolveWaiting( state ) {

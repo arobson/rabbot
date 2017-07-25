@@ -1,6 +1,7 @@
 require( "../setup.js" );
 var _ = require( "lodash" );
-var when = require( "when" );
+var Promise = require("bluebird")
+var defer = require("bluebird-defer")
 var exchangeFsm = require( "../../src/exchangeFsm" );
 var noOp = function() {};
 var emitter = require( "./emitter" );
@@ -19,7 +20,7 @@ function exchangeFn( options ) {
 	return {
 		mock: channelMock,
 		factory: function() {
-			return when( channel );
+			return Promise.resolve( channel );
 		}
 	};
 }
@@ -104,7 +105,7 @@ describe( "Exchange FSM", function() {
 
 			var ex = exchangeFn( options );
 			channelMock = ex.mock;
-			var deferred = when.defer();
+			var deferred = defer();
 			channelMock
 				.expects( "define" )
 				.once()
@@ -116,7 +117,7 @@ describe( "Exchange FSM", function() {
           .then( null, function( err ) { return err.message; } );
 			} );
 			deferred.reject( new Error( "nope" ) );
-			return when.join( published );
+			return Promise.join( published );
 		} );
 
 		it( "should be in failed state", function() {
@@ -168,7 +169,7 @@ describe( "Exchange FSM", function() {
 			channelMock
 				.expects( "define" )
 				.once()
-				.returns( when.resolve() );
+				.returns( Promise.resolve() );
 
 			exchange = exchangeFsm( options, connection, topology, {}, ex.factory );
 			exchange.on( "failed", function( err ) {
@@ -195,7 +196,7 @@ describe( "Exchange FSM", function() {
 				channelMock
 					.expects( "publish" )
 					.once()
-					.returns( when( true ) );
+					.returns( Promise.resolve( true ) );
 
 				promise = exchange.publish( {} );
 
@@ -224,7 +225,7 @@ describe( "Exchange FSM", function() {
 				channelMock
 					.expects( "define" )
 					.once()
-					.returns( when.resolve() );
+					.returns( Promise.resolve() );
 
 				exchange.on( "defined", function() {
 					done();

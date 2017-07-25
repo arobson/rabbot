@@ -1,4 +1,4 @@
-var when = require( "when" );
+var Promise = require( "bluebird" );
 var _ = require( "lodash" );
 var Monologue = require( "monologue.js" );
 var log = require( "./log" )( "rabbot.topology" );
@@ -113,7 +113,7 @@ var Topology = function( connection, options, serializers, unhandledStrategies, 
 
 Topology.prototype.configureBindings = function( bindingDef, list ) {
 	if ( _.isUndefined( bindingDef ) ) {
-		return when( true );
+		return Promise.resolve( true );
 	} else {
 		var actualDefinitions = toArray( bindingDef, list );
 		var bindings = _.map( actualDefinitions, function( def ) {
@@ -128,34 +128,34 @@ Topology.prototype.configureBindings = function( bindingDef, list ) {
 					} );
 			}.bind( this ) );
 		if ( bindings.length === 0 ) {
-			return when( true );
+			return Promise.resolve( true );
 		} else {
-			return when.all( bindings );
+			return Promise.all( bindings );
 		}
 	}
 };
 
 Topology.prototype.configureQueues = function( queueDef, list ) {
 	if ( _.isUndefined( queueDef ) ) {
-		return when( true );
+		return Promise.resolve( true );
 	} else {
 		var actualDefinitions = toArray( queueDef, list );
 		var queues = _.map( actualDefinitions, function( def ) {
 			return this.createQueue( def );
 		}.bind( this ) );
-		return when.all( queues );
+		return Promise.all( queues );
 	}
 };
 
 Topology.prototype.configureExchanges = function( exchangeDef, list ) {
 	if ( _.isUndefined( exchangeDef ) ) {
-		return when( true );
+		return Promise.resolve( true );
 	} else {
 		var actualDefinitions = toArray( exchangeDef, list );
 		var exchanges = _.map( actualDefinitions, function( def ) {
 			return this.createExchange( def );
 		}.bind( this ) );
-		return when.all( exchanges );
+		return Promise.all( exchanges );
 	}
 };
 
@@ -181,7 +181,7 @@ Topology.prototype.createBinding = function( options ) {
 			.then( function( channel ) {
 				log.info( "Binding %s '%s' to '%s' on '%s' with keys: %s",
 					( options.queue ? "queue" : "exchange" ), target, source, this.connection.name, JSON.stringify( keys ) );
-				return when.all(
+				return Promise.all(
 					_.map( keys, function( key ) {
 						return channel[ call ]( target, source, key );
 					} ) );
@@ -201,7 +201,7 @@ Topology.prototype.createPrimitive = function( Primitive, primitiveType, options
 	var channelName = [ primitiveType, options.name ].join( ":" );
 	var promise = this.promises[ channelName ];
 	if( !promise ) {
-		this.promises[ channelName ] = promise = when.promise( function( resolve, reject ) {
+		this.promises[ channelName ] = promise = new Promise( function( resolve, reject ) {
 			definitions[ options.name ] = options;
 			var primitive = this.channels[ channelName ] = new Primitive( options, this.connection, this, this.serializers );
 			var onConnectionFailed = function( connectionError ) {
@@ -244,7 +244,7 @@ Topology.prototype.createQueue = function( options ) {
 
 Topology.prototype.createReplyQueue = function() {
 	if ( this.replyQueue.name === undefined || this.replyQueue.name === false ) {
-		return when.resolve();
+		return Promise.resolve();
 	}
 	var key = "queue:" + this.replyQueue.name;
 	var promise;
@@ -255,7 +255,7 @@ Topology.prototype.createReplyQueue = function() {
 			this.emit( "replyQueue.ready", this.replyQueue );
 		}.bind( this ) );
 	} else {
-		promise = when.resolve( this.channels[ key ] );
+		promise = Promise.resolve( this.channels[ key ] );
 		this.emit( "replyQueue.ready", this.replyQueue );
 	}
 	return promise;
@@ -305,9 +305,9 @@ Topology.prototype.onReconnect = function() {
 	log.info( "Reconnection to '%s' established - rebuilding topology", this.connection.name );
 	this.promises = {};
 	var prerequisites = _.map( this.channels, function( channel ) {
-		return channel.check ? channel.check() : when( true );
+		return channel.check ? channel.check() : Promise.resolve( true );
 	}.bind( this ) );
-	return when.all( prerequisites )
+	return Promise.all( prerequisites )
 		.then( function() {
 			return this.configureBindings( this.definitions.bindings, true )
 				.then( function() {
