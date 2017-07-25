@@ -1,6 +1,6 @@
 var _ = require( "lodash" );
 var Monologue = require( "monologue.js" );
-var when = require( "when" );
+var Promise = require("bluebird")
 var connectionFn = require( "./connectionFsm.js" );
 var topologyFn = require( "./topology.js" );
 var postal = require( "postal" );
@@ -78,7 +78,7 @@ Broker.prototype.addConnection = function( options ) {
 	options.failAfter = options.failAfter || 60;
 	var connection;
 
-	connectionPromise = when.promise( function( resolve, reject ) {
+	connectionPromise = new Promise( function( resolve, reject ) {
 		if ( !self.connections[ name ] ) {
 			connection = connectionFn( options );
 			var topology = topologyFn( connection, options || {}, serializers, unhandledStrategies, returnedStrategies );
@@ -175,7 +175,7 @@ Broker.prototype.closeAll = function( reset ) {
 	var closers = _.map( this.connections, function( connection ) {
 		return this.close( connection.name, reset );
 	}.bind( this ) );
-	return when.all( closers );
+	return Promise.all( closers );
 };
 
 Broker.prototype.close = function( connectionName, reset ) {
@@ -187,7 +187,7 @@ Broker.prototype.close = function( connectionName, reset ) {
 		}
 		return connection.close( reset );
 	} else {
-		return when( true );
+		return Promise.resolve( true );
 	}
 };
 
@@ -295,7 +295,7 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 		};
 	}
 	if( !this.connections[ connectionName ] ) {
-		return when.reject( new Error( format( "Publish failed - no connection %s has been configured", connectionName ) ) );
+		return Promise.reject( new Error( format( "Publish failed - no connection %s has been configured", connectionName ) ) );
 	}
 	if( this.connections[ connectionName ] && this.connections[ connectionName ].options.publishTimeout ) {
 		options.connectionPublishTimeout = this.connections[ connectionName ].options.publishTimeout;
@@ -310,7 +310,7 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
 			if( exchange ) {
 				return exchange.publish( options );
 			} else {
-				return when.reject( new Error( format( "Publish failed - no exchange %s on connection %s is defined", exchangeName, connectionName ) ) );
+				return Promise.reject( new Error( format( "Publish failed - no exchange %s on connection %s is defined", exchangeName, connectionName ) ) );
 			}
 		}.bind( this ) );
 };
@@ -329,7 +329,7 @@ Broker.prototype.request = function( exchangeName, options, notify, connectionNa
 	var publishTimeout = options.timeout || exchange.publishTimeout || connection.publishTimeout || 500;
 	var replyTimeout = options.replyTimeout || exchange.replyTimeout || connection.replyTimeout || ( publishTimeout * 2 );
 
-	return when.promise( function( resolve, reject ) {
+	return new Promise( function( resolve, reject ) {
 		var timeout = setTimeout( function() {
 			subscription.unsubscribe();
 			reject( new Error( "No reply received within the configured timeout of " + replyTimeout + " ms" ) );

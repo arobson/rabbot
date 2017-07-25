@@ -1,5 +1,5 @@
 require( "../setup.js" );
-var when = require( "when" );
+var Promise = require( "bluebird" );
 
 describe( "Configuration", function() {
 	var noOp = function() {};
@@ -16,7 +16,7 @@ describe( "Configuration", function() {
 	};
 
 	Broker.prototype.addConnection = function() {
-		return when( this.connection );
+		return Promise.resolve( this.connection );
 	};
 
 	Broker.prototype.emit = function() {};
@@ -33,15 +33,15 @@ describe( "Configuration", function() {
 			connectionMock.expects( "configureExchanges" )
 				.once()
 				.withArgs( config.exchanges )
-				.returns( when( true ) );
+				.returns( Promise.resolve( true ) );
 			connectionMock.expects( "configureQueues" )
 				.once()
 				.withArgs( config.queues )
-				.returns( when( true ) );
+				.returns( Promise.resolve( true ) );
 			connectionMock.expects( "configureBindings" )
 				.once()
 				.withArgs( config.bindings, "test" )
-				.returns( when( true ) );
+				.returns( Promise.resolve( true ) );
 			require( "../../src/config" )( Broker );
 
 			var broker = new Broker( connection );
@@ -71,7 +71,7 @@ describe( "Configuration", function() {
 			connectionMock.expects( "configureExchanges" )
 				.once()
 				.withArgs( config.exchanges )
-				.returns( when.reject( new Error( "Not feelin' it today" ) ) );
+				.returns( Promise.reject( new Error( "Not feelin' it today" ) ) );
 			connectionMock.expects( "configureQueues" )
 				.never();
 			connectionMock.expects( "configureBindings" )
@@ -112,11 +112,11 @@ describe( "Configuration", function() {
 			connectionMock.expects( "configureExchanges" )
 				.once()
 				.withArgs( config.exchanges )
-				.returns( when( true ) );
+				.returns( Promise.resolve( true ) );
 			connectionMock.expects( "configureQueues" )
 				.once()
 				.withArgs( config.queues )
-				.returns( when.reject( new Error( "Not feelin' it today" ) ) );
+				.returns( Promise.reject( new Error( "Not feelin' it today" ) ) );
 			connectionMock.expects( "configureBindings" )
 				.never();
 			require( "../../src/config" )( Broker );
@@ -155,15 +155,15 @@ describe( "Configuration", function() {
 			connectionMock.expects( "configureExchanges" )
 				.once()
 				.withArgs( config.exchanges )
-				.returns( when( true ) );
+				.returns( Promise.resolve( true ) );
 			connectionMock.expects( "configureQueues" )
 				.once()
 				.withArgs( config.queues )
-				.returns( when( true ) );
+				.returns( Promise.resolve( true ) );
 			connectionMock.expects( "configureBindings" )
 				.once()
 				.withArgs( config.bindings, "test" )
-				.returns( when.reject( new Error( "Not feelin' it today" ) ) );
+				.returns( Promise.reject( new Error( "Not feelin' it today" ) ) );
 			require( "../../src/config" )( Broker );
 
 			var broker = new Broker( connection );

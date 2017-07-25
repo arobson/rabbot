@@ -1,6 +1,7 @@
 var _ = require( "lodash" );
 var Monologue = require( "monologue.js" );
-var when = require( "when" );
+var Promise = require("bluebird")
+var defer = require("bluebird-defer")
 var machina = require( "machina" );
 var format = require( "util" ).format;
 var log = require( "./log.js" )( "rabbot.connection" );
@@ -31,6 +32,7 @@ var log = require( "./log.js" )( "rabbot.connection" );
 	  	* failed reconnection
 */
 
+
 var Connection = function( options, connectionFn, channelFn ) {
 	channelFn = channelFn || require( './amqp/channel' );
 	connectionFn = connectionFn || require( './amqp/connection' );
@@ -59,7 +61,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 		_getChannel: function ( name, confirm, context ) {
       var channel = channels[ name ];
 			if ( !channel ) {
-				return when.promise( function( resolve ) {
+				return new Promise( function( resolve ) {
 					channel = channelFn.create( connection, name, confirm );
 					channels[ name ] = channel;
 					channel.on( "acquired", function() {
@@ -71,7 +73,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 					}.bind(this));
 				}.bind( this ) );
 			} else {
-				return when( channel );
+				return Promise.resolve( channel );
 			}
 		},
 
@@ -82,12 +84,12 @@ var Connection = function( options, connectionFn, channelFn ) {
 
 		_onChannelFailure: function( name, context, error ) {
 			log.error( "Failed to create channel '%s' on '%s' for '%s' with %s", name, this.name, error );
-			return when.reject( error );
+			return Promise.reject( error );
 		},
 
 		_reconnect: function() {
 			var reacquisitions = _.map( channels, function( channel ) {
-				return when.promise( function( resolve ) {
+				return new Promise( function( resolve ) {
 					channel.once( "acquired", function() {
 						resolve( channel );
 					} );
@@ -105,7 +107,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 				this.handle( "failed", err );
 			}
 
-			when.all( reacquisitions )
+			Promise.all( reacquisitions )
 				.then(
 					reacquired.bind( this ),
 					reacquireFailed.bind( this )
@@ -134,7 +136,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 		},
 
 		getChannel: function( name, confirm, context ) {
-			var deferred = when.defer();
+			var deferred = defer();
 			this.handle( "channel", {
 				name: name,
 				confirm: confirm,
@@ -146,7 +148,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 
 		close: function( reset ) {
 			log.info( "Close initiated on connection '%s'", this.name );
-			var deferred = when.defer();
+			var deferred = defer();
 			this.handle( "close", deferred );
 			return deferred.promise
 				.then( function() {
@@ -159,7 +161,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 
 		connect: function() {
 			this.consecutiveFailures = 0;
-			var deferred = when.defer();
+			var deferred = defer();
 			this.handle( "connect", deferred );
 			return deferred.promise;
 		},
@@ -302,7 +304,7 @@ var Connection = function( options, connectionFn, channelFn ) {
 					this.emit( "closing" );
 					var closeList = queues.concat( exchanges );
 					if ( closeList.length ) {
-						when.all( _.map( closeList, function( channel ) {
+						Promise.all( _.map( closeList, function( channel ) {
 							return channel.release();
 						} ) ).then( function() {
 							this._closer();

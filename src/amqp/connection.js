@@ -1,7 +1,7 @@
 var amqp = require( "amqplib" );
 var _ = require( "lodash" );
 var fs = require( "fs" );
-var when = require( "when" );
+var Promise = require( "bluebird" );
 var AmqpConnection = require( "amqplib/lib/callback_model" ).CallbackModel;
 var monad = require( "./iomonad" );
 var log = require( "../log" )( "rabbot.connection" );
@@ -134,7 +134,7 @@ var Adapter = function( parameters ) {
 };
 
 Adapter.prototype.connect = function() {
-	return when.promise( function( resolve, reject ) {
+	return new Promise( function( resolve, reject ) {
 		var attempted = [];
 		var attempt;
 		attempt = function() {

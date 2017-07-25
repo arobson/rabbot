@@ -1,4 +1,5 @@
 require( "../setup.js" );
+var Promise = require("bluebird")
 var _ = require( "lodash" );
 var request = require("request");
 
