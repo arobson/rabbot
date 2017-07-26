@@ -48,6 +48,7 @@ var Topology = function( connection, options, serializers, unhandledStrategies, 
 	this.name = options.name;
 	this.connection = connection;
 	this.channels = {};
+	this.channelsBinding = {};
 	this.promises = {};
 	this.definitions = {
 		bindings: {},
@@ -165,6 +166,13 @@ Topology.prototype.createBinding = function( options ) {
 	if ( keys[0] !== "" ) {
 		id += ":" + keys.join(':');
 	}
+	if( options.queue ) {
+		var bindingkey = "queue:" + options.target;
+		if( !this.channelsBinding[ bindingkey ] ) {
+			this.channelsBinding[ bindingkey ] = [];
+		}
+		this.channelsBinding[ bindingkey ].push(id);
+	}
 	var promise = this.promises[ id ];
 	if( !promise ) {
 		this.definitions.bindings[ id ] = options;
@@ -280,13 +288,40 @@ Topology.prototype.deleteQueue = function( name ) {
 	var channel = this.channels[ key ];
 	if ( channel ) {
 		channel.release();
+		this.connection.removeQueue( channel );
 		delete this.channels[ key ];
 		log.info( "Deleting queue '%s' on connection '%s'", name, this.connection.name );
 	}
-	return this.connection.getChannel( "control", false, "control channel for bindings"  )
+
+	var promise = this.promises[ key ];
+	if( promise ) {
+		delete this.promises[ key ];
+	}
+	var idList = this.channelsBinding[ key ];
+	if(idList) {
+		for (var i = 0; i < idList.length; ++i) {
+			var promise = this.promises[ idList[ i ] ];
+			if( promise ) {
+				delete this.promises[ idList[ i ] ];
+			}
+
+			var binding = this.definitions.bindings[ idList[ i ] ];
+			if( binding ) {
+				delete this.definitions.bindings[ idList[ i ] ];
+			}
+		}
+		delete this.channelsBinding[ key ];
+	}
+	var topology = this;
+	return this.connection.getChannel( key, false, "channel for queue "+ key )
+	.then( function( channel ){
+		channel.remove();
+	} ).then( function(){
+		return topology.connection.getChannel( "control", false, "control channel for bindings"  )
 		.then( function( channel ) {
 			return channel.deleteQueue( name );
 		} );
+	} );
 };
 
 Topology.prototype.getUniqueName = function( options ) {

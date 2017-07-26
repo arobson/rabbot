@@ -54,7 +54,8 @@ function connectionFn() {
 		raise: raise,
 		resetHandlers: reset,
 		reset: noOp,
-		state: ""
+		state: "",
+		removeQueue: noOp
 	};
 
 	_.bindAll( connection );
@@ -507,7 +508,8 @@ describe( "Topology", function() {
 			};
 			conn = connectionFn();
 			var control = {
-				deleteQueue: noOp
+				deleteQueue: noOp,
+				remove : noOp
 			};
 			var controlMock = sinon.mock( control );
 			controlMock
@@ -516,7 +518,7 @@ describe( "Topology", function() {
 				.withArgs( "noice" )
 				.returns( when.resolve() );
 			conn.mock.expects( "getChannel" )
-				.once()
+				.twice()
 				.resolves( control );
 			topology = topologyFn( conn.instance, { replyQueue: false }, {}, undefined, undefined, Exchange, Queue );
 

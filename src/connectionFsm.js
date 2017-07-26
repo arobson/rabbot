@@ -61,6 +61,9 @@ var Connection = function( options, connectionFn, channelFn ) {
 			if ( !channel ) {
 				return when.promise( function( resolve ) {
 					channel = channelFn.create( connection, name, confirm );
+					channel.remove = function() {
+						delete channels[ name ];
+					};
 					channels[ name ] = channel;
 					channel.on( "acquired", function() {
 						this._onChannel.bind( this, name, context );
@@ -120,6 +123,13 @@ var Connection = function( options, connectionFn, channelFn ) {
 
 		addQueue: function( queue ) {
 			queues.push( queue );
+		},
+
+		removeQueue : function ( queue ) {
+			var index = queues.indexOf( queue );
+			if (index > -1) {
+				queues.splice( index, 1);
+			}
 		},
 
 		addExchange: function( exchange ) {
