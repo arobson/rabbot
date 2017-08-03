@@ -59,6 +59,7 @@ Options is a hash that can contain the following:
  * `uri` - the AMQP URI. No default. This will be parsed and missing defaults will be supplied.
  * `name` - the name of this connection. Defaults to `"default"`.
  * `host` - the IP address or DNS name of the RabbitMQ server. Defaults to `"localhost"`.
+* `tcpName` - expose the client-provided connection name (shown below the ip address on the rabbitMQ's adminitration panel)
  * `port` - the TCP/IP port on which RabbitMQ is listening. Defaults to `5672`.
  * `vhost` - the named vhost to use in RabbitMQ. Defaults to the root vhost, `"%2f"` ("/").
  * `protocol` - the connection protocol to use. Defaults to "amqp://".

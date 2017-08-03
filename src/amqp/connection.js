@@ -83,6 +83,7 @@ var Adapter = function( parameters ) {
 	var brokers = getOption( parameters, "RABBIT_BROKER" );
 	var serverList = brokers || hosts || servers || "localhost";
 	var portList = getOption( parameters, "RABBIT_PORT" ) || getOption( parameters, "port", 5672 );
+	var tcpName = getOption( parameters, "tcpName" );
 
 	this.name = parameters ? ( parameters.name || "default" ) : "default";
 	this.connectionIndex = 0;
@@ -130,6 +131,9 @@ var Adapter = function( parameters ) {
 		process: info.process(),
 		lib: info.lib()
 	};
+	if ( tcpName ) {
+		this.options.clientProperties.connection_name = tcpName;
+	}
 	this.limit = _.max( [ this.servers.length, this.ports.length ] );
 };
 
