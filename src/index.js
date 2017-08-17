@@ -158,6 +158,11 @@ Broker.prototype.bindExchange = function( source, target, keys, connectionName )
 	return this.connections[ connectionName ].createBinding( { source: source, target: target, keys: keys } );
 };
 
+Broker.prototype.unbindExchange = function( source, target, keys, connectionName ) {
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].removeBinding( { source: source, target: target, keys: keys } );
+};
+
 Broker.prototype.bindQueue = function( source, target, keys, connectionName ) {
 	connectionName = connectionName || "default";
 	return this.connections[ connectionName ].createBinding(
