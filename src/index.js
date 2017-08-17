@@ -166,6 +166,14 @@ Broker.prototype.bindQueue = function( source, target, keys, connectionName ) {
 	);
 };
 
+Broker.prototype.unbindQueue = function( source, target, keys, connectionName ) {
+	connectionName = connectionName || "default";
+	return this.connections[ connectionName ].removeBinding(
+		{ source: source, target: target, keys: keys, queue: true },
+		connectionName
+	);
+};
+
 Broker.prototype.clearAckInterval = function() {
 	clearInterval( this.ackIntervalId );
 };

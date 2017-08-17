@@ -191,6 +191,43 @@ Topology.prototype.createBinding = function( options ) {
 	return promise;
 };
 
+Topology.prototype.removeBinding = function( options ) {
+	var id = [ options.source, options.target ].join( "->" );
+	var keys = getKeys( options.keys );
+	if ( keys[0] !== "" ) {
+		id += ":" + keys.join(':');
+	}
+	var promise = this.promises[ id ];
+	if( promise ) {
+		var call = options.queue ? "unbindQueue" : "unbindExchange";
+		var source = options.source;
+		var target = options.target;
+		if( options.queue ) {
+			var queue = this.definitions.queues[ options.target ];
+			if( queue && queue.uniqueName ) {
+				target = queue.uniqueName;
+			}
+		}
+		promise = this.connection.getChannel( "control", false, "control channel for bindings" )
+			.then( function( channel ) {
+				log.info( "Unbinding %s '%s' to '%s' on '%s' with keys: %s",
+					( options.queue ? "queue" : "exchange" ), target, source, this.connection.name, JSON.stringify( keys ) );
+				return when.all(
+					_.map( keys, function( key ) {
+						return channel[ call ]( target, source, key );
+					} ) );
+			})
+			.then(function ( channel ) {
+				delete this.promises[ id ];
+				delete this.definitions.bindings[ id ];
+			});
+
+	} else {
+		promise = Promise.resolve();
+	}
+	return promise;
+};
+
 Topology.prototype.createPrimitive = function( Primitive, primitiveType, options ) {
 	var errorFn = function( err ) {
 		return new Error( "Failed to create " + primitiveType + " '" + options.name +
