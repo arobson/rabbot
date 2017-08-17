@@ -216,11 +216,11 @@ Topology.prototype.removeBinding = function( options ) {
 					_.map( keys, function( key ) {
 						return channel[ call ]( target, source, key );
 					} ) );
-			})
+			}.bind( this ) )
 			.then(function ( channel ) {
 				delete this.promises[ id ];
 				delete this.definitions.bindings[ id ];
-			});
+			}.bind( this ));
 
 	} else {
 		promise = Promise.resolve();
