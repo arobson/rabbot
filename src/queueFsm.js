@@ -1,5 +1,4 @@
 var _ = require( "lodash" );
-var when = require( "when" );
 var machina = require( "machina" );
 var format = require( "util" ).format;
 var Monologue = require( "monologue.js" );
@@ -131,14 +130,15 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
       if( release ) {
         release( closed );
       } else {
-        return when();
+        return Promise.resolve();
       }
     },
 
     check: function() {
-      var deferred = when.defer();
-      this.handle( "check", deferred );
-      return deferred.promise;
+      return new Promise((resolve, reject) => {
+        const deferred = {resolve, reject};
+        this.handle( "check", deferred );
+      });
     },
 
     reconnect: function() {
@@ -149,7 +149,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
     },
 
     release: function() {
-      return when.promise( function( resolve, reject ) {
+      return new Promise( function( resolve, reject ) {
         var _handlers;
         function cleanResolve() {
           unhandle( _handlers );
@@ -176,7 +176,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
     subscribe: function( exclusive ) {
       options.subscribe = true;
       options.exclusive = exclusive;
-      return when.promise( function( resolve, reject ) {
+      return new Promise( function( resolve, reject ) {
         var _handlers;
         function cleanResolve() {
           unhandle( _handlers );
@@ -202,7 +202,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
       if( unsubscriber ) {
         return unsubscriber();
       } else {
-        return when.reject( new Error( "No active subscription presently exists on the queue" ) );
+        return Promise.reject( new Error( "No active subscription presently exists on the queue" ) );
       }
     },
 

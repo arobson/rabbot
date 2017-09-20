@@ -1,5 +1,5 @@
 var _ = require( "lodash" );
-var when = require( "when" );
+
 var info = require( "../info" );
 var exLog = require( "../log.js" )( "rabbot.exchange" );
 var topLog = require( "../log.js" )( "rabbot.topology" );
@@ -36,7 +36,7 @@ function define( channel, options, connectionName ) {
     JSON.stringify( _.omit( valid, [ "name", "type" ] ) )
   );
   if( options.name === "" ) {
-    return when( true );
+    return Promise.resolve( true );
   } else if( options.passive ) {
     return channel.checkExchange( options.name );
   } else {
@@ -68,7 +68,7 @@ function publish( channel, options, topology, log, serializers, message ) {
   if( !serializer ) {
     var errMessage = format( "Failed to publish message with contentType '%s' - no serializer defined", contentType );
     exLog.error( errMessage );
-    return when.reject( new Error( errMessage ) );
+    return Promise.reject( new Error( errMessage ) );
   }
   var payload = serializer.serialize( message.body );
   var publishOptions = {
@@ -124,24 +124,21 @@ function publish( channel, options, topology, log, serializers, message ) {
     );
     return Promise.resolve();
   } else {
-    var deferred = when.defer();
-    var promise = deferred.promise;
-
-    channel.publish(
-      channelName,
-      effectiveKey,
-      payload,
-      publishOptions,
-      function( err, i ) {
-        if( err ) {
-          deferred.reject( err );
-        } else {
-          deferred.resolve( i );
+    return new Promise((resolve, reject) => {
+      channel.publish(
+        channelName,
+        effectiveKey,
+        payload,
+        publishOptions,
+        function( err, i ) {
+          if( err ) {
+            reject( err );
+          } else {
+            resolve( i );
+          }
         }
-      }
-    );
-    return promise
-      .then( onConfirmed, onRejected );
+      );
+    }).then( onConfirmed, onRejected );
   }
 }
 
@@ -156,7 +153,7 @@ module.exports = function( options, topology, publishLog, serializers ) {
             channel.release();
             channel = undefined;
           }
-          return when( true );
+          return Promise.resolve( true );
         },
         publish: publish.bind( undefined, channel, options, topology, publishLog, serializers )
       };

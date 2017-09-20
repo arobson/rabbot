@@ -1,5 +1,5 @@
 require( "../setup.js" );
-var when = require( "when" );
+
 var postal = require( "postal" );
 var signal = postal.channel( "rabbit.ack" );
 var AckBatch = require( "../../src/ackBatch.js" );
@@ -176,7 +176,7 @@ describe( "Ack Batching", function() {
 			resolver = function( s, d ) {
 				status = s;
 				data = d;
-				return when( true );
+				return Promise.resolve( true );
 			};
 			batch = new AckBatch( "test-queue", "test-connection", resolver );
 			batch.on( "empty", function() {
@@ -228,7 +228,7 @@ describe( "Ack Batching", function() {
 			resolver = function( s, d ) {
 				status = s;
 				data = d;
-				return when( true );
+				return Promise.resolve( true );
 			};
 			batch = new AckBatch( "test-queue", "test-connection", resolver );
 			batch.on( "empty", function() {
@@ -280,7 +280,7 @@ describe( "Ack Batching", function() {
 			resolver = function( s, d ) {
 				status = s;
 				data = d;
-				return when( true );
+				return Promise.resolve( true );
 			};
 			batch = new AckBatch( "test-queue", "test-connection", resolver );
 			batch.on( "empty", function() {
@@ -333,7 +333,7 @@ describe( "Ack Batching", function() {
 			resolver = function( s, d ) {
 				status.push( s );
 				data.push( d );
-				return when( true );
+				return Promise.resolve( true );
 			};
 			batch = new AckBatch( "test-queue", "test-connection", resolver );
 			batch.on( "empty", function() {

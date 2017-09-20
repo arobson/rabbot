@@ -3,7 +3,6 @@ var AckBatch = require( "../ackBatch.js" );
 var postal = require( "postal" );
 var dispatch = postal.channel( "rabbit.dispatch" );
 var responses = postal.channel( "rabbit.responses" );
-var when = require( "when" );
 var info = require( "../info" );
 var log = require( "../log" )( "rabbot.queue" );
 var format = require( "util" ).format;
@@ -128,7 +127,7 @@ function getReply( channel, serializers, raw, replyQueue, connectionName ) {
 		if( !serializer ) {
 			var message = format( "Failed to publish message with contentType %s - no serializer defined", contentType );
 			log.error( message );
-			return when.reject( new Error( message ) );
+			return Promise.reject( new Error( message ) );
 		}
 		var payload = serializer.serialize( reply );
 
@@ -165,7 +164,7 @@ function getReply( channel, serializers, raw, replyQueue, connectionName ) {
 				return channel.sendToQueue( replyTo, payload, publishOptions );
 			}
 		} else {
-			return when.reject( new Error( "Cannot reply to a message that has no return address" ) );
+			return Promise.reject( new Error( "Cannot reply to a message that has no return address" ) );
 		}
 	};
 }
@@ -201,7 +200,7 @@ function getUntrackedOps( channel, raw, messages ) {
 
 function release( channel, options, messages, released ) {
 	function onUnsubscribed() {
-		return when.promise( function( resolve ) {
+		return Promise.reject(promise( function( resolve ) {
 			if ( messages.messages.length && !released ) {
 				messages.once( "empty", function() {
 					finalize( channel, messages );
@@ -230,7 +229,7 @@ function resolveTags( channel, queue, connection ) {
 				log.debug( "Rejecting tag %d on '%s' - '%s'", data.tag, queue, connection );
 				return channel.nack( { fields: { deliveryTag: data.tag } }, data.inclusive, false );
 			default:
-				return when( true );
+				return Promise.resolve( true );
 		}
 	};
 }
@@ -248,7 +247,7 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 	options.consumerTag = info.createTag( channelName );
 	if( _.keys( channel.item.consumers ).length > 0 ) {
 		log.info( "Duplicate subscription to queue %s ignored", channelName );
-		return when( options.consumerTag );
+		return Promise.resolve( options.consumerTag );
 	}
 	log.info( "Starting subscription to queue '%s' on '%s'", channelName, topology.connection.name );
   return channel.consume( channelName, function( raw ) {
@@ -343,7 +342,7 @@ function unsubscribe( channel, options ) {
 		log.info( "Unsubscribing from queue '%s' with tag %s", options.name, channel.tag );
 		return channel.cancel( channel.tag );
 	} else {
-		return when.resolve();
+		return Promise.reject(resolve();
 	}
 }
 
