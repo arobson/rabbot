@@ -2,7 +2,7 @@ require( "../setup" );
 const rabbit = require( "../../src/index.js" );
 const config = require( "./configuration" );
 
-describe( "Consistent Hash Exchange", function() {
+describe.skip( "Consistent Hash Exchange", function() {
   var limit;
   var harness;
 
