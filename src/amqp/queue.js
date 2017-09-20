@@ -200,7 +200,7 @@ function getUntrackedOps( channel, raw, messages ) {
 
 function release( channel, options, messages, released ) {
 	function onUnsubscribed() {
-		return Promise.reject(promise( function( resolve ) {
+		return new Promise( function( resolve ) {
 			if ( messages.messages.length && !released ) {
 				messages.once( "empty", function() {
 					finalize( channel, messages );
@@ -342,7 +342,7 @@ function unsubscribe( channel, options ) {
 		log.info( "Unsubscribing from queue '%s' with tag %s", options.name, channel.tag );
 		return channel.cancel( channel.tag );
 	} else {
-		return Promise.reject(resolve();
+		return Promise.resolve();
 	}
 }
 
