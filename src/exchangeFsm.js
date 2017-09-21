@@ -1,5 +1,4 @@
 var _ = require( "lodash" );
-var when = require( "when" );
 var machina = require( "machina" );
 var Monologue = require( "monologue.js" );
 var publishLog = require( "./publishLog" );
@@ -126,14 +125,15 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
       if( release ) {
         return release( closed );
       } else {
-        return when();
+        return Promise.resolve();
       }
     },
 
     check: function() {
-      var deferred = when.defer();
-      this.handle( "check", deferred );
-      return deferred.promise;
+      return new Promise((resolve, reject) => {
+        var deferred = {resolve, reject};
+        this.handle( "check", deferred );
+      });
     },
 
     reconnect: function() {
@@ -145,7 +145,7 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
 
     release: function() {
       exLog.debug( "Release called on exchange %s - %s (%d messages pending)", this.name, connection.name, this.published.count() );
-      return when.promise( function( resolve ) {
+      return new Promise( function( resolve ) {
         this.once( "released", function() {
           resolve();
         } );
@@ -159,10 +159,10 @@ var Factory = function( options, connection, topology, serializers, exchangeFn )
           this.name,
           this.limit
         );
-        return when.reject( "Exchange has reached the limit of messages waiting on a connection" );
+        return Promise.reject( "Exchange has reached the limit of messages waiting on a connection" );
       }
       var publishTimeout = message.timeout || options.publishTimeout || message.connectionPublishTimeout || 0;
-      return when.promise( function( resolve, reject ) {
+      return new Promise( function( resolve, reject ) {
         var timeout, timedOut, failedSub;
         if( publishTimeout > 0 ) {
           timeout = setTimeout( function() {

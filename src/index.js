@@ -1,6 +1,5 @@
 const _ = require( "lodash" );
 const Monologue = require( "monologue.js" );
-const when = require( "when" );
 const connectionFn = require( "./connectionFsm.js" );
 const topologyFn = require( "./topology.js" );
 const postal = require( "postal" );

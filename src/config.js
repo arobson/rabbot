@@ -1,4 +1,3 @@
-var when = require( "when" );
 var format = require( "util" ).format;
 var log = require( "./log" )( "rabbot.configuration" );
 
@@ -12,7 +11,7 @@ module.exports = function( Broker ) {
   Broker.prototype.configure = function( config ) {
     var emit = this.emit.bind( this );
     this.configurations[ config.name || "default" ] = config;
-    return when.promise( function( resolve, reject ) {
+    return new Promise( function( resolve, reject ) {
 
       function onExchangeError( connection, err ) {
         log.error( "Configuration of %s failed due to an error in one or more exchange settings: %s", connection.name, err );
