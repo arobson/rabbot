@@ -9,6 +9,7 @@ var format = require( "util" ).format;
 var topLog = require( "../log" )( "rabbot.topology" );
 var unhandledLog = require( "../log" )( "rabbot.unhandled" );
 var noOp = function() {};
+var broker = require('../index');
 
 /* log
 	* `rabbot.amqp-queue`
@@ -283,7 +284,10 @@ function subscribe( channelName, channel, topology, serializers, messages, optio
 			try {
 				raw.body = serializer.deserialize( raw.content, raw.properties.contentEncoding );
 			} catch( err ) {
-				ops.nack();
+        if (broker.autoNack === true) {
+          ops.nack();
+          throw err;
+        }
 			}
 		}
 
