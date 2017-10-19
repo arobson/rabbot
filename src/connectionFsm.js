@@ -66,9 +66,12 @@ var Connection = function( options, connectionFn, channelFn ) {
 						this._onChannel.bind( this, name, context );
 						resolve( channel );
 					}.bind( this ) );
+					channel.on( "failed", function(err) {
+						this.emit( "failed", err )
+					}.bind( this ));
 					channel.on( "return", function(raw) {
-						this.emit( "return", raw);
-					}.bind(this));
+						this.emit( "return", raw );
+					}.bind( this ));
 				}.bind( this ) );
 			} else {
 				return when( channel );
