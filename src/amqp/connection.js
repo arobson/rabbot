@@ -202,5 +202,5 @@ module.exports = function( options ) {
 			} );
 	};
 	var adapter = new Adapter( options );
-	return monad( options.name, "connection", adapter.connect.bind( adapter ), AmqpConnection, close );
+	return monad( options, "connection", adapter.connect.bind( adapter ), AmqpConnection, close );
 };

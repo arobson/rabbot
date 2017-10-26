@@ -29,7 +29,7 @@ module.exports = {
 		var factory = function() {
 			return connection[ method ]();
 		};
-		var channel = monad( name, "channel", factory, AmqpChannel, close.bind( null, name ) );
+		var channel = monad( { name: name }, "channel", factory, AmqpChannel, close.bind( null, name ) );
 		return channel;
 	}
 };

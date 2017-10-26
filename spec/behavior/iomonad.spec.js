@@ -27,7 +27,7 @@ describe( "IO Monad", function() {
 				return when.resolve( new Resource() );
 			};
 			
-			resource = new Monad( "test", "resource", factory, Resource, function( x ) {
+			resource = new Monad( { name: "test" }, "resource", factory, Resource, function( x ) {
 				x.close();
 				x.emit( "released" );
 			} );
@@ -79,7 +79,7 @@ describe( "IO Monad", function() {
 			var factory = function() {
 				return when.reject( new Error( "because no one likes you" ) );
 			};
-			resource = new Monad( "test", "resource", factory, Resource, function( x ) {
+			resource = new Monad( { name: "test" }, "resource", factory, Resource, function( x ) {
 				x.close();
 				x.raise( "closed", "" );
 			} );
@@ -130,7 +130,7 @@ describe( "IO Monad", function() {
 				return when.resolve( new Resource() );
 			};
 
-			resource = new Monad( "test", "resource", factory, Resource, function( x ) {
+			resource = new Monad( { name: "test" }, "resource", factory, Resource, function( x ) {
 				x.close();
 				x.emit( "released" );
 			} );
@@ -193,7 +193,7 @@ describe( "IO Monad", function() {
 				} );
 			};
 
-			resource = new Monad( "test", "resource", factory, Resource, function( x ) {
+			resource = new Monad( { name: "test" }, "resource", factory, Resource, function( x ) {
 				x.close();
 			} );
 			
@@ -250,7 +250,7 @@ describe( "IO Monad", function() {
 				} );
 			};
 
-			resource = new Monad( "test", "resource", factory, Resource, function( x ) {
+			resource = new Monad( { name: "test" }, "resource", factory, Resource, function( x ) {
 				x.close();
 				x.emit( "released" );
 			} );
@@ -304,7 +304,7 @@ describe( "IO Monad", function() {
 				} );
 			};
 
-			resource = new Monad( "test", "resource", factory, Resource, function( x ) {
+			resource = new Monad( { name: "test" }, "resource", factory, Resource, function( x ) {
 				x.close();
 				x.emit( "close", "closed" );
 			} );
@@ -363,7 +363,7 @@ describe( "IO Monad", function() {
 				} );
 			};
 
-			resource = new Monad( "test", "resource", factory, Resource, function( x ) {
+			resource = new Monad( { name: "test" }, "resource", factory, Resource, function( x ) {
 				x.close();
 				x.emit( "close", "you did this" );
 			} );
@@ -412,5 +412,57 @@ describe( "IO Monad", function() {
 			acquiringHandle.off();
 		} );
 	} );
-	
+
+  describe( "when custom wait options are defined", function() {
+    var resource, acquiring, releasedHandle, opResult;
+    var options = {
+      name: "test",
+      waitMin: 1000,
+      waitMax: 30000,
+      waitIncrement: 1000
+    };
+    before( function( done ) {
+      var factory = function() {
+        return when.resolve( new Resource() );
+      };
+
+      resource = new Monad( options, "resource", factory, Resource, function( x ) {
+        x.close();
+        x.emit( "released" );
+      } );
+
+      resource.once( "acquiring", function() {
+        acquiring = true;
+      } );
+
+      resource.once( "acquired", function() {
+        opResult = resource.sayHi()
+          .then( function( result ) {
+            opResult = result;
+            resource.release();
+            resource.item.emit( "close", "closed" );
+          } );
+      } );
+
+      releasedHandle = resource.on( "released", function() {
+        done();
+      } );
+    } );
+
+    it( "should have parameters set by options", function() {
+      resource.name.should.equal(options.name);
+      resource.waitMin.should.equal(options.waitMin);
+      resource.waitMax.should.equal(options.waitMax);
+      resource.waitIncrement.should.equal(options.waitIncrement);
+    } );
+
+    it( "should have waitInterval equal to waitMin", function() {
+      resource.waitInterval.should.equal(options.waitMin);
+    } );
+
+    after( function() {
+      releasedHandle.off();
+    } );
+  } );
+
 } );
