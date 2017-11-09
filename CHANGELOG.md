@@ -17,6 +17,7 @@
  * Improve README badges
  * #80 - fixes issue where multiple messages were nack'd in nobatch mode
  * #42 - fixes issue regarding broken build status
+ * use bluebird promise
 
 ## 1.0.x
 
