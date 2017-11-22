@@ -1,5 +1,5 @@
 require( "../setup.js" );
-var when = require( "when" );
+
 var Monad = require( "../../src/amqp/iomonad.js" );
 var EventEmitter = require( "events" );
 var util = require( "util" );
@@ -24,14 +24,14 @@ describe( "IO Monad", function() {
 		var resource, acquiring, releasedHandle, opResult;
 		before( function( done ) {
 			var factory = function() {
-				return when.resolve( new Resource() );
+				return Promise.resolve( new Resource() );
 			};
-			
+
 			resource = new Monad( "test", "resource", factory, Resource, function( x ) {
 				x.close();
 				x.emit( "released" );
 			} );
-			
+
 			resource.once( "acquiring", function() {
 				acquiring = true;
 			} );
@@ -47,7 +47,7 @@ describe( "IO Monad", function() {
 
 			releasedHandle = resource.on( "released", function() {
 				done();
-			} );			
+			} );
 		} );
 
 		it( "should emit acquiring", function() {
@@ -77,7 +77,7 @@ describe( "IO Monad", function() {
 		var acquiringHandle, failedHandle;
 		before( function( done ) {
 			var factory = function() {
-				return when.reject( new Error( "because no one likes you" ) );
+				return Promise.reject( new Error( "because no one likes you" ) );
 			};
 			resource = new Monad( "test", "resource", factory, Resource, function( x ) {
 				x.close();
@@ -127,14 +127,14 @@ describe( "IO Monad", function() {
 		var acquiredHandle, acquiringHandle, failedHandle;
 		before( function( done ) {
 			var factory = function() {
-				return when.resolve( new Resource() );
+				return Promise.resolve( new Resource() );
 			};
 
 			resource = new Monad( "test", "resource", factory, Resource, function( x ) {
 				x.close();
 				x.emit( "released" );
 			} );
-			
+
 			acquiringHandle = resource.on( "acquiring", function() {
 				acquiring ++;
 			} );
@@ -154,7 +154,7 @@ describe( "IO Monad", function() {
 
 			resource.once( "released", function() {
 				done();
-			} );			
+			} );
 		} );
 
 		it( "should re-acquire (retry)", function() {
@@ -186,7 +186,7 @@ describe( "IO Monad", function() {
 		var acquiredHandle, acquiringHandle;
 		before( function( done ) {
 			var factory = function() {
-				return when.promise( function( resolve ) {
+				return new Promise( function( resolve ) {
 					process.nextTick( function() {
 						resolve( new Resource() );
 					} );
@@ -196,7 +196,7 @@ describe( "IO Monad", function() {
 			resource = new Monad( "test", "resource", factory, Resource, function( x ) {
 				x.close();
 			} );
-			
+
 			acquiringHandle = resource.on( "acquiring", function() {
 				acquiring ++;
 			} );
@@ -212,7 +212,7 @@ describe( "IO Monad", function() {
 			resource.once( "closed", function( reason ) {
 				closeReason = reason;
 				done();
-			} );		
+			} );
 		} );
 
 		it( "should re-acquire (retry)", function() {
@@ -243,7 +243,7 @@ describe( "IO Monad", function() {
 		var acquiredHandle, acquiringHandle;
 		before( function( done ) {
 			var factory = function() {
-				return when.promise( function( resolve ) {
+				return new Promise( function( resolve ) {
 					process.nextTick( function() {
 						resolve( new Resource() );
 					} );
@@ -254,7 +254,7 @@ describe( "IO Monad", function() {
 				x.close();
 				x.emit( "released" );
 			} );
-			
+
 			acquiringHandle = resource.on( "acquiring", function() {
 				acquiring ++;
 			} );
@@ -297,7 +297,7 @@ describe( "IO Monad", function() {
 		var acquiredHandle, acquiringHandle;
 		before( function( done ) {
 			var factory = function() {
-				return when.promise( function( resolve ) {
+				return new Promise( function( resolve ) {
 					process.nextTick( function() {
 						resolve( new Resource() );
 					} );
@@ -308,7 +308,7 @@ describe( "IO Monad", function() {
 				x.close();
 				x.emit( "close", "closed" );
 			} );
-			
+
 			acquiringHandle = resource.on( "acquiring", function() {
 				acquiring ++;
 			} );
@@ -356,7 +356,7 @@ describe( "IO Monad", function() {
 		var acquiredHandle, acquiringHandle;
 		before( function( done ) {
 			var factory = function() {
-				return when.promise( function( resolve ) {
+				return new Promise( function( resolve ) {
 					process.nextTick( function() {
 						resolve( new Resource() );
 					} );
@@ -367,7 +367,7 @@ describe( "IO Monad", function() {
 				x.close();
 				x.emit( "close", "you did this" );
 			} );
-			
+
 			acquiringHandle = resource.on( "acquiring", function() {
 				acquiring ++;
 			} );
@@ -412,5 +412,5 @@ describe( "IO Monad", function() {
 			acquiringHandle.off();
 		} );
 	} );
-	
+
 } );
