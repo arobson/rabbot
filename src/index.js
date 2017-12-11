@@ -1,3 +1,5 @@
+'use strict';
+
 const _ = require( "lodash" );
 const Monologue = require( "monologue.js" );
 const connectionFn = require( "./connectionFsm.js" );

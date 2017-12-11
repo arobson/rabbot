@@ -1,3 +1,5 @@
+'use strict'
+
 var Monologue = require( "monologue.js" );
 var log = require( "./log" )( "rabbot.topology" );
 var info = require( "./info" );
