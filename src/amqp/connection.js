@@ -138,6 +138,8 @@ Adapter.prototype.connect = function() {
 		var attempted = [];
 		var attempt;
 		attempt = function() {
+      console.log("attempted", attempted)
+      console.log("nextURI", nextUri)
 			var nextUri = this.getNextUri();
 			log.info( "Attempting connection to '%s' (%s)", this.name, nextUri );
 			function onConnection( connection ) {
@@ -152,14 +154,17 @@ Adapter.prototype.connect = function() {
 				if( attempted.length < this.limit ) {
 					attempt( err );
 				} else {
+          console.log("FAILHERE")
 					log.info( "Cannot connect to `%s` - all endpoints failed", this.name );
 					reject( "No endpoints could be reached" );
 				}
 			}
 			if ( _.indexOf( attempted, nextUri ) < 0 ) {
+        console.log("HERE")
 				amqp.connect( nextUri, Object.assign( { servername: url.parse(nextUri).hostname }, this.options ))
 					.then( onConnection.bind( this ), onConnectionError.bind( this ) );
 			} else {
+        console.log("HERE2")
 				log.info( "Cannot connect to `%s` - all endpoints failed", this.name );
 				reject( "No endpoints could be reached" );
 			}
