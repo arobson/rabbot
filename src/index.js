@@ -81,8 +81,9 @@ Broker.prototype.addConnection = function( options ) {
 	connectionPromise = when.promise( function( resolve, reject ) {
 		if ( !self.connections[ name ] ) {
 			connection = connectionFn( options );
-			var topology = topologyFn( connection, options || {}, serializers, unhandledStrategies, returnedStrategies );
+      var topology
 			connection.on( "connected", function() {
+        topology = topologyFn( connection, options || {}, serializers, unhandledStrategies, returnedStrategies );
 				self.emit( "connected", connection );
 				self.emit( connection.name + ".connection.opened", connection );
 				self.setAckInterval( 500 );
