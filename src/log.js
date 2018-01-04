@@ -1,3 +1,5 @@
+'use strict'
+
 // var log = require( "whistlepunk" ).log;
 const log = require( "bole" );
 const debug = require( "debug" );

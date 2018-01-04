@@ -1,3 +1,5 @@
+'use strict'
+
 var _ = require( "lodash" );
 var machina = require( "machina" );
 var format = require( "util" ).format;

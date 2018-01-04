@@ -1,5 +1,10 @@
 
-# rabbot
+# rabbot - Changelog
+
+## 2.0.1 [2018-01-04]
+### Changed
+* Allow use of node4 and drop default parameters
+* Add "use strict" to use const and let
 
 ## 2.0.0
 

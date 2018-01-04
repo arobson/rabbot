@@ -1,3 +1,5 @@
+'use strict';
+
 const _ = require( "lodash" );
 const Monologue = require( "monologue.js" );
 const connectionFn = require( "./connectionFsm.js" );
@@ -132,7 +134,11 @@ Broker.prototype.addConnection = function( opts ) {
   return connectionPromise;
 };
 
-Broker.prototype.addExchange = function( name, type, options = {}, connectionName = DEFAULT ) {
+Broker.prototype.addExchange = function( name, type, options, connectionName ) {
+
+  options = options === undefined ?  {} : options;
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
   if ( _.isObject( name ) ) {
     options = name;
     options.connectionName = options.connectionName || type || connectionName;
@@ -144,7 +150,11 @@ Broker.prototype.addExchange = function( name, type, options = {}, connectionNam
   return this.connections[ options.connectionName ].createExchange( options );
 };
 
-Broker.prototype.addQueue = function( name, options = {}, connectionName = DEFAULT ) {
+Broker.prototype.addQueue = function( name, options, connectionName ) {
+
+  options = options === undefined ?  {} : options;
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
   options.name = name;
   if ( options.subscribe && !this.hasHandles ) {
     console.warn( "Subscription to '" + name + "' was started without any handlers. This will result in lost messages!" );
@@ -160,11 +170,17 @@ Broker.prototype.batchAck = function() {
   signal.publish( "ack", {} );
 };
 
-Broker.prototype.bindExchange = function( source, target, keys, connectionName = DEFAULT ) {
+Broker.prototype.bindExchange = function( source, target, keys, connectionName ) {
+
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
   return this.connections[ connectionName ].createBinding( { source: source, target: target, keys: keys } );
 };
 
-Broker.prototype.bindQueue = function( source, target, keys, connectionName = DEFAULT ) {
+Broker.prototype.bindQueue = function( source, target, keys, connectionName ) {
+
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
   return this.connections[ connectionName ].createBinding(
     { source: source, target: target, keys: keys, queue: true },
     connectionName
@@ -184,7 +200,11 @@ Broker.prototype.closeAll = function( reset ) {
   return Promise.all( closers );
 };
 
-Broker.prototype.close = function( connectionName = DEFAULT, reset = false ) {
+Broker.prototype.close = function( connectionName, reset ) {
+
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+  reset = reset === undefined ? false : reset;
+
   const connection = this.connections[ connectionName ].connection;
   if ( connection !== undefined && connection !== null ) {
     if( reset ) {
@@ -196,19 +216,31 @@ Broker.prototype.close = function( connectionName = DEFAULT, reset = false ) {
   }
 };
 
-Broker.prototype.deleteExchange = function( name, connectionName = DEFAULT ) {
+Broker.prototype.deleteExchange = function( name, connectionName ) {
+
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
   return this.connections[ connectionName ].deleteExchange( name );
 };
 
-Broker.prototype.deleteQueue = function( name, connectionName = DEFAULT ) {
+Broker.prototype.deleteQueue = function( name, connectionName ) {
+
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
   return this.connections[ connectionName ].deleteQueue( name );
 };
 
-Broker.prototype.getExchange = function( name, connectionName = DEFAULT ) {
+Broker.prototype.getExchange = function( name, connectionName ) {
+
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
   return this.connections[ connectionName ].channels[ "exchange:" + name ];
 };
 
-Broker.prototype.getQueue = function( name, connectionName = DEFAULT ) {
+Broker.prototype.getQueue = function( name, connectionName ) {
+
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
   return this.connections[ connectionName ].channels[ "queue:" + name ];
 };
 
@@ -316,7 +348,11 @@ Broker.prototype.publish = function( exchangeName, type, message, routingKey, co
     } );
 };
 
-Broker.prototype.request = function( exchangeName, options = {}, notify, connectionName = DEFAULT ) {
+Broker.prototype.request = function( exchangeName, options, notify, connectionName ) {
+
+  options = options === undefined ? {} : options;
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
   const requestId = uuid.v1();
   options.messageId = requestId;
   options.connectionName = options.connectionName || connectionName;
@@ -348,7 +384,10 @@ Broker.prototype.reset = function() {
   this.configurations = {};
 };
 
-Broker.prototype.retry = function( connectionName = DEFAULT ) {
+Broker.prototype.retry = function( connectionName ) {
+
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
   var config = this.configurations[ connectionName ];
   return this.configure( config );
 };
@@ -367,7 +406,11 @@ Broker.prototype.shutdown = function() {
     } );
 };
 
-Broker.prototype.startSubscription = function( queueName, exclusive = false, connectionName = DEFAULT ) {
+Broker.prototype.startSubscription = function( queueName, exclusive, connectionName ) {
+
+  exclusive = exclusive === undefined ? false : exclusive;
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
   if ( !this.hasHandles ) {
     console.warn( "Subscription to '" + queueName + "' was started without any handlers. This will result in lost messages!" );
   }
@@ -383,7 +426,10 @@ Broker.prototype.startSubscription = function( queueName, exclusive = false, con
   }
 };
 
-Broker.prototype.stopSubscription = function( queueName, connectionName = DEFAULT ) {
+Broker.prototype.stopSubscription = function( queueName, connectionName ) {
+
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
   var queue = this.getQueue( queueName, connectionName );
   if( queue ) {
     queue.unsubscribe();

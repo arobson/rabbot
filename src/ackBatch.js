@@ -1,3 +1,5 @@
+'use strict'
+
 const _ = require( "lodash" );
 const postal = require( "postal" );
 const Monologue = require( "monologue.js" );

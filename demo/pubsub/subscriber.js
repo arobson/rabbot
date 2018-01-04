@@ -1,3 +1,5 @@
+'use strict';
+
 var rabbit = require( "../../src/index.js" );
 
 const counts = {

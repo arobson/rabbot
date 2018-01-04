@@ -1,3 +1,5 @@
+'use strict'
+
 var rabbit = require( "../../src/index.js" );
 
 // always setup your message handlers first

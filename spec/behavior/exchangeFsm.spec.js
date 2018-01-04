@@ -1,3 +1,5 @@
+'use strict';
+
 require( "../setup.js" );
 var _ = require( "lodash" );
 

@@ -1,3 +1,5 @@
+'use strict';
+
 require( "../setup" );
 const rabbit = require( "../../src/index.js" );
 
