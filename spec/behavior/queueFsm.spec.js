@@ -1,6 +1,5 @@
 require( "../setup.js" );
 var _ = require( "lodash" );
-var when = require( "when" );
 var queueFsm = require( "../../src/queueFsm" );
 var noOp = function() {};
 var emitter = require( "./emitter" );
@@ -23,7 +22,7 @@ function channelFn( options ) {
 	return {
 		mock: channelMock,
 		factory: function() {
-			return when( channel );
+			return Promise.resolve( channel );
 		}
 	};
 }
@@ -45,7 +44,7 @@ describe( "Queue FSM", function() {
 			channelMock
 				.expects( "define" )
 				.once()
-				.returns( when.reject( new Error( "nope" ) ) );
+				.returns( Promise.reject( new Error( "nope" ) ) );
 
 			queue = queueFsm( options, connection, topology, {}, ch.factory );
 			queue.on( "failed", function( err ) {

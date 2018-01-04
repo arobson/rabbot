@@ -1,5 +1,6 @@
+'use strict'
+
 var _ = require( "lodash" );
-var when = require( "when" );
 var machina = require( "machina" );
 var format = require( "util" ).format;
 var Monologue = require( "monologue.js" );
@@ -131,18 +132,26 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
       if( release ) {
         release( closed );
       } else {
-        return when();
+        return Promise.resolve();
       }
     },
 
     check: function() {
-      var deferred = when.defer();
-      this.handle( "check", deferred );
-      return deferred.promise;
+      return new Promise((resolve, reject) => {
+        const deferred = {resolve, reject};
+        this.handle( "check", deferred );
+      });
+    },
+
+    reconnect: function() {
+      if( /releas/.test( this.state ) ) {
+        this.transition( "initializing" );
+      }
+      return this.check();
     },
 
     release: function() {
-      return when.promise( function( resolve, reject ) {
+      return new Promise( function( resolve, reject ) {
         var _handlers;
         function cleanResolve() {
           unhandle( _handlers );
@@ -163,13 +172,13 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
     },
 
     retry: function() {
-      this.transition( 'initializing' );
+      this.transition( "initializing" );
     },
 
     subscribe: function( exclusive ) {
       options.subscribe = true;
       options.exclusive = exclusive;
-      return when.promise( function( resolve, reject ) {
+      return new Promise( function( resolve, reject ) {
         var _handlers;
         function cleanResolve() {
           unhandle( _handlers );
@@ -195,7 +204,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
       if( unsubscriber ) {
         return unsubscriber();
       } else {
-        return when.reject( new Error( "No active subscription presently exists on the queue" ) );
+        return Promise.reject( new Error( "No active subscription presently exists on the queue" ) );
       }
     },
 
@@ -287,7 +296,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         subscribe: function() {
           if( this.subscriber ) {
             this.transition( "subscribing" );
-      return  this.subscriber();
+            return  this.subscriber();
           }
         }
       },
@@ -303,11 +312,11 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         _onEnter: function() {
           this.emit( "released" );
         },
-        release: function() {
-          this.emit( "released" );
-        },
         check: function( deferred ) {
           deferred.reject( new Error( format( "Cannot establish queue '%s' after intentionally closing its connection", this.name ) ) );
+        },
+        release: function() {
+          this.emit( "released" );
         },
         subscribe: function() {
           this.emit( "subscribeFailed", new Error( format( "Cannot subscribe to queue '%s' after intentionally closing its connection", this.name ) ) );
@@ -338,7 +347,7 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
         },
         release: function() {
           this.transition( "releasing" );
-          this.handle( "release" )
+          this.handle( "release" );
         },
         released: function() {
           this._release( true );

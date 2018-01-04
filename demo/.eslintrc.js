@@ -3,19 +3,6 @@ module.exports = {
         "es6": true,
         "node": true
     },
-    "globals": {
-      "describe": false,
-      "it": false,
-      "should": false,
-      "before": false,
-      "after": false,
-      "sinon": false,
-      "chai": false,
-      "expect": false,
-      "should": false,
-      "harnessFactory": false,
-      "sortBy": false,
-    },
     "extends": "eslint:recommended",
     "rules": {
         "accessor-pairs": "error",
@@ -118,10 +105,10 @@ module.exports = {
         "no-catch-shadow": "error",
         "no-confusing-arrow": "error",
         "no-continue": "error",
-        "no-console": "warn",
         "no-div-regex": "error",
         "no-duplicate-imports": "error",
         "no-else-return": "off",
+        "no-console": "off",
         "no-empty": [
             "error",
             {
@@ -170,7 +157,7 @@ module.exports = {
         "no-path-concat": "error",
         "no-plusplus": "off",
         "no-process-env": "error",
-        "no-process-exit": "error",
+        "no-process-exit": "off",
         "no-proto": "error",
         "no-prototype-builtins": "error",
         "no-restricted-globals": "error",

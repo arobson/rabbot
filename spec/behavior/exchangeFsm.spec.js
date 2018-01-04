@@ -1,6 +1,8 @@
+'use strict';
+
 require( "../setup.js" );
 var _ = require( "lodash" );
-var when = require( "when" );
+
 var exchangeFsm = require( "../../src/exchangeFsm" );
 var noOp = function() {};
 var emitter = require( "./emitter" );
@@ -19,7 +21,7 @@ function exchangeFn( options ) {
 	return {
 		mock: channelMock,
 		factory: function() {
-			return when( channel );
+			return Promise.resolve( channel );
 		}
 	};
 }
@@ -104,19 +106,23 @@ describe( "Exchange FSM", function() {
 
 			var ex = exchangeFn( options );
 			channelMock = ex.mock;
-			var deferred = when.defer();
+
+      const p = new Promise((resolve, reject) => {
+
+      });
+
 			channelMock
 				.expects( "define" )
-				.once()
-				.returns( deferred.promise );
+        .once()
+        .returns(Promise.reject( new Error( "nope" ) ));
 
 			exchange = exchangeFsm( options, connection, topology, {}, ex.factory );
 			published = _.map( [ 1, 2, 3 ], function() {
 				return exchange.publish( {} )
           .then( null, function( err ) { return err.message; } );
 			} );
-			deferred.reject( new Error( "nope" ) );
-			return when.join( published );
+
+			return Promise.all( published );
 		} );
 
 		it( "should be in failed state", function() {
@@ -168,7 +174,7 @@ describe( "Exchange FSM", function() {
 			channelMock
 				.expects( "define" )
 				.once()
-				.returns( when.resolve() );
+				.returns( Promise.resolve() );
 
 			exchange = exchangeFsm( options, connection, topology, {}, ex.factory );
 			exchange.on( "failed", function( err ) {
@@ -195,7 +201,7 @@ describe( "Exchange FSM", function() {
 				channelMock
 					.expects( "publish" )
 					.once()
-					.returns( when( true ) );
+					.returns( Promise.resolve( true ) );
 
 				promise = exchange.publish( {} );
 
@@ -224,7 +230,7 @@ describe( "Exchange FSM", function() {
 				channelMock
 					.expects( "define" )
 					.once()
-					.returns( when.resolve() );
+					.returns( Promise.resolve() );
 
 				exchange.on( "defined", function() {
 					done();

@@ -1,5 +1,28 @@
 
-# rabbot
+# rabbot - Changelog
+
+## 2.0.1 [2018-01-04]
+### Changed
+* Allow use of node4 and drop default parameters
+* Add "use strict" to use const and let
+
+## 2.0.0
+
+ * Allow publisher confirms to be turned off per exchange
+ * Moving towards ES6 features
+ * Clean up cases where arguments were being re-written (perf issue)
+ * Reduce cases where properties are introduced to hashes after instantiation (perf issue)
+ * Rewrite tests into single modules with individual config to make contributing & maintenance easier
+ * Move build system to Travis
+ * Use coveralls to track code coverage
+ * Remove lodash dependency
+ * Remove when dependency
+ * Change logging to bole
+ * Change commit style to conventional commits
+ * Improve README badges
+ * #80 - fixes issue where multiple messages were nack'd in nobatch mode
+ * #42 - fixes issue regarding broken build status
+ * use bluebird promise
 
 ## 1.0.x
 

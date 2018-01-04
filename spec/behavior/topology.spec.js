@@ -1,6 +1,5 @@
 require( "../setup.js" );
 var _ = require( "lodash" );
-var when = require( "when" );
 var topologyFn = require( "../../src/topology" );
 var noOp = function() {};
 var emitter = require( "./emitter" );
@@ -75,7 +74,7 @@ describe( "Topology", function() {
 			q = emitter();
 			q.check = function() {
 				q.raise( "defined" );
-				return when.resolve();
+				return Promise.resolve();
 			};
 			var Exchange = function() {
 				return ex;
@@ -95,13 +94,13 @@ describe( "Topology", function() {
 				.expects( "bindQueue" )
 				.once()
 				.withArgs( uniqueQueueName, "top-ex" )
-				.returns( when.resolve() );
+				.returns( Promise.resolve() );
 			conn.mock.expects( "getChannel" )
 				.once()
 				.resolves( control );
 
 			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue, "test" );
-			when.all( [
+			Promise.all( [
 					topology.createExchange( { name: "top-ex", type: "topic" } ),
 					topology.createQueue( { name: "top-q", unique: "hash" } )
 				] ).then( function() {
@@ -151,7 +150,7 @@ describe( "Topology", function() {
 					.expects( "bindQueue" )
 					.once()
 					.withArgs( uniqueQueueName, "top-ex" )
-					.returns( when.resolve() );
+					.returns( Promise.resolve() );
 				conn.mock.expects( "getChannel" )
 					.once()
 					.resolves( control );
@@ -159,7 +158,7 @@ describe( "Topology", function() {
 				topology.once( "replyQueue.ready", function( queue ) {
 					replyQueue = queue;
 				} );
-				topology.once( "bindings-completed", function( bindings ) {
+				topology.once( "bindings.completed", function( bindings ) {
 					done();
 				} );
 				conn.instance.raise( "reconnected" );
@@ -190,7 +189,7 @@ describe( "Topology", function() {
 			q = emitter();
 			q.check = function() {
 				q.raise( "defined" );
-				return when.resolve();
+				return Promise.resolve();
 			};
 			var Exchange = function() {
 				return ex;
@@ -231,8 +230,8 @@ describe( "Topology", function() {
 		describe( "when recovering from disconnection", function() {
 			before( function( done ) {
 				replyQueue = undefined;
-				topology.once( "replyQueue.ready", function( queue ) {
-					replyQueue = queue;
+        topology.once( "replyQueue.ready", function( queue ) {
+          replyQueue = queue;
 					done();
 				} );
 				conn.instance.raise( "reconnected" );
@@ -259,7 +258,7 @@ describe( "Topology", function() {
 			q = emitter();
 			q.check = function() {
 				q.raise( "defined" );
-				return when.resolve();
+				return Promise.resolve();
 			};
 			var Exchange = function() {
 				return ex;
@@ -298,7 +297,7 @@ describe( "Topology", function() {
 			q = emitter();
 			ex.check = function() {
 				ex.raise( "defined" );
-				return when.resolve();
+				return Promise.resolve();
 			};
 			var Exchange = function() {
 				return ex;
@@ -336,7 +335,7 @@ describe( "Topology", function() {
 			q = emitter();
 			ex.check = function() {
 				ex.raise( "defined" );
-				return when.resolve();
+				return Promise.resolve();
 			};
 			var Exchange = function() {
 				calls = calls + 1;
@@ -378,7 +377,7 @@ describe( "Topology", function() {
 			ex = emitter();
 			q = emitter();
 			ex.check = function() {
-				return when.resolve();
+				return Promise.resolve();
 			};
 			var Exchange = function() {
 				return ex;
@@ -414,7 +413,7 @@ describe( "Topology", function() {
 			ex = emitter();
 			q = emitter();
 			ex.check = function() {
-				return when.resolve();
+				return Promise.resolve();
 			};
 			var Exchange = function() {
 				return ex;
@@ -465,7 +464,7 @@ describe( "Topology", function() {
 				.expects( "deleteExchange" )
 				.once()
 				.withArgs( "noice" )
-				.returns( when.resolve() );
+				.returns( Promise.resolve() );
 			conn.mock.expects( "getChannel" )
 				.once()
 				.resolves( control );
@@ -514,7 +513,7 @@ describe( "Topology", function() {
 				.expects( "deleteQueue" )
 				.once()
 				.withArgs( "noice" )
-				.returns( when.resolve() );
+				.returns( Promise.resolve() );
 			conn.mock.expects( "getChannel" )
 				.once()
 				.resolves( control );
@@ -562,7 +561,7 @@ describe( "Topology", function() {
 				.expects( "bindExchange" )
 				.once()
 				.withArgs( "to", "from", '' )
-				.returns( when.resolve() );
+				.returns( Promise.resolve() );
 			conn.mock.expects( "getChannel" )
 				.once()
 				.resolves( control );
@@ -595,10 +594,10 @@ describe( "Topology", function() {
 			var controlMock = sinon.mock( control );
 			controlMock.expects( "bindQueue" )
 				.withArgs( "to", "from", "a.*" )
-				.returns( when.resolve() );
+				.returns( Promise.resolve() );
 			controlMock.expects( "bindQueue" )
 				.withArgs( "to", "from", "b.*" )
-				.returns( when.resolve() );
+				.returns( Promise.resolve() );
 
 			conn.mock.expects( "getChannel" )
 				.once()
@@ -635,10 +634,10 @@ describe( "Topology", function() {
 			var controlMock = sinon.mock( control );
 			controlMock.expects( "bindQueue" )
 				.withArgs( "to", "from", "a.*" )
-				.returns( when.resolve() );
+				.returns( Promise.resolve() );
 			controlMock.expects( "bindQueue" )
 				.withArgs( "to", "from", "b.*" )
-				.returns( when.resolve() );
+				.returns( Promise.resolve() );
 
 			conn.mock.expects( "getChannel" )
 				.once()

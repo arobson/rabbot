@@ -2,7 +2,6 @@
 
 var _ = require( "lodash" );
 var Monologue = require( "monologue.js" );
-var when = require( "when" );
 var machina = require( "machina" );
 var log = require( "../log.js" )( "rabbot.io" );
 var format = require( "util" ).format;
@@ -139,7 +138,7 @@ module.exports = function( name, type, factory, target, close ) {
 		},
 		acquire: function() {
 			this.handle( "acquire" );
-			return when.promise( function( resolve, reject ) {
+			return new Promise( function( resolve, reject ) {
 				this.once( "acquired", function() {
 					resolve( this );
 				}.bind( this ) );
@@ -150,20 +149,20 @@ module.exports = function( name, type, factory, target, close ) {
 		},
 		operate: function( call, args ) {
 			var op = { operation: call, argList: args, index: this.index },
-				promise = when.promise( function( resolve, reject ) {
+				promise = new Promise( function( resolve, reject ) {
 					op.resolve = resolve;
 					op.reject = reject;
 				} );
 			this.handle( "operate", op );
 			return promise.then( null, function( err ) {
-				return when.reject( err );
+				return Promise.reject( err );
 			} );
 		},
 		release: function() {
 			if ( this.retry ) {
 				clearTimeout( this.retry );
 			}
-			return when.promise( function( resolve ) {
+			return new Promise( function( resolve ) {
 				this.once( "released", function() {
 					resolve();
 				} );
