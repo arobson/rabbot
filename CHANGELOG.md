@@ -1,6 +1,15 @@
 
 # rabbot - Changelog
 
+## 2.0.3 [2018-01-04]
+### Removed
+* Unused dependency `request`
+* Unused dependency `mocha-lcov-reporter`
+
+### Changed
+* Moved lodash to normal depencencies from dev dependencies
+* Bump nodejs version to 4 from 6
+
 ## 2.0.1 [2018-01-04]
 ### Changed
 * Allow use of node4 and drop default parameters
