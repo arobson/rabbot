@@ -36,6 +36,14 @@
       "url": "http://derickbailey.com/"
     },
     {
+      "name": "Randy Groff",
+      "url": "http://randygroff.com"
+    },
+    {
+      "name": "Joseph Frazier",
+      "url": "https://github.com/josephfrazier"
+    },
+    {
       "name": "Mario Kozjak",
       "url": "https://github.com/mkozjak"
     },
@@ -48,12 +56,52 @@
       "url": "https://github.com/brianedgerton"
     },
     {
+      "name": "Ryan Niemeyer",
+      "url": "http://knockmeout.net"
+    },
+    {
       "name": "Jim Cowart",
       "url": "http://github.com/ifandelse"
     },
     {
+      "name": "Sean Corrales",
+      "url": "https://github.com/droidenator"
+    },
+    {
+      "name": "Matthew Martin",
+      "url": "http://matmar10.com"
+    },
+    {
+      "name": "Tom Kirkpatrick",
+      "url": "https://github.com/mrfelton"
+    },
+    {
+      "name": "Bill Matson",
+      "url": "https://github.com/bmatson"
+    },
+    {
+      "name": "Scott Walters",
+      "url": "http://github.com/LeankitScott"
+    },
+    {
+      "name": "Eric Satterwhite",
+      "url": "http://codedependant.net/"
+    },
+    {
+      "name": "Leonardo Bispo de Oliveira",
+      "url": "http://blog.bispooliveira.de"
+    },
+    {
+      "name": "Michael Tuttle",
+      "url": "https://github.com/openam"
+    },
+    {
       "name": "John Mathis",
       "url": "http://github.com/JohnDMathis"
+    },
+    {
+      "name": "Dj Walker-Morgan",
+      "url": "http://www.codepope.com"
     },
     {
       "name": "Austin Young",
