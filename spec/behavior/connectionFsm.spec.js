@@ -1,5 +1,4 @@
 require( "../setup.js" );
-var when = require( "when" );
 var connectionFn = require( "../../src/connectionFsm.js" );
 var noOp = function() {};
 var EventEmitter = require( "events" );
@@ -30,7 +29,7 @@ var connectionMonadFn = function() {
 	var instance = {
 		acquire: function() {
 			this.raise( "acquiring" );
-			return when();
+			return Promise.resolve();
 		},
 		item: { uri: "" },
 		close: noOp,
@@ -75,7 +74,7 @@ describe( "Connection FSM", function() {
 				connection = connectionFn( { name: "failure" }, function() {
 					return monad;
 				} );
-				monad.release = function() { return when(); };
+				monad.release = function() { return Promise.resolve(); };
 				connection.once( "connecting", function() {
 					monad.raise( "failed", new Error( "bummer" ) );
 				} );
@@ -92,7 +91,7 @@ describe( "Connection FSM", function() {
 				var error;
 				before( function( done ) {
 					monad.createChannel = function() {
-						return when.reject( ":( no can do" );
+						return Promise.reject( ":( no can do" );
 					};
 					var channel;
 					connection.once( "connecting", function() {
@@ -227,7 +226,7 @@ describe( "Connection FSM", function() {
 			describe( "when acquiring a channel", function() {
 				before( function() {
 					monad.createChannel = function() {
-						return when( new EventEmitter() );
+						return Promise.resolve( new EventEmitter() );
 					};
 				} );
 
@@ -248,7 +247,7 @@ describe( "Connection FSM", function() {
 				var queue = { release: noOp };
 				before( function() {
 					queueMock = sinon.mock( queue );
-					queueMock.expects( "release" ).exactly( 5 ).returns( when( true ) );
+					queueMock.expects( "release" ).exactly( 5 ).returns( Promise.resolve( true ) );
 					connection.addQueue( queue );
 					connection.addQueue( queue );
 					connection.addQueue( queue );
@@ -259,7 +258,7 @@ describe( "Connection FSM", function() {
 						// prevents the promise from being returned if the queues haven't all resolved
 						queueMock.verify();
 						monad.raise( "released" );
-						return when( true );
+						return Promise.resolve( true );
 					};
 
 					return connection

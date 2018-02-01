@@ -1,7 +1,5 @@
 var amqp = require( "amqplib" );
-var _ = require( "lodash" );
 var fs = require( "fs" );
-var when = require( "when" );
 var AmqpConnection = require( "amqplib/lib/callback_model" ).CallbackModel;
 var monad = require( "./iomonad" );
 var log = require( "../log" )( "rabbot.connection" );
@@ -21,9 +19,8 @@ var url = require( "url" );
 
 function getArgs( fn ) {
 	var fnString = fn.toString();
-	return _.map( /[(]([^)]*)[)]/.exec( fnString )[ 1 ].split( ',' ), function( x ) {
-		return String.prototype.trim.bind( x )();
-	} );
+  var argList = /[(]([^)]*)[)]/.exec( fnString )[ 1 ].split( ',' );
+	return argList.map( String.prototype.trim );
 }
 
 function getOption( opts, key, alt ) {
@@ -38,6 +35,10 @@ function getUri( protocol, user, pass, server, port, vhost, heartbeat ) {
 	return protocol + user + ":" + pass +
 		"@" + server + ":" + port + "/" + vhost +
 		"?heartbeat=" + heartbeat;
+}
+
+function max( x, y ) {
+  return x > y ? x : y;
 }
 
 function parseUri( uri ) {
@@ -58,9 +59,9 @@ function parseUri( uri ) {
 }
 
 function split( x ) {
-	if ( _.isNumber( x ) ) {
+	if ( typeof x === "number" ) {
 		return [ x ];
-	} else if ( _.isArray( x ) ) {
+	} else if ( Array.isArray( x ) ) {
 		return x;
 	} else {
 		return x.split( "," ).map( trim );
@@ -77,7 +78,7 @@ function trim( x ) {
 
 var Adapter = function( parameters ) {
 	var uriOpts = parseUri( parameters.uri );
-	_.merge( parameters, uriOpts );
+  Object.assign( parameters, uriOpts );
 	var hosts = getOption( parameters, "host" );
 	var servers = getOption( parameters, "server" );
 	var brokers = getOption( parameters, "RABBIT_BROKER" );
@@ -105,21 +106,21 @@ var Adapter = function( parameters ) {
 		this.options.timeout = timeout;
 	}
 	if ( certPath ) {
-		this.options.cert = fs.existsSync(certPath)? fs.readFileSync( certPath ) : certPath;
+		this.options.cert = fs.existsSync(certPath) ? fs.readFileSync( certPath ) : certPath;
 	}
 	if ( keyPath ) {
-		this.options.key = fs.existsSync(keyPath)? fs.readFileSync( keyPath ) : keyPath;
+		this.options.key = fs.existsSync(keyPath) ? fs.readFileSync( keyPath ) : keyPath;
 	}
 	if ( passphrase ) {
 		this.options.passphrase = passphrase;
 	}
 	if ( pfxPath ) {
-		this.options.pfx = fs.existsSync(pfxPath)? fs.readFileSync( pfxPath ) : pfxPath;
+		this.options.pfx = fs.existsSync(pfxPath) ? fs.readFileSync( pfxPath ) : pfxPath;
 	}
 	if ( caPaths ) {
 		var list = caPaths.split( ',' );
-		this.options.ca = _.map( list, function( caPath ) {
-			return fs.existsSync(caPath)? fs.readFileSync( caPath ) : caPath;
+		this.options.ca = list.map( ( caPath ) => {
+			fs.existsSync(caPath) ? fs.readFileSync( caPath ) : caPath;
 		} );
 	}
 	if ( useSSL ) {
@@ -130,11 +131,11 @@ var Adapter = function( parameters ) {
 		process: info.process(),
 		lib: info.lib()
 	};
-	this.limit = _.max( [ this.servers.length, this.ports.length ] );
+	this.limit = max( this.servers.length, this.ports.length );
 };
 
 Adapter.prototype.connect = function() {
-	return when.promise( function( resolve, reject ) {
+	return new Promise( function( resolve, reject ) {
 		var attempted = [];
 		var attempt;
 		attempt = function() {
@@ -156,7 +157,7 @@ Adapter.prototype.connect = function() {
 					reject( "No endpoints could be reached" );
 				}
 			}
-			if ( _.indexOf( attempted, nextUri ) < 0 ) {
+			if ( attempted.indexOf( nextUri ) < 0 ) {
 				amqp.connect( nextUri, Object.assign( { servername: url.parse(nextUri).hostname }, this.options ))
 					.then( onConnection.bind( this ), onConnectionError.bind( this ) );
 			} else {

@@ -1,9 +1,10 @@
 # rabbot
 
-[![Build Status](http://67.205.142.228/api/badges/arobson/rabbot/status.svg)](http://67.205.142.228/arobson/rabbot)
-[![Version npm](https://img.shields.io/npm/v/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
-[![npm Downloads](https://img.shields.io/npm/dm/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
-[![Dependencies](https://img.shields.io/david/arobson/rabbot.svg?style=flat)](https://david-dm.org/arobson/rabbot)
+[![Build Status][travis-image]][travis-url]
+[![Coverage Status][coveralls-image]][coveralls-url]
+[![Version npm][version-image]][version-url]
+[![npm Downloads][downloads-image]][downloads-url]
+[![Dependencies][dependencies-image]][dependencies-url]
 
 This is a very opinionated abstraction over amqplib to help simplify the implementation of several messaging patterns on RabbitMQ.
 
@@ -124,7 +125,7 @@ The connection object is passed to the event handler for each event. Use the `na
 ### Details about publishing & subscribing related to connectivity
 
 #### Publishing
-Rabbot will attempt to retain messages you publish during the attempt to connect which it will publish if a connection can be successfully established. It is important to handle rejection of the publish. Only resolved publishes are guaranteed to have been delivered to the broker.
+For exchanges in confirm mode (the default), rabbot will attempt to retain messages you publish during the attempt to connect which it will publish if a connection can be successfully established. It is important to handle rejection of the publish. Only resolved publishes are guaranteed to have been delivered to the broker.
 
 Rabbot limits the number of messages it will retain for each exchange to 100 by default. After the limit is reached, all further publishes will be rejected automatically. This limit was put in place to prevent unbounded memory consumption.
 
@@ -140,11 +141,13 @@ If this is undesirable, your options are to turn of acknowledgements (which puts
 ## Sending & Receiving Messages
 
 ### Publish
-The publish call returns a promise that is only resolved once the broker has accepted responsibility for the message (see [Publisher Acknowledgments](https://www.rabbitmq.com/confirms.html) for more details). If a configured timeout is reached, or in the rare event that the broker rejects the message, the promise will be rejected. More commonly, the connection to the broker could be lost before the message is confirmed and you end up with a message in "limbo". rabbot keeps a list of unconfirmed messages that have been published _in memory only_. Once a connection is available and the topology is in place, rabbot will send messages in the order of the publish calls. In the event of a disconnection or unreachable broker, all publish promises that have not been resolved are rejected.
+In confirm mode (the default for exchanges), the publish call returns a promise that is only resolved once the broker has confirmed the publish (see [Publisher Acknowledgments](https://www.rabbitmq.com/confirms.html) for more details). If a configured timeout is reached, or in the rare event that the broker rejects the message, the promise will be rejected. More commonly, the connection to the broker could be lost before the message is confirmed and you end up with a message in "limbo". rabbot keeps a list of unconfirmed messages that have been published _in memory only_. Once a connection is available and the topology is in place, rabbot will send messages in the order of the publish calls. In the event of a disconnection or unreachable broker, all publish promises that have not been resolved are rejected.
 
 Publish timeouts can be set per message, per exchange or per connection. The most specific value overrides any set at a higher level. There are no default timeouts set at any level. The timer is started as soon as publish is called and only cancelled once rabbot is able to make the publish call on the actual exchange's channel. The timeout is cancelled once publish is called and will not result in a rejected promise due to time spent waiting on a confirmation.
 
 > Caution: rabbot does _not_ limit the growth of pending published messages. If a service cannot connect to Rabbit due to misconfiguration or the broker being down, publishing lots of messages can lead to out-of-memory errors. It is the consuming services responsibility to handle these kinds of scenarios.
+
+Confirm mode is not without an overhead cost. This can be turned off, per exchange, by setting `noConfirm: true`. Confirmation results in increased memory overhead on the client and broker. When off, the promise will _always_ resolve when the connection and exchange are available.
 
 #### Serializers
 rabbot associates serialization techniques for messages with mimeTypes which can now be set when publishing a message. Out of the box, it really only supports 3 types of serialization:
@@ -496,6 +499,7 @@ Options is a hash that can contain the following:
  * publishTimeout	2^32			timeout in milliseconds for publish calls to this exchange
  * replyTimeout		2^32			timeout in milliseconds to wait for a reply
  * limit 			2^16			the number of unpublished messages to cache while waiting on connection
+ * noConfirm  true|false  prevents rabbot from creating the exchange in confirm mode
 
 ### addQueue( queueName, [options], [connectionName] )
 The call returns a promise that can be used to determine when the queue has been created on the server.
@@ -536,7 +540,7 @@ Binds the target queue to the source exchange. Messages flow from source to targ
 
 > Note: setting subscribe to true will result in subscriptions starting immediately upon queue creation.
 
-This example shows most of the available options described above as well as logging options available through [whistlepunk](https://github.com/leankit-labs/whistlepunk).
+This example shows most of the available options described above.
 ```javascript
 	var settings = {
 		connection: {
@@ -561,15 +565,7 @@ This example shows most of the available options described above as well as logg
 		bindings:[
 			{ exchange: "config-ex.1", target: "config-q.1", keys: [ "bob","fred" ] },
 			{ exchange: "config-ex.2", target: "config-q.2", keys: "test1" }
-		],
-		logging: {
-			adapters: {
-				stdOut: { // adds a console logger at the "info" level
-					level: 3,
-					bailIfDebug: true
-				}
-			}
-		}
+		]
 	};
 ```
 
@@ -648,7 +644,24 @@ This queue configuration will set a prefetch limit of 5 on the channel that is u
 **Note:** The queue `limit` is not the same as the `queueLimit` option - the latter of which sets the maximum number of messages allowed in the queue.
 
 ## Logging
-As mentioned in the configuration, logging is provided by [whistlepunk](https://github.com/leankit-labs/whistlepunk). While you can easily write your own adapters for it, it supports a standard output adapter and a DEBUG based adapter by default. When troubleshooting, you can prefix starting your process with `DEBUG=rabbot.*` to see all rabbot related log messages. It's worth noting that the `rabbot.queue.#` and `rabbot.exchange.#` logging namespaces will be very high volume since that is where rabbot reports all messages published and subscribed at the debug level.
+As of v2, logging uses [bole](https://github.com/rvagg/bole) because it defaults to machine parsable logs, minimalistic and easy to write stream adapters for.
+
+A DEBUG adapter that works just like before is already included in rabbot, so you can still prefix the service with `DEBUG=rabbot.*` to get rabbot specific output.
+
+> Note: `rabbot.queue.*` and `rabbot.exchange.*` are high volume namespaces since that is where all published and subscribed messages get reported.
+
+### Attaching Custom Loggers
+A log call is now exposed directly to make it easier to attach streams to the bole instance:
+
+```js
+const rabbot = require( "rabbot" );
+
+// works like bole's output call
+rabbot.log( [
+  { level: "info", stream: process.stdout },
+  { level: "debug", stream: fs.createWriteStream( "./debug.log" ), objectMode: true }
+] );
+```
 
 ## A Note About Etiquette
 Rabbot was created to address a need at work. Any time I spend on it during work hours is to ensure that it does what my employer needs it to. The considerable amount of time I've spent on wascally and now rabbot outside of work hours is because I love open source software and the community want to contribute. I hope that you find this library useful and that it makes you feel like your job or project was easier.
@@ -671,7 +684,7 @@ Gregor Hophe and Bobby Woolf's definitive work on messaging. The [site](http://w
 I can't recommend this book highly enough; understanding the patterns will provide you with the conceptual tools need to be successful.
 
 ## Contributing
-PRs with insufficient coverage, broken tests or deviation from the style will not be accepted.
+PRs that don't include tests, break existing tests or deviate from the style will not be accepted. I _highly_ recommend installing an [Editor Config](http://editorconfig.org/) plugin for your editor/IDE of choice.
 
 ### Behavior & Integration Tests
 PRs should include modified or additional test coverage in both integration and behavioral specs. Integration tests assume RabbitMQ is running on localhost with guest/guest credentials and the consistent hash exchange plugin enabled. You can enable the plugin with the following command:
@@ -707,13 +720,7 @@ Click here for more information on [Docker](http://docker.com) and [official Rab
 *To run tests once you have RabbitMQ up:*
 
 ```bash
-$ gulp
-```
-
-OR
-
-```bash
-$ mocha spec/**
+$ npm test
 ```
 
 ### Style
@@ -722,3 +729,14 @@ This project has both an `.editorconfig` and `.esformatter` file to help keep ad
 ## Roadmap
  * improve support RabbitMQ backpressure mechanisms
  * add support for Rabbit's HTTP API
+
+[travis-image]: https://travis-ci.org/arobson/rabbot.svg?branch=master
+[travis-url]: https://travis-ci.org/arobson/rabbot
+[coveralls-url]: https://coveralls.io/github/arobson/rabbot?branch=master
+[coveralls-image]: https://coveralls.io/repos/github/arobson/rabbot/badge.svg?branch=master
+[version-image]: https://img.shields.io/npm/v/rabbot.svg?style=flat
+[version-url]: https://www.npmjs.com/package/rabbot
+[downloads-image]: https://img.shields.io/npm/dm/rabbot.svg?style=flat
+[downloads-url]: https://www.npmjs.com/package/rabbot
+[dependencies-image]: https://img.shields.io/david/arobson/rabbot.svg?style=flat
+[dependencies-url]: https://david-dm.org/arobson/rabbot

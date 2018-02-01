@@ -1,5 +1,5 @@
 require( "../setup.js" );
-var when = require( "when" );
+
 var postal = require( "postal" );
 var signal = postal.channel( "rabbit.ack" );
 var AckBatch = require( "../../src/ackBatch.js" );
@@ -17,23 +17,34 @@ describe( "Ack Batching", function() {
 			batch.addMessage( messageData );
 		} );
 
+    function remap( list ) {
+      return list.map( ( item ) => ( { status: item.status, tag: item.tag } ) );
+    }
+
+    it( "should return message in pending status", () => {
+      messageData.status.should.eql( "pending" );
+    } );
+
 		it( "should add pending status with tag", function() {
-			batch.messages.should.eql( [ { tag: 101, status: "pending" } ] );
+			remap( batch.messages ).should.eql( [ { tag: 101, status: "pending" } ] );
 		} );
 
 		it( "ack operation should change status to ack", function() {
 			messageData.ack();
-			batch.messages.should.eql( [ { tag: 101, status: "ack" } ] );
+      messageData.status.should.eql( "ack" );
+			remap( batch.messages ).should.eql( [ { tag: 101, status: "ack" } ] );
 		} );
 
 		it( "nack operation should change status to nack", function() {
 			messageData.nack();
-			batch.messages.should.eql( [ { tag: 101, status: "nack" } ] );
+      messageData.status.should.eql( "nack" );
+			remap( batch.messages ).should.eql( [ { tag: 101, status: "nack" } ] );
 		} );
 
 		it( "reject operation should change status to reject", function() {
 			messageData.reject();
-			batch.messages.should.eql( [ { tag: 101, status: "reject" } ] );
+      messageData.status.should.eql( "reject" );
+			remap( batch.messages ).should.eql( [ { tag: 101, status: "reject" } ] );
 		} );
 
 		after( function() {
@@ -165,7 +176,7 @@ describe( "Ack Batching", function() {
 			resolver = function( s, d ) {
 				status = s;
 				data = d;
-				return when( true );
+				return Promise.resolve( true );
 			};
 			batch = new AckBatch( "test-queue", "test-connection", resolver );
 			batch.on( "empty", function() {
@@ -217,7 +228,7 @@ describe( "Ack Batching", function() {
 			resolver = function( s, d ) {
 				status = s;
 				data = d;
-				return when( true );
+				return Promise.resolve( true );
 			};
 			batch = new AckBatch( "test-queue", "test-connection", resolver );
 			batch.on( "empty", function() {
@@ -269,7 +280,7 @@ describe( "Ack Batching", function() {
 			resolver = function( s, d ) {
 				status = s;
 				data = d;
-				return when( true );
+				return Promise.resolve( true );
 			};
 			batch = new AckBatch( "test-queue", "test-connection", resolver );
 			batch.on( "empty", function() {
@@ -322,7 +333,7 @@ describe( "Ack Batching", function() {
 			resolver = function( s, d ) {
 				status.push( s );
 				data.push( d );
-				return when( true );
+				return Promise.resolve( true );
 			};
 			batch = new AckBatch( "test-queue", "test-connection", resolver );
 			batch.on( "empty", function() {

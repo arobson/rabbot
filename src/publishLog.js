@@ -1,5 +1,6 @@
+'use strict'
+
 var _ = require( "lodash" );
-var when = require( "when" );
 
 function add( state, m ) {
 	if ( !state.messages.sequenceNo ) {
@@ -16,12 +17,13 @@ function next( state ) {
 
 function getEmptyPromise( state ) {
 	if( state.count ) {
-		var deferred = when.defer();
-		state.waiting = deferred;
-		return deferred.promise;
+    return new Promise((resolve, reject) => {
+      const deferred = {resolve, reject};
+      state.waiting = deferred;
+    });
 	} else {
-		return when.resolve();
-	}	
+		return Promise.resolve();
+	}
 }
 
 function resolveWaiting( state ) {
@@ -85,6 +87,14 @@ function publishLog() {
 		remove: remove.bind( undefined, state ),
 		state: state
 	};
+  // return {
+  //   add: () => {},
+  //   count: () => 0,
+  //   onceEmptied: () => Promise.resolve(),
+  //   reset: () => Promise.resolve(),
+  //   remove: () => true,
+  //   state
+  // };
 }
 
 module.exports = publishLog;
