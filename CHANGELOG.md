@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file. See [standa
 <a name="2.1.0"></a>
 # [2.1.0](https://github.com/arobson/rabbot/compare/v1.1.0...v2.1.0) (2018-02-18)
 
+### Changed
+* Moved lodash to normal depencencies from dev dependencies
+* Bump nodejs version to 4 from 6
 
 ### Bug Fixes
 
