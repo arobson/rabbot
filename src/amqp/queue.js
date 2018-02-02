@@ -69,7 +69,7 @@ function getContentType( body, options ) {
 	}
 	else if( _.isString( body ) ) {
 		return "text/plain";
-	} else if( _.isObject( body ) && !body.length ) {
+	} else if( _.isObject( body ) && !Buffer.isBuffer( body ) ) {
 		return "application/json";
 	} else {
 		return "application/octet-stream";

@@ -1,6 +1,10 @@
 
 # rabbot - Changelog
 
+## 2.0.4 [2018-02-01]
+### Fixed
+* msg.reply serializes to json if body is of type Array
+
 ## 2.0.3 [2018-01-04]
 ### Removed
 * Unused dependency `request`
