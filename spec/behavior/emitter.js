@@ -1,41 +1,38 @@
-var _ = require( "lodash" );
+module.exports = (name) => {
+  var handlers = {};
 
-module.exports = function emitter( name ) {
+  function raise (ev) {
+    if (handlers[ ev ]) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      handlers[ ev ].forEach(function (handler) {
+        if (handler) {
+          handler.apply(undefined, args);
+        }
+      });
+    }
+  }
 
-	var handlers = {};
+  function on (ev, handle) {
+    if (handlers[ ev ]) {
+      handlers[ ev ].push(handle);
+    } else {
+      handlers[ ev ] = [ handle ];
+    }
+    return { unsubscribe: function (h) {
+      handlers[ ev ].splice(handlers[ ev ].indexOf(h || handle)); // jshint ignore:line
+    } };
+  }
 
-	function raise( ev ) {
-		if ( handlers[ ev ] ) {
-			var args = Array.prototype.slice.call( arguments, 1 );
-			_.each( handlers[ ev ], function( handler ) {
-				if ( handler ) {
-					handler.apply( undefined, args );
-				}
-			} );
-		}
-	}
+  function reset () {
+    handlers = {};
+  }
 
-	function on( ev, handle ) {
-		if ( handlers[ ev ] ) {
-			handlers[ ev ].push( handle );
-		} else {
-			handlers[ ev ] = [ handle ];
-		}
-		return { unsubscribe: function( h ) {
-				var r = handlers[ ev ].splice( _.indexOf( handlers[ ev ], h || handle ) ); // jshint ignore:line
-			} };
-	}
-
-	function reset() {
-		handlers = {};
-	}
-
-	return {
-		name: name || "default",
-		handlers: handlers,
-		on: on,
-		once: on,
-		raise: raise,
-		reset: reset
-	};
+  return {
+    name: name || 'default',
+    handlers: handlers,
+    on: on,
+    once: on,
+    raise: raise,
+    reset: reset
+  };
 };
