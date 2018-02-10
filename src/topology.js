@@ -220,6 +220,7 @@ Topology.prototype.createPrimitive = function (Primitive, primitiveType, options
   return promise;
 };
 
+
 Topology.prototype.createDefaultExchange = function () {
   return this.createExchange({ name: '', passive: true });
 };
@@ -355,6 +356,42 @@ Topology.prototype.renameQueue = function (newQueueName) {
   this.channels[ `queue:${newQueueName}` ] = channel;
   delete this.definitions.queues[ '' ];
   delete this.channels[ 'queue:' ];
+};
+
+Topology.prototype.removeBinding = function( options ) {
+	let id = `${options.source}->${options.target}`
+	const keys = getKeys(options.keys);
+	if (keys[0] !== "") {
+		id += ":" + keys.join(':');
+	}
+	let promise = this.promises[ id ];
+	if (promise) {
+		const call = options.queue ? "unbindQueue" : "unbindExchange";
+		const source = options.source;
+		const target = options.target;
+		if (options.queue) {
+			var queue = this.definitions.queues[ options.target ];
+			if( queue && queue.uniqueName ) {
+				target = queue.uniqueName;
+			}
+		}
+		promise = this.connection.getChannel( "control", false, "control channel for bindings" )
+			.then((channel) => {
+        log.info(`Unbinding ${options.queue ? 'queue' : 'exchange'} '${target}' to '${source}' on '${this.connection.name}' with keys: ${JSON.stringify(keys)}`)
+				return Promise.all(
+					keys.map((key) => {
+						return channel[ call ](target, source, key);
+					}));
+			})
+			.then((channel) => {
+				delete this.promises[ id ];
+				delete this.definitions.bindings[ id ];
+			});
+
+	} else {
+		promise = Promise.resolve();
+	}
+	return promise;
 };
 
 Monologue.mixInto(Topology);
