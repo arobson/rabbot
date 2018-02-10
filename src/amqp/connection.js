@@ -100,7 +100,7 @@ var Adapter = function (parameters) {
   var caPaths = getOption(parameters, 'RABBIT_CA') || getOption(parameters, 'caPath');
   var passphrase = getOption(parameters, 'RABBIT_PASSPHRASE') || getOption(parameters, 'passphrase');
   var pfxPath = getOption(parameters, 'RABBIT_PFX') || getOption(parameters, 'pfxPath');
-  var useSSL = certPath || keyPath || passphrase || caPaths || pfxPath;
+  var useSSL = certPath || keyPath || passphrase || caPaths || pfxPath || parameters.useSSL;
   this.options = { noDelay: true };
   if (timeout) {
     this.options.timeout = timeout;
