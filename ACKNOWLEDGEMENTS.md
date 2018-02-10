@@ -3,6 +3,7 @@
 Several folks have contributed time, effort, ideas or small PRs to this project. It would not be what it is without them!
 
  * [Ryan Niemeyer](http://knockmeout.net)
+ * [Ben Whatley](https://github.com/darklordzw)
  * [Randy Groff](http://randygroff.com)
  * [Joseph Frazier](https://github.com/josephfrazier)
  * [Sean Corrales](https://github.com/droidenator)

@@ -571,49 +571,49 @@ describe('Topology', function () {
       topology.definitions.bindings[ 'from->to' ].should.eql({ source: 'from', target: 'to' });
     });
   });
-  
-  describe( "when removing an exchange to exchange binding with no keys", function() {
-		var topology, conn, ex, q;
 
-		before( function() {
-			ex = emitter();
-			q = emitter();
-			var Exchange = function() {
-				return ex;
-			};
-			var Queue = function() {
-				return q;
-			};
-			conn = connectionFn();
-			var control = {
-				bindExchange: noOp,
-				bindQueue: noOp,
-				unbindQueue: noOp,
-				unbindExchange: noOp
-			};
-			var controlMock = sinon.mock( control );
-			controlMock
-				.expects( "bindExchange" )
-				.once()
-				.withArgs( "to", "from", '' )
-				.returns( when.resolve() );
-			controlMock
-				.expects( "unbindExchange" )
-				.once()
-				.withArgs( "to", "from", '' )
-				.returns( when.resolve() );
-			conn.mock.expects( "getChannel" )
-				.twice()
-				.resolves( control );
-			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
-			return topology.createBinding( { source: "from", target: "to" } )
-				.then(topology.removeBinding( { source: "from", target: "to" } ));
-		} );
+  describe('when removing an exchange to exchange binding with no keys', function () {
+    var topology, conn, ex, q;
 
-		it( "should remove binding from definitions", function() {
-			should.not.exist(topology.definitions.bindings[ "from->to" ]);
-		} );
-	} );
+    before(function () {
+      ex = emitter();
+      q = emitter();
+      var Exchange = function () {
+        return ex;
+      };
+      var Queue = function () {
+        return q;
+      };
+      conn = connectionFn();
+      var control = {
+        bindExchange: noOp,
+        bindQueue: noOp,
+        unbindQueue: noOp,
+        unbindExchange: noOp
+      };
+      var controlMock = sinon.mock(control);
+      controlMock
+        .expects('bindExchange')
+        .once()
+        .withArgs('to', 'from', '')
+        .returns(Promise.resolve());
+      controlMock
+        .expects('unbindExchange')
+        .once()
+        .withArgs('to', 'from', '')
+        .returns(Promise.resolve());
+      conn.mock.expects('getChannel')
+        .twice()
+        .resolves(control);
+      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue);
+      return topology.createBinding({ source: 'from', target: 'to' })
+        .then(topology.removeBinding({ source: 'from', target: 'to' }));
+    });
+
+    it('should remove binding from definitions', function () {
+      should.not.exist(topology.definitions.bindings[ 'from->to' ]);
+    });
+  });
 
   describe('when creating an exchange to queue binding with no keys', function () {
     var topology, conn, ex, q;
@@ -654,53 +654,53 @@ describe('Topology', function () {
       );
     });
   });
-  
-  describe( "when removing an exchange to queue binding with no keys", function() {
-		var topology, conn, ex, q;
 
-		before( function() {
-			ex = emitter();
-			q = emitter();
-			var Exchange = function() {
-				return ex;
-			};
-			var Queue = function() {
-				return q;
-			};
-			conn = connectionFn();
-			var control = {
-				bindExchange: noOp,
-				bindQueue: noOp,
-				unbindExchange: noOp,
-				unbindQueue: noOp
-			};
-			var controlMock = sinon.mock( control );
-			controlMock.expects( "bindQueue" )
-				.withArgs( "to", "from", "a.*" )
-				.returns( when.resolve() );
-			controlMock.expects( "bindQueue" )
-				.withArgs( "to", "from", "b.*" )
-				.returns( when.resolve() );
-			controlMock.expects( "unbindQueue" )
-				.withArgs( "to", "from", "a.*" )
-				.returns( when.resolve() );
-			controlMock.expects( "unbindQueue" )
-				.withArgs( "to", "from", "b.*" )
-				.returns( when.resolve() );
+  describe('when removing an exchange to queue binding with no keys', function () {
+    var topology, conn, ex, q;
 
-			conn.mock.expects( "getChannel" )
-				.twice()
-				.resolves( control );
-			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
-			topology.createBinding( { source: "from", target: "to", keys: undefined, queue: true } )
-				.catch( _.noop )
-				.then(topology.removeBinding( { source: "from", target: "to" } ));
-		} );
+    before(function () {
+      ex = emitter();
+      q = emitter();
+      var Exchange = function () {
+        return ex;
+      };
+      var Queue = function () {
+        return q;
+      };
+      conn = connectionFn();
+      var control = {
+        bindExchange: noOp,
+        bindQueue: noOp,
+        unbindExchange: noOp,
+        unbindQueue: noOp
+      };
+      var controlMock = sinon.mock(control);
+      controlMock.expects('bindQueue')
+        .withArgs('to', 'from', 'a.*')
+        .returns(Promise.resolve());
+      controlMock.expects('bindQueue')
+        .withArgs('to', 'from', 'b.*')
+        .returns(Promise.resolve());
+      controlMock.expects('unbindQueue')
+        .withArgs('to', 'from', 'a.*')
+        .returns(Promise.resolve());
+      controlMock.expects('unbindQueue')
+        .withArgs('to', 'from', 'b.*')
+        .returns(Promise.resolve());
 
-		it( "should remove binding from definitions", function() {
-			should.not.exist(topology.definitions.bindings[ "from->to" ]);
-		} );
-	} );
+      conn.mock.expects('getChannel')
+        .twice()
+        .resolves(control);
+      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue);
+      topology.createBinding({ source: 'from', target: 'to', keys: undefined, queue: true })
+        .catch(_.noop)
+        .then(topology.removeBinding({ source: 'from', target: 'to' }));
+    });
+
+    it('should remove binding from definitions', function () {
+      should.not.exist(topology.definitions.bindings[ 'from->to' ]);
+    });
+  });
 
   describe('when creating an exchange to queue binding with keys', function () {
     var topology, conn, ex, q;
@@ -739,52 +739,52 @@ describe('Topology', function () {
         { source: 'from', target: 'to', keys: [ 'a.*', 'b.*' ], queue: true }
       );
     });
-    
-  describe( "when removing an exchange to queue binding with keys", function() {
-	  var topology, conn, ex, q;
 
-		before( function() {
-			ex = emitter();
-			q = emitter();
-			var Exchange = function() {
-				return ex;
-			};
-			var Queue = function() {
-				return q;
-			};
-			conn = connectionFn();
-			var control = {
-				bindExchange: noOp,
-				bindQueue: noOp,
-				unbindExchange: noOp,
-				unbindQueue: noOp
-			};
-			var controlMock = sinon.mock( control );
-			controlMock.expects( "bindQueue" )
-				.withArgs( "to", "from", "a.*" )
-				.returns( when.resolve() );
-			controlMock.expects( "bindQueue" )
-				.withArgs( "to", "from", "b.*" )
-				.returns( when.resolve() );
-			controlMock.expects( "unbindQueue" )
-				.withArgs( "to", "from", "a.*" )
-				.returns( when.resolve() );
-			controlMock.expects( "unbindQueue" )
-				.withArgs( "to", "from", "b.*" )
-				.returns( when.resolve() );
+    describe('when removing an exchange to queue binding with keys', function () {
+      var topology, conn, ex, q;
 
-			conn.mock.expects( "getChannel" )
-				.twice()
-				.resolves( control );
-			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue );
-			topology.createBinding( { source: "from", target: "to", keys: [ "a.*", "b.*" ], queue: true } )
-				.then(topology.removeBinding( { source: "from", target: "to" } ));
-		} );
+      before(function () {
+        ex = emitter();
+        q = emitter();
+        var Exchange = function () {
+          return ex;
+        };
+        var Queue = function () {
+          return q;
+        };
+        conn = connectionFn();
+        var control = {
+          bindExchange: noOp,
+          bindQueue: noOp,
+          unbindExchange: noOp,
+          unbindQueue: noOp
+        };
+        var controlMock = sinon.mock(control);
+        controlMock.expects('bindQueue')
+          .withArgs('to', 'from', 'a.*')
+          .returns(Promise.resolve());
+        controlMock.expects('bindQueue')
+          .withArgs('to', 'from', 'b.*')
+          .returns(Promise.resolve());
+        controlMock.expects('unbindQueue')
+          .withArgs('to', 'from', 'a.*')
+          .returns(Promise.resolve());
+        controlMock.expects('unbindQueue')
+          .withArgs('to', 'from', 'b.*')
+          .returns(Promise.resolve());
 
-		it( "should remove binding from definitions", function() {
-			should.not.exist(topology.definitions.bindings[ "from->to" ]);
-		} );
-	} );
+        conn.mock.expects('getChannel')
+          .twice()
+          .resolves(control);
+        topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue);
+        topology.createBinding({ source: 'from', target: 'to', keys: [ 'a.*', 'b.*' ], queue: true })
+          .then(topology.removeBinding({ source: 'from', target: 'to' }));
+      });
+
+      it('should remove binding from definitions', function () {
+        should.not.exist(topology.definitions.bindings[ 'from->to' ]);
+      });
+    });
   });
 
   describe('when a connection to rabbit cannot be established', function () {

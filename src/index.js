@@ -390,16 +390,16 @@ Broker.prototype.stopSubscription = function (queueName, connectionName = DEFAUL
     throw new Error("No queue named '" + queueName + "' for connection '" + connectionName + "'. Unsubscribe failed.");
   }
 };
-  
-Broker.prototype.unbindExchange = function( source, target, keys, connectionName = DEFAULT ) {
-	return this.connections[ connectionName ].removeBinding( { source: source, target: target, keys: keys } );
+
+Broker.prototype.unbindExchange = function (source, target, keys, connectionName = DEFAULT) {
+  return this.connections[ connectionName ].removeBinding({ source: source, target: target, keys: keys });
 };
-  
-Broker.prototype.unbindQueue = function( source, target, keys, connectionName = DEFAULT ) {
-	return this.connections[ connectionName ].removeBinding(
-		{ source: source, target: target, keys: keys, queue: true },
-		connectionName
-	);
+
+Broker.prototype.unbindQueue = function (source, target, keys, connectionName = DEFAULT) {
+  return this.connections[ connectionName ].removeBinding(
+    { source: source, target: target, keys: keys, queue: true },
+    connectionName
+  );
 };
 
 require('./config.js')(Broker);
