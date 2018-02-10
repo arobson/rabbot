@@ -68,6 +68,7 @@ Options is a hash that can contain the following:
  * `replyTimeout` - the default timeout in milliseconds to wait for a reply.
  * `failAfter` - limits how long rabbot will attempt to connect (in seconds). Defaults to `60`.
  * `retryLimit` - limits how many consecutive failed attempts rabbot will make. Defaults to 3.
+ * `clientProperties` - custom client properties which show up under connection in the management console.
 
 Note that the "default" connection (by name) is used when any method is called without a connection name supplied.
 
@@ -80,7 +81,10 @@ rabbit.addConnection( {
 	port: 5672,
 	timeout: 2000,
 	vhost: "%2f",
-	heartbeat: 10
+	heartbeat: 10,
+	clientProperties: {
+		service: "my-awesome-service"
+	}
 } );
 ```
 
@@ -93,6 +97,19 @@ rabbit.addConnection( {
 
 ### `failAfter` and `retryLimit`
 rabbot will stop trying to connect/re-connect if either of these thresholds is reached (whichever comes first).
+
+### `clientProperties`
+The client properties are shown in the RabbitMQ management console under a specific connection. This is an example of the default client properties provided by rabbot:
+
+```json
+{
+	"lib": "rabbot - 1.0.6",
+	"process": "node (pid: 14)",
+	"host": "my-pc (linux x64)"
+}
+```
+
+By setting `clientProperties` you extend that list with your custom properties. E.g. it can be used to identify which service a connection belongs to.
 
 ### Cluster Support
 rabbot provides the ability to define multiple nodes per connections by supplying either a comma delimited list or array of server IPs or names to the `host` property. You can also specify multuple ports in the same way but make certain that either you provide a single port for all servers or that the number of ports matches the number and order of servers.
