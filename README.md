@@ -1,9 +1,10 @@
 # rabbot
 
-[![Build Status](http://67.205.142.228/api/badges/arobson/rabbot/status.svg)](http://67.205.142.228/arobson/rabbot)
-[![Version npm](https://img.shields.io/npm/v/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
-[![npm Downloads](https://img.shields.io/npm/dm/rabbot.svg?style=flat)](https://www.npmjs.com/package/rabbot)
-[![Dependencies](https://img.shields.io/david/arobson/rabbot.svg?style=flat)](https://david-dm.org/arobson/rabbot)
+[![Build Status][travis-image]][travis-url]
+[![Coverage Status][coveralls-image]][coveralls-url]
+[![Version npm][version-image]][version-url]
+[![npm Downloads][downloads-image]][downloads-url]
+[![Dependencies][dependencies-image]][dependencies-url]
 
 This is a very opinionated abstraction over amqplib to help simplify the implementation of several messaging patterns on RabbitMQ.
 
@@ -28,19 +29,15 @@ This is a very opinionated abstraction over amqplib to help simplify the impleme
  * Heterogenous services that include statically typed languages
  * JSON as the default serialization provider for object based message bodies
 
-## Differences from `wascally`
+## Other Documents
 
-#### Let it fail
-A great deal of confusion and edge cases arise from how wascally managed connectivity. Wascally treated any loss of connection or channels equally. This made it hard to predict behavior as a user of the library since any action taken against the API could trigger reconnection after an intentional shutdown. It also made it impossible to know whether a user intended to reconnect a closed connection or if the reconnection was the result of a programming error.
-
-Rabbot does not re-establish connectivity automatically after connections have been intentionally closed _or_ after a failure threshold has been passed. In either of these cases, making API calls will either lead to rejected or indefinitely deferred promises. You, the user, must intentionally re-establish connectivity after closing a connection _or_ once rabbot has exhausted its attempts to connect on your behalf.
-
-*The recommendation is*: if rabbot tells you it can't reach rabbot after exhausting the configured retries, shut your service down and let your monitoring and alerting tell you about it. The code isn't going to fix a network or broker outage by retrying indefinitely and filling up your logs.
-
-#### No more indefinite retention of unpublished messages
-Wascally retained published messages indefinitely until a connection and all topology could be established. This meant that a service unable to connect could produce messages until it ran out of memory. It also meant that wascally could reject the promise returned from the publish call but then later publish the message without the ability to inform the caller.
-
-When a connection is lost, or the `unreachable` event is emitted, all promises for publish calls are rejected and all unpublished messages are flushed. Rabbot will not provide any additional features around unpublishable messages - there are no good one-size-fits-all behaviors in these failure scenarios and it is important that developers understand and solve these needs at the service level for their use case.
+ * [Contributor Guide](https://github.com/arobson/rabbot/blob/master/HOW_TO_CONTRIBUTE.md)
+ * [Code of Conduct](https://github.com/arobson/rabbot/blob/master/CODE_OF_CONDUCT.md)
+ * [Resources](https://github.com/arobson/rabbot/blob/master/RESOURCES.md)
+ * [Maintainers](https://github.com/arobson/rabbot/blob/master/MAINTAINERS.md)
+ * [Contributors](https://github.com/arobson/rabbot/blob/master/CONTRIBUTORS.md)
+ * [Acknowledgements](https://github.com/arobson/rabbot/blob/master/ACKNOWLEDGEMENTS.md)
+ * [Change Log](https://github.com/arobson/rabbot/blob/master/CHANGELOG.md)
 
 ## Demos
 
@@ -71,6 +68,7 @@ Options is a hash that can contain the following:
  * `replyTimeout` - the default timeout in milliseconds to wait for a reply.
  * `failAfter` - limits how long rabbot will attempt to connect (in seconds). Defaults to `60`.
  * `retryLimit` - limits how many consecutive failed attempts rabbot will make. Defaults to 3.
+ * `clientProperties` - custom client properties which show up under connection in the management console.
 
 Note that the "default" connection (by name) is used when any method is called without a connection name supplied.
 
@@ -83,7 +81,10 @@ rabbit.addConnection( {
 	port: 5672,
 	timeout: 2000,
 	vhost: "%2f",
-	heartbeat: 10
+	heartbeat: 10,
+	clientProperties: {
+		service: "my-awesome-service"
+	}
 } );
 ```
 
@@ -96,6 +97,19 @@ rabbit.addConnection( {
 
 ### `failAfter` and `retryLimit`
 rabbot will stop trying to connect/re-connect if either of these thresholds is reached (whichever comes first).
+
+### `clientProperties`
+The client properties are shown in the RabbitMQ management console under a specific connection. This is an example of the default client properties provided by rabbot:
+
+```json
+{
+	"lib": "rabbot - 1.0.6",
+	"process": "node (pid: 14)",
+	"host": "my-pc (linux x64)"
+}
+```
+
+By setting `clientProperties` you extend that list with your custom properties. E.g. it can be used to identify which service a connection belongs to.
 
 ### Cluster Support
 rabbot provides the ability to define multiple nodes per connections by supplying either a comma delimited list or array of server IPs or names to the `host` property. You can also specify multuple ports in the same way but make certain that either you provide a single port for all servers or that the number of ports matches the number and order of servers.
@@ -124,7 +138,7 @@ The connection object is passed to the event handler for each event. Use the `na
 ### Details about publishing & subscribing related to connectivity
 
 #### Publishing
-Rabbot will attempt to retain messages you publish during the attempt to connect which it will publish if a connection can be successfully established. It is important to handle rejection of the publish. Only resolved publishes are guaranteed to have been delivered to the broker.
+For exchanges in confirm mode (the default), rabbot will attempt to retain messages you publish during the attempt to connect which it will publish if a connection can be successfully established. It is important to handle rejection of the publish. Only resolved publishes are guaranteed to have been delivered to the broker.
 
 Rabbot limits the number of messages it will retain for each exchange to 100 by default. After the limit is reached, all further publishes will be rejected automatically. This limit was put in place to prevent unbounded memory consumption.
 
@@ -140,11 +154,13 @@ If this is undesirable, your options are to turn of acknowledgements (which puts
 ## Sending & Receiving Messages
 
 ### Publish
-The publish call returns a promise that is only resolved once the broker has accepted responsibility for the message (see [Publisher Acknowledgments](https://www.rabbitmq.com/confirms.html) for more details). If a configured timeout is reached, or in the rare event that the broker rejects the message, the promise will be rejected. More commonly, the connection to the broker could be lost before the message is confirmed and you end up with a message in "limbo". rabbot keeps a list of unconfirmed messages that have been published _in memory only_. Once a connection is available and the topology is in place, rabbot will send messages in the order of the publish calls. In the event of a disconnection or unreachable broker, all publish promises that have not been resolved are rejected.
+In confirm mode (the default for exchanges), the publish call returns a promise that is only resolved once the broker has confirmed the publish (see [Publisher Acknowledgments](https://www.rabbitmq.com/confirms.html) for more details). If a configured timeout is reached, or in the rare event that the broker rejects the message, the promise will be rejected. More commonly, the connection to the broker could be lost before the message is confirmed and you end up with a message in "limbo". rabbot keeps a list of unconfirmed messages that have been published _in memory only_. Once a connection is available and the topology is in place, rabbot will send messages in the order of the publish calls. In the event of a disconnection or unreachable broker, all publish promises that have not been resolved are rejected.
 
 Publish timeouts can be set per message, per exchange or per connection. The most specific value overrides any set at a higher level. There are no default timeouts set at any level. The timer is started as soon as publish is called and only cancelled once rabbot is able to make the publish call on the actual exchange's channel. The timeout is cancelled once publish is called and will not result in a rejected promise due to time spent waiting on a confirmation.
 
 > Caution: rabbot does _not_ limit the growth of pending published messages. If a service cannot connect to Rabbit due to misconfiguration or the broker being down, publishing lots of messages can lead to out-of-memory errors. It is the consuming services responsibility to handle these kinds of scenarios.
+
+Confirm mode is not without an overhead cost. This can be turned off, per exchange, by setting `noConfirm: true`. Confirmation results in increased memory overhead on the client and broker. When off, the promise will _always_ resolve when the connection and exchange are available.
 
 #### Serializers
 rabbot associates serialization techniques for messages with mimeTypes which can now be set when publishing a message. Out of the box, it really only supports 3 types of serialization:
@@ -496,6 +512,7 @@ Options is a hash that can contain the following:
  * publishTimeout	2^32			timeout in milliseconds for publish calls to this exchange
  * replyTimeout		2^32			timeout in milliseconds to wait for a reply
  * limit 			2^16			the number of unpublished messages to cache while waiting on connection
+ * noConfirm  true|false  prevents rabbot from creating the exchange in confirm mode
 
 ### addQueue( queueName, [options], [connectionName] )
 The call returns a promise that can be used to determine when the queue has been created on the server.
@@ -536,7 +553,7 @@ Binds the target queue to the source exchange. Messages flow from source to targ
 
 > Note: setting subscribe to true will result in subscriptions starting immediately upon queue creation.
 
-This example shows most of the available options described above as well as logging options available through [whistlepunk](https://github.com/leankit-labs/whistlepunk).
+This example shows most of the available options described above.
 ```javascript
 	var settings = {
 		connection: {
@@ -561,15 +578,7 @@ This example shows most of the available options described above as well as logg
 		bindings:[
 			{ exchange: "config-ex.1", target: "config-q.1", keys: [ "bob","fred" ] },
 			{ exchange: "config-ex.2", target: "config-q.2", keys: "test1" }
-		],
-		logging: {
-			adapters: {
-				stdOut: { // adds a console logger at the "info" level
-					level: 3,
-					bailIfDebug: true
-				}
-			}
-		}
+		]
 	};
 ```
 
@@ -648,77 +657,59 @@ This queue configuration will set a prefetch limit of 5 on the channel that is u
 **Note:** The queue `limit` is not the same as the `queueLimit` option - the latter of which sets the maximum number of messages allowed in the queue.
 
 ## Logging
-As mentioned in the configuration, logging is provided by [whistlepunk](https://github.com/leankit-labs/whistlepunk). While you can easily write your own adapters for it, it supports a standard output adapter and a DEBUG based adapter by default. When troubleshooting, you can prefix starting your process with `DEBUG=rabbot.*` to see all rabbot related log messages. It's worth noting that the `rabbot.queue.#` and `rabbot.exchange.#` logging namespaces will be very high volume since that is where rabbot reports all messages published and subscribed at the debug level.
+As of v2, logging uses [bole](https://github.com/rvagg/bole) because it defaults to machine parsable logs, minimalistic and easy to write stream adapters for.
+
+A DEBUG adapter that works just like before is already included in rabbot, so you can still prefix the service with `DEBUG=rabbot.*` to get rabbot specific output.
+
+> Note: `rabbot.queue.*` and `rabbot.exchange.*` are high volume namespaces since that is where all published and subscribed messages get reported.
+
+### Attaching Custom Loggers
+A log call is now exposed directly to make it easier to attach streams to the bole instance:
+
+```js
+const rabbot = require( "rabbot" );
+
+// works like bole's output call
+rabbot.log( [
+  { level: "info", stream: process.stdout },
+  { level: "debug", stream: fs.createWriteStream( "./debug.log" ), objectMode: true }
+] );
+```
+## Differences from `wascally`
+
+If you used wascally, rabbot's API will be familiar, but the behavior is quite different. This section explains the differences in behavior and design.
+
+#### Let it fail
+A great deal of confusion and edge cases arise from how wascally managed connectivity. Wascally treated any loss of connection or channels equally. This made it hard to predict behavior as a user of the library since any action taken against the API could trigger reconnection after an intentional shutdown. It also made it impossible to know whether a user intended to reconnect a closed connection or if the reconnection was the result of a programming error.
+
+Rabbot does not re-establish connectivity automatically after connections have been intentionally closed _or_ after a failure threshold has been passed. In either of these cases, making API calls will either lead to rejected or indefinitely deferred promises. You, the user, must intentionally re-establish connectivity after closing a connection _or_ once rabbot has exhausted its attempts to connect on your behalf.
+
+*The recommendation is*: if rabbot tells you it can't reach rabbot after exhausting the configured retries, shut your service down and let your monitoring and alerting tell you about it. The code isn't going to fix a network or broker outage by retrying indefinitely and filling up your logs.
+
+#### No more indefinite retention of unpublished messages
+Wascally retained published messages indefinitely until a connection and all topology could be established. This meant that a service unable to connect could produce messages until it ran out of memory. It also meant that wascally could reject the promise returned from the publish call but then later publish the message without the ability to inform the caller.
+
+When a connection is lost, or the `unreachable` event is emitted, all promises for publish calls are rejected and all unpublished messages are flushed. Rabbot will not provide any additional features around unpublishable messages - there are no good one-size-fits-all behaviors in these failure scenarios and it is important that developers understand and solve these needs at the service level for their use case.
 
 ## A Note About Etiquette
+
 Rabbot was created to address a need at work. Any time I spend on it during work hours is to ensure that it does what my employer needs it to. The considerable amount of time I've spent on wascally and now rabbot outside of work hours is because I love open source software and the community want to contribute. I hope that you find this library useful and that it makes you feel like your job or project was easier.
 
 That said, I am often troubled by how often users of open source libraries become demanding consumers rather than active participants. Please keep a cordial/professional tone when reporting issues or requesting help. Feature requests or issue reports that have an entitled or disrespectful tone will be ignored and closed. All of us in open source are benefiting from a considerable amount of knowledge and effort for $0; please keep this in mind when frustrated about a defect, design flaw or missing feature.
 
 While I appreciate suggestions for how to make things better, I'd much rather see participation in the form of pull requests. I'd be happy to help you out if there are parts of the code base you're uncomfortable with.
 
-## Additional Learning Resources
-
-### Watch Me Code
-Thanks to Derick Bailey's input, the API and documentation for rabbot have improved a lot. You can learn from Derick's hands-on experience in his [Watch Me Code](https://sub.watchmecode.net/categories/rabbitmq/) series.
-
-### RabbitMQ In Action
-Alvaro Vidella and Jason Williams literally wrote the book on [RabbitMQ](http://www.manning.com/videla/).
-
-### Enterprise Integration Patterns
-Gregor Hophe and Bobby Woolf's definitive work on messaging. The [site](http://www.enterpriseintegrationpatterns.com/) provides basic descriptions of the patterns and the [book](http://www.amazon.com/Enterprise-Integration-Patterns-Designing-Deploying/dp/0321200683) goes into a lot of detail.
-
-I can't recommend this book highly enough; understanding the patterns will provide you with the conceptual tools need to be successful.
-
-## Contributing
-PRs with insufficient coverage, broken tests or deviation from the style will not be accepted.
-
-### Behavior & Integration Tests
-PRs should include modified or additional test coverage in both integration and behavioral specs. Integration tests assume RabbitMQ is running on localhost with guest/guest credentials and the consistent hash exchange plugin enabled. You can enable the plugin with the following command:
-
-```bash
-rabbitmq-plugins enable rabbitmq_consistent_hash_exchange
-```
-
-Running gulp will run both sets after every file change and display a coverage summary. To view a detailed report, run gulp coverage once to bring up the browser.
-
-### Docker
-
-rabbot now provides a `Dockerfile` and npm scripts you can use to create an image and container to run the tests. If you're on Linux or have the new Docker for OS X/Windows, this should be very straight-forward. Under the hood, it uses the official RabbitMQ Docker image. It will forward RabbitMQ's default ports to `localhost`.
-
-*If you already have a working RabbitMQ container with 5672 forwarded to your localhost, you don't need any of this.*
-
-The first time, you can build the Docker image with the following:
-```bash
-$ npm run build-image
-```
-
-After that, create a daemonized container based off the image with:
-```bash
-$ npm run start-image
-```
-
-Now you have a daemonized rabbitmq Docker container with the port `5672` and management console at `15672` (the defaults) using `guest` and `guest` for the login, `/` as the vhost and the consistent hash exchange plugin enabled.
-
-You can access the management console at `http://localhost:15672`.
-
-Click here for more information on [Docker](http://docker.com) and [official RabbitMQ Docker image](https://registry.hub.docker.com/_/rabbitmq/).
-
-*To run tests once you have RabbitMQ up:*
-
-```bash
-$ gulp
-```
-
-OR
-
-```bash
-$ mocha spec/**
-```
-
-### Style
-This project has both an `.editorconfig` and `.esformatter` file to help keep adherance to style simple. Please also take advantage of the `.jshintrc` file and avoid linter warnings.
-
 ## Roadmap
  * improve support RabbitMQ backpressure mechanisms
  * add support for Rabbit's HTTP API
+
+[travis-image]: https://travis-ci.org/arobson/rabbot.svg?branch=master
+[travis-url]: https://travis-ci.org/arobson/rabbot
+[coveralls-url]: https://coveralls.io/github/arobson/rabbot?branch=master
+[coveralls-image]: https://coveralls.io/repos/github/arobson/rabbot/badge.svg?branch=master
+[version-image]: https://img.shields.io/npm/v/rabbot.svg?style=flat
+[version-url]: https://www.npmjs.com/package/rabbot
+[downloads-image]: https://img.shields.io/npm/dm/rabbot.svg?style=flat
+[downloads-url]: https://www.npmjs.com/package/rabbot
+[dependencies-image]: https://img.shields.io/david/arobson/rabbot.svg?style=flat
+[dependencies-url]: https://david-dm.org/arobson/rabbot

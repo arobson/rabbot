@@ -12,7 +12,9 @@ module.exports = {
       "sinon": false,
       "chai": false,
       "expect": false,
-      "should": false
+      "should": false,
+      "harnessFactory": false,
+      "sortBy": false,
     },
     "extends": "eslint:recommended",
     "rules": {
