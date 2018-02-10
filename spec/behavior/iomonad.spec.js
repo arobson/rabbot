@@ -26,7 +26,7 @@ describe('IO Monad', function () {
         return Promise.resolve(new Resource());
       };
 
-      resource = new Monad( { name: "test" }, "resource", factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.emit('released');
       });
@@ -78,8 +78,8 @@ describe('IO Monad', function () {
       var factory = function () {
         return Promise.reject(new Error('because no one likes you'));
       };
-      
-      resource = new Monad( { name: "test" }, "resource", factory, Resource, (x) => {
+
+      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.raise('closed', '');
       });
@@ -130,7 +130,7 @@ describe('IO Monad', function () {
         return Promise.resolve(new Resource());
       };
 
-      resource = new Monad( { name: "test" }, "resource", factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.emit('released');
       });
@@ -193,7 +193,7 @@ describe('IO Monad', function () {
         });
       };
 
-      resource = new Monad( { name: "test" }, "resource", factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
         x.close();
       });
 
@@ -250,7 +250,7 @@ describe('IO Monad', function () {
         });
       };
 
-      resource = new Monad( { name: "test" }, "resource", factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.emit('released');
       });
@@ -304,7 +304,7 @@ describe('IO Monad', function () {
         });
       };
 
-      resource = new Monad( { name: "test" }, "resource", factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.emit('close', 'closed');
       });
@@ -333,7 +333,7 @@ describe('IO Monad', function () {
     });
 
     it('should not resolve operation after release', function () {
-      return resource.sayHi().should.be.rejectedWith("Error: Cannot invoke operation 'sayHi' on released resource 'test'");
+      return resource.sayHi().should.be.rejectedWith("Cannot invoke operation 'sayHi' on released resource 'test'");
     });
 
     it('should end in a released state', function () {
@@ -363,7 +363,7 @@ describe('IO Monad', function () {
         });
       };
 
-      resource = new Monad( { name: "test" }, "resource", factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.emit('close', 'you did this');
       });
@@ -380,10 +380,11 @@ describe('IO Monad', function () {
 
       resource.once('closed', function () {
         opResult = resource.sayHi()
-          .then(function (result) {
-            opResult = result;
-            resource.release();
-          });
+          .then(
+            (result) => {
+              opResult = result;
+              resource.release();
+            });
       });
 
       resource.once('released', function () {
@@ -412,11 +413,11 @@ describe('IO Monad', function () {
       acquiringHandle.off();
     });
   });
-  
-  describe("when custom wait options are defined", function () {
-    var resource, acquiring, releasedHandle, opResult;
+
+  describe('when custom wait options are defined', function () {
+    var resource, releasedHandle;
     var options = {
-      name: "test",
+      name: 'test',
       waitMin: 1000,
       waitMax: 30000,
       waitIncrement: 1000
@@ -426,37 +427,32 @@ describe('IO Monad', function () {
         return Promise.resolve(new Resource());
       };
 
-      resource = new Monad(options, "resource", factory, Resource, (x) => {
+      resource = new Monad(options, 'resource', factory, Resource, (x) => {
         x.close();
-        x.emit( "released" );
+        x.emit('released');
       });
 
-      resource.once( "acquiring", function () {
-        acquiring = true;
-      });
-
-      resource.once( "acquired", function () {
-        opResult = resource.sayHi()
+      resource.once('acquired', function () {
+        resource.sayHi()
           .then((result) => {
-            opResult = result;
             resource.release();
-            resource.item.emit( "close", "closed" );
+            resource.item.emit('close', 'closed');
           });
       });
 
-      releasedHandle = resource.on("released", function () {
+      releasedHandle = resource.on('released', function () {
         done();
       });
     });
 
-    it("should have parameters set by options", function () {
+    it('should have parameters set by options', function () {
       resource.name.should.equal(options.name);
       resource.waitMin.should.equal(options.waitMin);
       resource.waitMax.should.equal(options.waitMax);
       resource.waitIncrement.should.equal(options.waitIncrement);
     });
 
-    it("should have waitInterval equal to waitMin", function () {
+    it('should have waitInterval equal to waitMin', function () {
       resource.waitInterval.should.equal(options.waitMin);
     });
 

@@ -4,7 +4,6 @@ var _ = require('lodash');
 var Monologue = require('monologue.js');
 var machina = require('machina');
 var log = require('../log.js')('rabbot.io');
-var format = require('util').format;
 var staticId = 0;
 
 /* state definitions
@@ -91,7 +90,6 @@ module.exports = function (options, type, factory, target, close) {
         this.handle('released', info);
       }.bind(this));
       this.item.on('error', function (err) {
-        log.error("Error emitted by %s '%s' - '%s'", type, name, err.stack);
         log.error(`Error emitted by ${type} '${this.name}' - '${err.stack}'`);
         this._clearEventHandlers();
         this.emit('failed', err);
@@ -147,7 +145,7 @@ module.exports = function (options, type, factory, target, close) {
           resolve(this);
         }.bind(this));
         this.once('released', function () {
-          reject(new Error(format("Cannot reacquire released %s '%s'", type, name)));
+          reject(new Error(`Cannot reacquire released ${type} '${this.name}'`));
         });
       }.bind(this));
     },
