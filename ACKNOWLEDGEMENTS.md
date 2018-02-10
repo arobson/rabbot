@@ -14,6 +14,7 @@ Several folks have contributed time, effort, ideas or small PRs to this project.
  * [Leonardo Bispo de Oliveira](http://blog.bispooliveira.de)
  * [Michael Tuttle](https://github.com/openam)
  * [Dj Walker-Morgan](http://www.codepope.com)
+ * [Hugo Cortes](https://github.com/hugocortes)
 
 ### In Memoriam
 
