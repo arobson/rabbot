@@ -199,9 +199,9 @@ module.exports = function (options) {
         // for some reason calling close always gets a rejected promise
         // I can't imagine a good reason for this, so I'm basically
         // only showing this at the debug level
-        log.debug('Error was reported during close of connection `%s` - `%s`', options.name, err);
+        log.debug(`Error was reported during close of connection '${options.name}' - '${err}'`);
       });
   };
   var adapter = new Adapter(options);
-  return monad(options.name, 'connection', adapter.connect.bind(adapter), AmqpConnection, close);
+  return monad(options, 'connection', adapter.connect.bind(adapter), AmqpConnection, close);
 };

@@ -43,19 +43,22 @@ var staticId = 0;
     * failure due to an exception (bad code)
 */
 
-module.exports = function (name, type, factory, target, close) {
+module.exports = function (options, type, factory, target, close) {
   var IOMonad = machina.Fsm.extend({
     id: staticId++,
     initialState: 'acquiring',
     item: undefined,
+    name: options.name,
     waitInterval: 0,
-    waitMax: 5000,
+    waitMin: options.waitMin || 0,
+    waitMax: options.waitMax || 5000,
+    waitIncrement: options.waitIncrement || 100,
     eventHandlers: [],
     _acquire: function () {
       process.nextTick(function () {
         this.emit('acquiring');
       }.bind(this));
-      log.debug("Attempting acquisition of %s '%s'", type, name);
+      log.debug(`Attempting acquisition of ${type} '${this.name}'`);
       factory()
         .then(
           this._onAcquisition.bind(this),
@@ -76,8 +79,8 @@ module.exports = function (name, type, factory, target, close) {
     },
     _onAcquisition: function (instance) {
       this.item = instance;
-      this.waitInterval = 0;
-      log.debug("Acquired %s '%s' successfully", type, name);
+      this.waitInterval = this.waitMin;
+      log.debug(`Acquired ${type} '${this.name}' successfully`);
       // amqplib primitives emit close and error events
       this.item.on('return', function (raw) {
         this.handle('return', raw);
@@ -89,25 +92,26 @@ module.exports = function (name, type, factory, target, close) {
       }.bind(this));
       this.item.on('error', function (err) {
         log.error("Error emitted by %s '%s' - '%s'", type, name, err.stack);
+        log.error(`Error emitted by ${type} '${this.name}' - '${err.stack}'`);
         this._clearEventHandlers();
         this.emit('failed', err);
         this.handle('failed', err);
       }.bind(this));
       this.item
         .on('unblocked', function () {
-          log.warn("%s '%s' was unblocked by the broker", type, name);
+          log.warn(`${type} '${this.name}' was unblocked by the broker`);
           this.emit('unblocked');
           this.handle('unblocked');
         }.bind(this))
         .on('blocked', function () {
-          log.warn("%s '%s' was blocked by the broker", type, name);
+          log.warn(`${type} '${this.name}' was blocked by the broker`);
           this.emit('blocked');
           this.handle('blocked');
         }.bind(this));
       this.transition('acquired');
     },
     _onAcquisitionError: function (err) {
-      log.error("Acquisition of %s '%s' failed with '%s'", type, name, err);
+      log.error(`Acquisition of ${type} '${this.name}' failed with '${err}'`);
       this.emit('failed', err);
       this.handle('failed');
     },
@@ -121,14 +125,14 @@ module.exports = function (name, type, factory, target, close) {
           try {
             close(this.item);
           } catch (ex) {
-            log.warn("%s '%s' threw an exception on close: %s", type, name, ex);
+            log.warn(`${type} '${this.name}' threw an exception on close: ${ex}`);
             this.handle('released');
           }
         } else {
           try {
             this.item.close();
           } catch (ex) {
-            log.warn("%s '%s' threw an exception on close: %s", type, name, ex);
+            log.warn(`${type} '${this.name}' threw an exception on close: ${ex}`);
             this.handle('released');
           }
         }
@@ -221,14 +225,12 @@ module.exports = function (name, type, factory, target, close) {
         },
         release: function () {
           // the user has called release during acquired state
-          log.info("%s '%s' was closed by the user",
-            type, name);
+          log.info(`${type} '${this.name}' was closed by the user`);
           this.transition('releasing');
         },
         released: function (reason) {
           // the remote end initiated close
-          log.warn("%s '%s' was closed by the broker with reason '%s'",
-            type, name, reason);
+          log.warn(`${type} '${this.name}' was closed by the broker with reason '${reason}'`);
           this.closeReason = reason;
           this.transition('closed');
         }
@@ -242,14 +244,12 @@ module.exports = function (name, type, factory, target, close) {
         },
         release: function () {
           // the user has called release during acquired state
-          log.info("%s '%s' was closed by the user",
-            type, name);
+          log.info(`${type} '${this.name}' was closed by the user`);
           this.transition('releasing');
         },
         released: function (reason) {
           // the remote end initiated close
-          log.warn("%s '%s' was closed by the broker with reason '%s'",
-            type, name, reason);
+          log.warn(`${type} '${this.name}' was closed by the broker with reason '${reason}'`);
           this.closeReason = reason;
           this.transition('closed');
         },
@@ -270,7 +270,7 @@ module.exports = function (name, type, factory, target, close) {
           this.transition('acquiring');
         },
         operate: function (call) {
-          log.info("Operation '%s' invoked on closed %s '%s'", call.operation, type, name);
+          log.info(`Operation '${call.operation}' invoked on closed ${type} '${this.name}'`);
           this.deferUntilTransition('acquired');
           this.transition('acquiring');
         },
@@ -284,8 +284,8 @@ module.exports = function (name, type, factory, target, close) {
       failed: {
         _onEnter: function () {
           this.retry = setTimeout(function () {
-            if ((this.waitInterval + 100) < this.waitMax) {
-              this.waitInterval += 100;
+            if ((this.waitInterval + this.waitIncrement) < this.waitMax) {
+              this.waitInterval += this.waitIncrement;
             }
             this.transition('acquiring');
           }.bind(this), this.waitInterval);
@@ -332,8 +332,8 @@ module.exports = function (name, type, factory, target, close) {
           this.transition('acquiring');
         },
         operate: function (call) {
-          log.warn("Operation '%s' invoked on released %s '%s' - reacquisition is required.", call.operation, type, name);
-          call.reject(new Error(format("Cannot invoke operation '%s' on released %s '%s'", call.operation, type, name)));
+          log.warn(`Operation '${call.operation}' invoked on released ${type} '${this.name}' - reacquisition is required.`);
+          call.reject(new Error(`Cannot invoke operation '${call.operation}' on released ${type} '${this.name}'`));
         },
         release: function () {
           this.emit('released');
