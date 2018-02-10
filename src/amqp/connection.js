@@ -126,11 +126,11 @@ var Adapter = function (parameters) {
   if (useSSL) {
     this.protocol = 'amqps://';
   }
-  this.options.clientProperties = Object.assign( {
-		host: info.host(),
-		process: info.process(),
-		lib: info.lib()
-	}, parameters.clientProperties );
+  this.options.clientProperties = Object.assign({
+    host: info.host(),
+    process: info.process(),
+    lib: info.lib()
+  }, parameters.clientProperties);
   this.limit = max(this.servers.length, this.ports.length);
 };
 

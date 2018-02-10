@@ -15,6 +15,7 @@ Several folks have contributed time, effort, ideas or small PRs to this project.
  * [Michael Tuttle](https://github.com/openam)
  * [Dj Walker-Morgan](http://www.codepope.com)
  * [Hugo Cortes](https://github.com/hugocortes)
+ * [Mathias Lundell](https://github.com/luddd3)
 
 ### In Memoriam
 
