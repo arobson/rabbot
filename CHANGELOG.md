@@ -14,6 +14,7 @@
  * Remove when dependency
  * Change logging to bole
  * Change commit style to conventional commits
+ * Adopt semistandard as format style
  * Improve README badges
  * #80 - fixes issue where multiple messages were nack'd in nobatch mode
  * #42 - fixes issue regarding broken build status
