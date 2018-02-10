@@ -11,10 +11,10 @@ node_js:
 
 before_script:
   - npm run build-image
-  - npm run start-image
+  - npm run start-container
 
 script:
   - nyc npm test && nyc report --reporter=text-lcov | coveralls
 
 after_script:
-  - npm run stop-image
+  - npm run stop-container
