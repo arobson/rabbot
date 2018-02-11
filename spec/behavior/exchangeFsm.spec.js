@@ -42,7 +42,7 @@ describe('Exchange FSM', function () {
         .returns({ then: noop });
 
       exchange = exchangeFsm(options, connection, topology, {}, ex.factory);
-      published = [ 1, 2, 3 ].map(() => exchange.publish({}));
+      published = [ 1, 2, 3 ].map(() => exchange.publish({}).then(null, e => e.message));
       exchange.once('failed', function (err) {
         error = err;
         done();
@@ -51,13 +51,13 @@ describe('Exchange FSM', function () {
     });
 
     it('should have emitted failed with an error', function () {
-      error.toString().should.equal('Error: Could not establish a connection to any known nodes.');
+      return error.toString().should.equal('Error: Could not establish a connection to any known nodes.');
     });
 
     it('should reject all published promises', function () {
-      published.forEach((promise) => {
-        promise.should.have.been.rejectedWith('Could not establish a connection to any known nodes.');
-      });
+      return published.map((promise) =>
+        promise.should.eventually.equal('Could not establish a connection to any known nodes.')
+      );
     });
 
     it('should be in unreachable state', function () {
@@ -280,7 +280,7 @@ describe('Exchange FSM', function () {
         });
 
         it('should reject publish', function () {
-          exchange.publish({}).should.be.rejectedWith("Error: Cannot publish to exchange 'test' after intentionally closing its connection");
+          return exchange.publish({}).should.be.rejectedWith(`Cannot publish to exchange 'test' after intentionally closing its connection`);
         });
 
         it('should not make any calls to underlying exchange channel', function () {
