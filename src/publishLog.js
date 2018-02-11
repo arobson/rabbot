@@ -53,7 +53,7 @@ function remove (state, m) {
   return removed;
 }
 
-function reset (state) {
+function reset (state, err) {
   const keys = Object.keys(state.messages);
   var list = keys.map((key) => {
     const m = state.messages[ key ];

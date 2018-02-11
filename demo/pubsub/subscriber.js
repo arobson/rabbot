@@ -4,8 +4,8 @@ const counts = {
   timeout: 0, // variable to hold the timeout
   started: 0, // variable to hold starting time
   received: 0, // variable to hold received count
-  batch: 5000, // expected batch size
-  expected: 50000 // expected message count
+  batch: 500, // expected batch size
+  expected: 1000000 // expected message count
 };
 
 // always setup your message handlers first
@@ -13,7 +13,7 @@ const counts = {
 // this handler will handle messages sent from the publisher
 rabbit.handle('publisher.message', function (msg) {
   // console.log( "Received:", JSON.stringify( msg.body ) );
-  msg.ack();
+  // msg.ack();
   if (counts.received % 5000 === 0) {
     report();
   }

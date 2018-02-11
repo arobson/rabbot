@@ -1,6 +1,6 @@
-var Monologue = require('monologue.js');
-var log = require('./log')('rabbot.topology');
-var info = require('./info');
+const Monologue = require('monologue.js');
+const log = require('./log')('rabbot.topology');
+const info = require('./info');
 var Exchange, Queue;
 var replyId;
 
@@ -261,6 +261,7 @@ Topology.prototype.deleteExchange = function (name) {
   if (channel) {
     channel.release();
     delete this.channels[ key ];
+    delete this.promises[ key ];
     log.info("Deleting %s exchange '%s' on connection '%s'", channel.type, name, this.connection.name);
   }
   return this.connection.getChannel('control', false, 'control channel for bindings')
@@ -275,6 +276,7 @@ Topology.prototype.deleteQueue = function (name) {
   if (channel) {
     channel.release();
     delete this.channels[ key ];
+    delete this.promises[ key ];
     log.info("Deleting queue '%s' on connection '%s'", name, this.connection.name);
   }
   return this.connection.getChannel('control', false, 'control channel for bindings')

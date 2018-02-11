@@ -57,7 +57,7 @@ const Connection = function (options, connectionFn, channelFn) {
 
     _getChannel: function (name, confirm, context) {
       let channel = channels[ name ];
-      if (!channel) {
+      if (!channel || /releas/.test(channel.state)) {
         return new Promise((resolve) => {
           channel = channelFn.create(connection, name, confirm);
           channels[ name ] = channel;

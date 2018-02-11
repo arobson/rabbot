@@ -25,7 +25,6 @@ function unhandle (handlers) {
 const Factory = function (options, connection, topology, serializers, exchangeFn) {
   // allows us to optionally provide a mock
   exchangeFn = exchangeFn || require('./amqp/exchange');
-
   const Fsm = machina.Fsm.extend({
     name: options.name,
     type: options.type,
@@ -103,6 +102,11 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
       this._define(exchange, transitionTo);
     },
 
+    _onClose: function () {
+      exLog.info(`Rejecting ${this.published.count()} published messages`);
+      this.published.reset();
+    },
+
     _onFailure: function (err) {
       this.failedWith = err;
       this.deferred.forEach((x) => x(err));
@@ -162,6 +166,7 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
         var timeout;
         var timedOut;
         var failedSub;
+        var closedSub;
         if (publishTimeout > 0) {
           timeout = setTimeout(function () {
             timedOut = true;
@@ -172,11 +177,13 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
           resolve();
           this._removeDeferred(reject);
           failedSub.unsubscribe();
+          closedSub.unsubscribe();
         }
         function onRejected (err) {
           reject(err);
           this._removeDeferred(reject);
           failedSub.unsubscribe();
+          closedSub.unsubscribe();
         }
         var op = function (err) {
           if (err) {
@@ -192,9 +199,12 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
             }
           }
         }.bind(this);
-        failedSub = this.once('failed', function (err) {
+        failedSub = this.once('failed', (err) => {
           onRejected.bind(this)(err);
-        }.bind(this));
+        });
+        closedSub = this.once('closed', (err) => {
+          onRejected.bind(this)(err);
+        });
         this.deferred.push(reject);
         this.handle('publish', op);
       }.bind(this));
@@ -208,6 +218,7 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
     states: {
       closed: {
         _onEnter: function () {
+          this._onClose();
           this.emit('closed');
         },
         check: function () {
@@ -216,6 +227,7 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
         },
         publish: function () {
           this.deferUntilTransition('ready');
+          this.transition('initializing');
         }
       },
       failed: {
@@ -318,6 +330,9 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
         _onEnter: function () {
           this._listen();
           this.transition('initializing');
+        },
+        publish: function () {
+          this.deferUntilTransition('ready');
         }
       },
       unreachable: {

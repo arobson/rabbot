@@ -1,5 +1,6 @@
 var rabbit = require('../../src/index.js');
 var fs = require('fs');
+
 rabbit.log(
   { level: 'debug', stream: fs.createWriteStream('./debug.log'), objectMode: true }
 );
@@ -35,18 +36,29 @@ function publish (batchSize, total) {
   }
   var pending = new Array(subtotal);
   total -= subtotal;
+  var lost = 0;
   for (let i = 0; i < subtotal; i++) {
     pending.push(
       rabbit.publish('wascally-pubsub-messages-x', {
         type: 'publisher.message',
         body: { message: `Message ${i}` }
-      })
+      }).then(
+        null,
+        (e) => {
+          lost++;
+          throw e;
+        }
+      )
     );
   }
   if (total > 0) {
     Promise.all(pending)
       .then(() => {
         console.log(`just published ${batchSize} messages ... boy are my arms tired?`);
+        setTimeout(() => publish(batchSize, total), 0);
+      },
+      () => {
+        console.log(`${lost} MESSAGES LOST!`);
         setTimeout(() => publish(batchSize, total), 0);
       });
   }

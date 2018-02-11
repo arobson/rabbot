@@ -6,7 +6,7 @@ const debugEnv = process.env.DEBUG;
 const debugOut = {
   write: function (data) {
     const entry = JSON.parse(data);
-    debug(debug(entry.name)(entry.level, entry.message));
+    debug(entry.name)(entry.level, entry.message);
   }
 };
 

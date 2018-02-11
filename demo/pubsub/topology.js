@@ -7,6 +7,7 @@ module.exports = function (rabbit, subscribeTo) {
       server: [ '127.0.0.1' ],
       port: 5672,
       vhost: '%2f',
+      publishTimeout: 100,
       timeout: 1000,
       failAfter: 30,
       retryLimit: 400
@@ -22,8 +23,7 @@ module.exports = function (rabbit, subscribeTo) {
       {
         name: 'wascally-pubsub-messages-x',
         type: 'fanout',
-        autoDelete: true,
-        noConfirm: true
+        autoDelete: true
       }
     ],
 
@@ -32,7 +32,8 @@ module.exports = function (rabbit, subscribeTo) {
     queues: [
       {
         name: 'wascally-pubsub-requests-q',
-        autoDelete: true,
+        // autoDelete: true,
+        durable: true,
         unique: 'hash',
         subscribe: subscribeTo === 'requests'
       },
