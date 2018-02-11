@@ -12,6 +12,7 @@ node_js:
 before_script:
   - npm run build-image
   - npm run start-container
+  - sleep 10
 
 script:
   - nyc npm test && nyc report --reporter=text-lcov | coveralls

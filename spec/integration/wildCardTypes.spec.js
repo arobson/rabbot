@@ -38,12 +38,14 @@ describe('Wild Card Type Handling', function () {
           keys: 'this.is.*'
         }
       ]
-    }).then(() => {
-      rabbit.publish('rabbot-ex.topic', { type: 'one.a', routingKey: 'this.is.one', body: 'one' });
-      rabbit.publish('rabbot-ex.topic', { type: 'two.i.a', routingKey: 'this.is.two', body: 'two' });
-      rabbit.publish('rabbot-ex.topic', { type: 'three-b.a', routingKey: 'this.is.three', body: 'three' });
-      rabbit.publish('rabbot-ex.topic', { type: 'a.four', routingKey: 'this.is.four', body: 'four' });
-    });
+    }).then(() =>
+      Promise.all([
+        rabbit.publish('rabbot-ex.topic', { type: 'one.a', routingKey: 'this.is.one', body: 'one' }),
+        rabbit.publish('rabbot-ex.topic', { type: 'two.i.a', routingKey: 'this.is.two', body: 'two' }),
+        rabbit.publish('rabbot-ex.topic', { type: 'three-b.a', routingKey: 'this.is.three', body: 'three' }),
+        rabbit.publish('rabbot-ex.topic', { type: 'a.four', routingKey: 'this.is.four', body: 'four' })
+      ])
+    );
   });
 
   it('should handle all message types ending in "a"', function () {
