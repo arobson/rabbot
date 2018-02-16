@@ -16,8 +16,12 @@
  * Change commit style to conventional commits
  * Adopt semistandard as format style
  * Improve README badges
+ * Break docs into multiple docs
+ * Add code of conduct
+ * Add contributor guidelines
  * #80 - fixes issue where multiple messages were nack'd in nobatch mode
  * #42 - fixes issue regarding broken build status
+ * Fixes for: #120, #107, #97, #42
 
 ## 1.0.x
 
