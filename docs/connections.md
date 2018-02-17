@@ -105,6 +105,58 @@ The connection object is passed to the event handler for each event. Use the `na
 
 > !IMPORTANT! - rabbot handles connectivity for you, mucking about with the connection directly isn't supported, *just don't*.
 
+## Managing Connections - Retry, Close and Shutdown
+
+These methods should not see regular use inside of a typical long-running service unless you have a highly specialized use-case where you can pre-empt error conditions effectively and perform a graceful shutdown.
+
+Realize that this is rare and that it's ok for services to fail and restart by a service management layer or cluster orchestration (Docker, especially in the context of something like Kubernetes).
+
+During intentional connection close or shutdown, rabbot will attempt to resolve all outstanding publishes and recieved messages (ack/nack/reject) before closing the channels and connection intentionally. If you would like to defer certain actions until after everything has been safely resolved, then use the promise returned from either close call.
+
+> !!! CAUTION !!! - passing reset is dangerous. All topology associated with the connection will be removed locally meaning rabbot will _not_ be able to re-establish it all should you decide to reconnect. It's really there to support integration teardown.
+
+### `rabbot.close( [connectionName], [reset] )`
+
+Closes the connection, optionally resetting all previously defined topology for the connection. The `connectionName` is `default` if one is not provided.
+
+### `rabbot.closeAll( [reset] )`
+
+Closes __all__ connections, optionally resetting the topology for all of them.
+
+### `rabbot.retry()`
+
+After an `unhandled` event is raised by rabbot, not further attempts to connect will be made unless `retry` is called.
+
+It's worth noting that you should be pairing this with monitoring and alerting on your Broker so that you aren't relying on indefinite retry. Your goal should not be services that never restart. Your goal should be building systems resilient to failures (by allowing them to crash and restart gracefully).
+
+```js
+// How to create a zombie
+var rabbit = require( "rabbot" );
+
+rabbit.on( "unreachable", function() {
+  rabbit.retry();
+} );
+
+```
+
+### `rabbot.shutdown()`
+
+Once a connection is established, rabbot will keep the process running unless you call `shutdown`. This is because most services shouldn't automatically shutdown at the first accidental disconnection`. Shutdown attempts to provide the same guarantees as close - only allowing the process to exit after publishing and resolving received messages.
+
+## AMQPS, SSL/TLS Support
+
+Providing the following configuration options setting the related environment varibles will cause rabbot to attempt connecting via AMQPS. For more details about which settings perform what role, refer to the amqplib's page on [SSL](http://www.squaremobius.net/amqp.node/doc/ssl.html).
+
+```javascript
+  connection: {     // sample connection hash
+    caPath: "",   // comma delimited paths to CA files. RABBIT_CA
+    certPath: "",   // path to cert file. RABBIT_CERT
+    keyPath: "",  // path to key file. RABBIT_KEY
+    passphrase: "", // passphrase associated with cert/pfx. RABBIT_PASSPHRASE
+    pfxPath: ""   // path to pfx file. RABBIT_PFX
+  }
+```
+
 ## Details about publishing & subscribing related to connectivity
 
 ### Publishing
