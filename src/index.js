@@ -67,6 +67,7 @@ var Broker = function () {
   this.autoNack = false;
   this.serializers = serializers;
   this.configurations = {};
+  this.configuring = {};
   this.log = log;
   _.bindAll(this);
 };
@@ -188,6 +189,7 @@ Broker.prototype.close = function (connectionName = DEFAULT, reset = false) {
     if (reset) {
       this.connections[ connectionName ].reset();
     }
+    delete this.configuring[ connectionName ];
     return connection.close(reset);
   } else {
     return Promise.resolve(true);
@@ -203,7 +205,7 @@ Broker.prototype.deleteQueue = function (name, connectionName = DEFAULT) {
 };
 
 Broker.prototype.getExchange = function (name, connectionName = DEFAULT) {
-  return this.connections[ connectionName ].channels[ 'exchange:' + name ];
+  return this.connections[ connectionName ].channels[ `exchange:${name}` ];
 };
 
 Broker.prototype.getQueue = function (name, connectionName = DEFAULT) {
@@ -269,6 +271,20 @@ Broker.prototype.rejectUnhandled = function () {
   unhandledStrategies.onUnhandled = unhandledStrategies.rejectOnUnhandled;
 };
 
+Broker.prototype.onExchange = function (exchangeName, connectionName = DEFAULT) {
+  const promises = [
+    this.connections[ connectionName ].promise,
+    this.connections[ connectionName ].promises[`exchange:${exchangeName}`]
+  ];
+  if (this.configuring[ connectionName ]) {
+    promises.push(this.configuring[ connectionName ]);
+  }
+  return Promise.all(promises)
+    .then(
+      () => this.getExchange(exchangeName, connectionName)
+    );
+};
+
 Broker.prototype.onReturned = function (handler) {
   returnedStrategies.onReturned = returnedStrategies.customOnReturned = handler;
 };
@@ -303,9 +319,8 @@ Broker.prototype.publish = function (exchangeName, type, message, routingKey, co
     options.body = options.body.toString();
   }
 
-  return this.connections[ connectionName ].promise
-    .then(() => {
-      const exchange = this.getExchange(exchangeName, connectionName);
+  return this.onExchange(exchangeName, connectionName)
+    .then(exchange => {
       if (exchange) {
         return exchange.publish(options);
       } else {
@@ -333,32 +348,40 @@ Broker.prototype.request = function (exchangeName, options = {}, notify, connect
   const requestId = uuid.v1();
   options.messageId = requestId;
   options.connectionName = options.connectionName || connectionName;
-  const connection = this.connections[ options.connectionName ].options;
-  const exchange = this.getExchange(exchangeName, options.connectionName);
-  const publishTimeout = options.timeout || exchange.publishTimeout || connection.publishTimeout || 500;
-  const replyTimeout = options.replyTimeout || exchange.replyTimeout || connection.replyTimeout || (publishTimeout * 2);
 
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(function () {
-      subscription.unsubscribe();
-      reject(new Error('No reply received within the configured timeout of ' + replyTimeout + ' ms'));
-    }, replyTimeout);
-    const subscription = responses.subscribe(requestId, function (message) {
-      if (message.properties.headers[ 'sequence_end' ]) { // jshint ignore:line
-        clearTimeout(timeout);
-        resolve(message);
-        subscription.unsubscribe();
-      } else if (notify) {
-        notify(message);
-      }
+  if (!this.connections[ connectionName ]) {
+    return Promise.reject(new Error(`Request failed - no connection ${connectionName} has been configured`));
+  }
+
+  return this.onExchange(exchangeName, connectionName)
+    .then(exchange => {
+      const connection = this.connections[ options.connectionName ].options;
+      const publishTimeout = options.timeout || exchange.publishTimeout || connection.publishTimeout || 500;
+      const replyTimeout = options.replyTimeout || exchange.replyTimeout || connection.replyTimeout || (publishTimeout * 2);
+
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(function () {
+          subscription.unsubscribe();
+          reject(new Error('No reply received within the configured timeout of ' + replyTimeout + ' ms'));
+        }, replyTimeout);
+        const subscription = responses.subscribe(requestId, function (message) {
+          if (message.properties.headers[ 'sequence_end' ]) { // jshint ignore:line
+            clearTimeout(timeout);
+            resolve(message);
+            subscription.unsubscribe();
+          } else if (notify) {
+            notify(message);
+          }
+        });
+        this.publish(exchangeName, options);
+      });
     });
-    this.publish(exchangeName, options);
-  });
 };
 
 Broker.prototype.reset = function () {
   this.connections = {};
   this.configurations = {};
+  this.configuring = {};
 };
 
 Broker.prototype.retry = function (connectionName = DEFAULT) {

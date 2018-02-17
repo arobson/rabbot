@@ -12,6 +12,7 @@ describe('Configuration', function () {
   var Broker = function (conn) {
     this.connection = conn;
     this.configurations = {};
+    this.configuring = {};
   };
 
   Broker.prototype.addConnection = function () {
