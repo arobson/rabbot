@@ -16,6 +16,7 @@ var replyId;
       * failed to create reply queue
 */
 
+const DIRECT_REPLY_TO = 'amq.rabbitmq.reply-to';
 const noop = () => {};
 
 function getKeys (keys) {
@@ -82,7 +83,8 @@ var Topology = function (connection, options, serializers, unhandledStrategies, 
       this.replyQueue = { name: false };
     } else if (replyQueueName) {
       this.replyQueue = userReplyTo;
-    } else if (replyQueueName === 'rabbitmq') {
+    } else if (/^rabbit(mq)?$/i.test(replyQueueName) || replyQueueName === undefined) {
+      this.replyQueue.name = DIRECT_REPLY_TO;
       this.replyQueue = rabbitReplyTo;
     }
   } else {
@@ -234,7 +236,7 @@ Topology.prototype.createQueue = function (options) {
 };
 
 Topology.prototype.createReplyQueue = function () {
-  if (this.replyQueue.name === undefined || this.replyQueue.name === false) {
+  if (this.replyQueue.name === false) {
     return Promise.resolve();
   }
   var key = 'queue:' + this.replyQueue.name;

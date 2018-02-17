@@ -17,6 +17,9 @@ var format = require('util').format;
       * exchange declaration
 */
 
+const DIRECT_REPLY_TO = 'amq.rabbitmq.reply-to';
+const DIRECT_REGEX = /^rabbit(mq)?$/i;
+
 function aliasOptions (options, aliases) {
   var aliased = _.transform(options, function (result, value, key) {
     var alias = aliases[ key ];
@@ -84,7 +87,7 @@ function publish (channel, options, topology, log, serializers, message) {
     expiration: message.expiresAfter || undefined,
     mandatory: message.mandatory || false
   };
-  if (publishOptions.replyTo === 'amq.rabbitmq.reply-to') {
+  if (publishOptions.replyTo === DIRECT_REPLY_TO || DIRECT_REGEX.test(publishOptions.replyTo)) {
     publishOptions.headers[ 'direct-reply-to' ] = 'true';
   }
   if (!options.noConfirm && !message.sequenceNo) {

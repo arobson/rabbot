@@ -349,11 +349,11 @@ Broker.prototype.request = function (exchangeName, options = {}, notify, connect
   options.messageId = requestId;
   options.connectionName = options.connectionName || connectionName;
 
-  if (!this.connections[ connectionName ]) {
-    return Promise.reject(new Error(`Request failed - no connection ${connectionName} has been configured`));
+  if (!this.connections[ options.connectionName ]) {
+    return Promise.reject(new Error(`Request failed - no connection ${options.connectionName} has been configured`));
   }
 
-  return this.onExchange(exchangeName, connectionName)
+  return this.onExchange(exchangeName, options.connectionName)
     .then(exchange => {
       const connection = this.connections[ options.connectionName ].options;
       const publishTimeout = options.timeout || exchange.publishTimeout || connection.publishTimeout || 500;
