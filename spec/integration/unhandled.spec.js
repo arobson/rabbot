@@ -16,6 +16,7 @@ describe('Unhandled Strategies', function () {
   This allows it to capture any unhandled messages as such
   and test accordingly.
   */
+
   describe('Custom Strategy - Capturing Messages With No Handler', function () {
     var harness;
 

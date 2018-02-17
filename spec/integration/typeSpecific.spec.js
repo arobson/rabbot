@@ -3,7 +3,7 @@ const rabbit = require('../../src/index.js');
 const config = require('./configuration');
 
 /*
-  Demonstrates handling Messages With No Type Provided
+  Demonstrates handling by type specification from *any* queue
 */
 describe('Type Handling On Any Queue', function () {
   var harness;

@@ -197,10 +197,94 @@ function getUntrackedOps (channel, raw, messages) {
   };
 }
 
+// purging an auto-delete queue means unsubscribing is not
+// an option as it will cause the queue, binding and possibly
+// upstream auto-delete exchanges to be deleted as well
+function purgeADQueue (channel, connectionName, options, messages) {
+  const name = options.uniqueName || options.name;
+  return new Promise(function (resolve, reject) {
+    const messageCount = messages.messages.length;
+    if (messageCount > 0) {
+      log.info(`Purge operation for queue '${options.name}' on '${connectionName}' is waiting for resolution on ${messageCount} messages`);
+      messages.once('empty', function () {
+        channel.purgeQueue(name)
+          .then(
+            result => resolve(result.messageCount),
+            reject
+          );
+      });
+    } else {
+      channel.purgeQueue(name)
+        .then(
+          result => resolve(result.messageCount),
+          reject
+        );
+    }
+  });
+}
+
+// queues not marked auto-delete should be unsubscribed from
+// in order to stop incoming messages while the purge is
+// taking place and avoid arrival of additional new messages
+function purgeQueue (channel, connectionName, options, messages) {
+  const name = options.uniqueName || options.name;
+  return new Promise(function (resolve, reject) {
+    function onUnsubscribed () {
+      const messageCount = messages.messages.length;
+      if (messageCount > 0) {
+        log.info(`Purge operation for queue '${options.name}' on '${connectionName}' is waiting for resolution on ${messageCount} messages`);
+        messages.once('empty', function () {
+          channel.purgeQueue(name)
+            .then(
+              result => resolve(result.messageCount),
+              reject
+            );
+        });
+      } else {
+        channel.purgeQueue(name)
+          .then(
+            result => resolve(result.messageCount),
+            reject
+          );
+      }
+    }
+    log.info(`Stopping subscription on '${options.name}' on '${connectionName}' before purging`);
+    unsubscribe(channel, options)
+      .then(onUnsubscribed, onUnsubscribed);
+  });
+}
+
+function purge (channel, connectionName, options, messages, definer) {
+  log.info(`Checking queue length on '${options.name}' on '${connectionName}' before purging`);
+  return definer()
+    .then(
+      q => {
+        if (q.messageCount > 0) {
+          const promise = options.autoDelete
+            ? purgeADQueue(channel, connectionName, options, messages)
+            : purgeQueue(channel, connectionName, options, messages);
+          return promise
+            .then(
+              count => {
+                log.info(`Purged ${count} messages from '${options.name}' on '${connectionName}'`);
+                return count;
+              }
+            );
+        } else {
+          log.info(`'${options.name}' on '${connectionName}' was already empty when purge was called`);
+          return Promise.resolve(0);
+        }
+      },
+      Promise.reject
+    );
+}
+
 function release (channel, options, messages, released) {
   function onUnsubscribed () {
     return new Promise(function (resolve) {
-      if (messages.messages.length && !released) {
+      const messageCount = messages.messages.length;
+      if (messageCount > 0 && !released) {
+        log.info(`Release operation for queue '${options.name}' is waiting for resolution on ${messageCount} messages`);
         messages.once('empty', function () {
           finalize(channel, messages);
           resolve();
@@ -351,13 +435,14 @@ module.exports = function (options, topology, serializers) {
     .then(function (channel) {
       var messages = new AckBatch(options.name, topology.connection.name, resolveTags(channel, options.name, topology.connection.name));
       var subscriber = subscribe.bind(undefined, options.uniqueName, channel, topology, serializers, messages, options);
-
+      var definer = define.bind(undefined, channel, options, subscriber, topology.connection.name);
       return {
         channel: channel,
         messages: messages,
-        define: define.bind(undefined, channel, options, subscriber, topology.connection.name),
+        define: definer,
         finalize: finalize.bind(undefined, channel, messages),
         getMessageCount: getCount.bind(undefined, messages),
+        purge: purge.bind(undefined, channel, topology.connection.name, options, messages, definer),
         release: release.bind(undefined, channel, options, messages),
         subscribe: subscriber,
         unsubscribe: unsubscribe.bind(undefined, channel, options, messages)

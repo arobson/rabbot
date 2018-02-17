@@ -30,7 +30,9 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
     name: options.name,
     responseSubscriptions: {},
     signalSubscription: undefined,
+    subscribed: false,
     subscriber: undefined,
+    purger: undefined,
     unsubscribers: [],
     releasers: [],
 
@@ -60,15 +62,28 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
         return queue.unsubscribe();
       };
 
+      var onPurge = function (messageCount) {
+        log.info(`Purged ${messageCount} queue ${options.name} - ${connection.name}`);
+        this.handle('purged', messageCount);
+      }.bind(this);
+
+      var purger = function () {
+        return queue
+          .purge()
+          .then(onPurge)
+          .catch(function (err) {
+            emit('purgeFailed', err);
+          });
+      };
+
       var onSubscribe = function () {
-        emit('subscribed', {});
         log.info('Subscription to (%s) queue %s - %s started with consumer tag %s',
           options.noAck ? 'untracked' : 'tracked',
           options.name,
           connection.name,
           queue.channel.tag);
         this.unsubscribers.push(unsubscriber);
-        this.transition('subscribed');
+        this.handle('subscribed');
       }.bind(this);
 
       var subscriber = function (exclusive) {
@@ -100,6 +115,7 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
 
       this.subscriber = subscriber;
       this.releasers.push(releaser);
+      this.purger = purger;
 
       handlers.push(queue.channel.on('acquired', function () {
         this._define(queue);
@@ -137,6 +153,27 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
       var deferred = defer();
       this.handle('check', deferred);
       return deferred.promise;
+    },
+
+    purge: function () {
+      return new Promise(function (resolve, reject) {
+        var _handlers;
+        function cleanResolve (result) {
+          unhandle(_handlers);
+          resolve(result);
+        }
+        function cleanReject (err) {
+          unhandle(_handlers);
+          this.transition('failed');
+          reject(err);
+        }
+        _handlers = [
+          this.once('purged', cleanResolve),
+          this.once('purgeFailed', cleanReject.bind(this)),
+          this.once('failed', cleanReject.bind(this))
+        ];
+        this.handle('purge');
+      }.bind(this));
     },
 
     reconnect: function () {
@@ -208,6 +245,7 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
     states: {
       closed: {
         _onEnter: function () {
+          this.subscribed = false;
           this._release(true);
           this.emit('closed');
         },
@@ -215,12 +253,16 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
           this.deferUntilTransition('ready');
           this.transition('initializing');
         },
+        purge: function () {
+          this.deferUntilTransition('ready');
+        },
         subscribe: function () {
           this.deferUntilTransition('ready');
         }
       },
       failed: {
         _onEnter: function () {
+          this.subscribed = false;
           this.emit('failed', this.failedWith);
         },
         check: function (deferred) {
@@ -241,6 +283,9 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
         released: function () {
           this.transition('released');
         },
+        purge: function () {
+          this.emit('purgeFailed', this.failedWith);
+        },
         subscribe: function () {
           this.emit('subscribeFailed', this.failedWith);
         }
@@ -248,10 +293,16 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
       initializing: {
         _onEnter: function () {
           queueFn(options, topology, serializers)
-            .then(function (queue) {
-              this.lastQueue = queue;
-              this.handle('acquired', queue);
-            }.bind(this));
+            .then(
+              queue => {
+                this.lastQueue = queue;
+                this.handle('acquired', queue);
+              },
+              err => {
+                this.failedWith = err;
+                this.transition('failed');
+              }
+            );
         },
         acquired: function (queue) {
           this.receivedMessages = queue.messages;
@@ -265,6 +316,9 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
           this.deferUntilTransition('ready');
         },
         closed: function () {
+          this.deferUntilTransition('ready');
+        },
+        purge: function () {
           this.deferUntilTransition('ready');
         },
         subscribe: function () {
@@ -281,6 +335,12 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
         closed: function () {
           this.transition('closed');
         },
+        purge: function () {
+          if (this.purger) {
+            this.transition('purging');
+            return this.purger();
+          }
+        },
         release: function () {
           this.transition('releasing');
           this.handle('release');
@@ -291,36 +351,17 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
         },
         subscribe: function () {
           if (this.subscriber) {
-            this.transition('subscribing');
+            this.deferAndTransition('subscribing');
             return this.subscriber();
           }
         }
       },
-      releasing: {
-        release: function () {
-          this._release(false);
-        },
-        released: function () {
-          this.transition('released');
-        }
-      },
-      released: {
-        _onEnter: function () {
-          this.emit('released');
-        },
-        check: function (deferred) {
-          deferred.reject(new Error(format("Cannot establish queue '%s' after intentionally closing its connection", this.name)));
-        },
-        release: function () {
-          this.emit('released');
-        },
-        subscribe: function () {
-          this.emit('subscribeFailed', new Error(format("Cannot subscribe to queue '%s' after intentionally closing its connection", this.name)));
-        }
-      },
-      subscribing: {
+      purging: {
         closed: function () {
           this.transition('closed');
+        },
+        purged: function () {
+          this.deferAndTransition('purged');
         },
         release: function () {
           this.transition('releasing');
@@ -334,7 +375,7 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
           this.deferUntilTransition('subscribed');
         }
       },
-      subscribed: {
+      purged: {
         check: function (deferred) {
           deferred.resolve();
         },
@@ -349,13 +390,99 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
           this._release(true);
           this.transition('initializing');
         },
+        purged: function (result) {
+          this.emit('purged', result);
+          if (this.subscribed && this.subscriber) {
+            this.subscribe()
+              .then(
+                null,
+                () => {
+                  this.subscribed = false;
+                }
+              );
+          } else {
+            this.transition('ready');
+          }
+        },
         subscribe: function () {
-          this.emit('subscribed');
+          this.deferAndTransition('ready');
+        }
+      },
+      releasing: {
+        release: function () {
+          this._release(false);
+        },
+        released: function () {
+          this.transition('released');
+        }
+      },
+      released: {
+        _onEnter: function () {
+          this.subscribed = false;
+          this.emit('released');
+        },
+        check: function (deferred) {
+          deferred.reject(new Error(format("Cannot establish queue '%s' after intentionally closing its connection", this.name)));
+        },
+        purge: function () {
+          this.emit('purgeFailed', new Error(format("Cannot purge to queue '%s' after intentionally closing its connection", this.name)));
+        },
+        release: function () {
+          this.emit('released');
+        },
+        subscribe: function () {
+          this.emit('subscribeFailed', new Error(format("Cannot subscribe to queue '%s' after intentionally closing its connection", this.name)));
+        }
+      },
+      subscribing: {
+        closed: function () {
+          this.transition('closed');
+        },
+        purge: function () {
+          this.deferUntilTransition('ready');
+        },
+        release: function () {
+          this.transition('releasing');
+          this.handle('release');
+        },
+        released: function () {
+          this._release(true);
+          this.transition('initializing');
+        },
+        subscribe: function () {
+          this.transition('subscribed');
+        }
+      },
+      subscribed: {
+        check: function (deferred) {
+          deferred.resolve();
+        },
+        closed: function () {
+          this.transition('closed');
+        },
+        purge: function () {
+          this.deferUntilTransition('ready');
+          this.transition('ready');
+        },
+        release: function () {
+          this.transition('releasing');
+          this.handle('release');
+        },
+        released: function () {
+          this._release(true);
+          this.transition('initializing');
+        },
+        subscribed: function () {
+          this.subscribed = true;
+          this.emit('subscribed', {});
         }
       },
       unreachable: {
         check: function (deferred) {
           deferred.reject(new Error(format("Cannot establish queue '%s' when no nodes can be reached", this.name)));
+        },
+        purge: function () {
+          this.emit('purgeFailed', new Error(format("Cannot purge queue '%s' when no nodes can be reached", this.name)));
         },
         subscribe: function (sub) {
           this.emit('subscribeFailed', new Error(format("Cannot subscribe to queue '%s' when no nodes can be reached", this.name)));

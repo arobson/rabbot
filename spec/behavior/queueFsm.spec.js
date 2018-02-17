@@ -12,6 +12,7 @@ function channelFn (options) {
     define: noOp,
     destroy: noOp,
     finalize: noOp,
+    purge: noOp,
     release: noOp,
     getMessageCount: noOp,
     subscribe: noOp,
@@ -62,6 +63,12 @@ describe('Queue FSM', function () {
     describe('when subscribing in failed state', function () {
       it('should reject subscribe with an error', function () {
         return queue.subscribe().should.be.rejectedWith(/nope/);
+      });
+    });
+
+    describe('when purging in failed state', function () {
+      it('should reject purge with an error', function () {
+        return queue.purge().should.be.rejectedWith(/nope/);
       });
     });
 
@@ -121,6 +128,32 @@ describe('Queue FSM', function () {
 
       it('should change options.subscribe to true', function () {
         options.subscribe.should.equal(true);
+      });
+
+      it('should be in subscribed state', function () {
+        queue.state.should.equal('subscribed');
+      });
+    });
+
+    describe('when purging in ready state', function () {
+      before(function () {
+        channelMock
+          .expects('purge')
+          .once()
+          .resolves(10);
+
+        channelMock
+          .expects('subscribe')
+          .once()
+          .resolves(true);
+      });
+
+      it('should resolve purge without error and resubscribe', function (done) {
+        queue.on('subscribed', function () {
+          queue.state.should.equal('subscribed');
+          done();
+        });
+        queue.purge().should.eventually.equal(10);
       });
     });
 

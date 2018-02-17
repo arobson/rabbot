@@ -314,6 +314,21 @@ Broker.prototype.publish = function (exchangeName, type, message, routingKey, co
     });
 };
 
+Broker.prototype.purgeQueue = function (queueName, connectionName = DEFAULT) {
+  if (!this.connections[ connectionName ]) {
+    return Promise.reject(new Error(`Queue purge failed - no connection ${connectionName} has been configured`));
+  }
+  return this.connections[ connectionName ].promise
+    .then(() => {
+      const queue = this.getQueue(queueName, connectionName);
+      if (queue) {
+        return queue.purge();
+      } else {
+        return Promise.reject(new Error(`Queue purge failed - no queue ${queueName} on connection ${connectionName} is defined`));
+      }
+    });
+};
+
 Broker.prototype.request = function (exchangeName, options = {}, notify, connectionName = DEFAULT) {
   const requestId = uuid.v1();
   options.messageId = requestId;
