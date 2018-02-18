@@ -267,7 +267,7 @@ Broker.prototype.getExchange = function (name, connectionName = DEFAULT) {
 };
 
 Broker.prototype.getQueue = function (name, connectionName = DEFAULT) {
-  return this.connections[ connectionName ].channels[ 'queue:' + name ];
+  return this.connections[ connectionName ].channels[ `queue:${name}` ];
 };
 
 Broker.prototype.handle = function (messageType, handler, queueName, context) {

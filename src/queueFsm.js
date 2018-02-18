@@ -28,6 +28,7 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
 
   var Fsm = machina.Fsm.extend({
     name: options.name,
+    uniqueName: options.uniqueName,
     responseSubscriptions: {},
     signalSubscription: undefined,
     subscribed: false,

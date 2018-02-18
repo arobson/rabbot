@@ -100,6 +100,12 @@ The unique option has 3 different possible values, each with its own behavior:
 
 > Note: the concept of queue recovery is that the same queue name will be generated in the event of a process restart. If using `hash` or `id`, the pid is used and a different queue name will be generated each time the process starts.
 
+You can specify unique queues by their friendly-name when handling and subscribing. To get the actual assigned queue name (which you should not need), you can use:
+
+```js
+const realQueueName = rabbot.getQueue('friendly-q-name').uniqueName;
+```
+
 ## `rabbot.bindExchange( sourceExchange, targetExchange, [routingKeys], [connectionName] )`
 
 Binds the target exchange to the source exchange. Messages flow from source to target.
