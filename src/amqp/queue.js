@@ -105,7 +105,7 @@ function getNoBatchOps (channel, raw, messages, noAck) {
     };
     reject = function () {
       log.debug("Rejecting tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName);
-      channel.reject({ fields: { deliveryTag: raw.fields.deliveryTag } }, false);
+      channel.reject({ fields: { deliveryTag: raw.fields.deliveryTag } }, false, false);
     };
   }
 
@@ -358,15 +358,38 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
     var topic = parts.join('.');
     var contentType = raw.properties.contentType || 'application/octet-stream';
     var serializer = serializers[ contentType ];
+    const track = () => {
+      if (shouldAck && shouldBatch) {
+        messages.addMessage(ops);
+      }
+    };
     if (!serializer) {
-      log.error("Could not deserialize message id %s on queue '%s', connection '%s' - no serializer defined",
-        raw.properties.messageId, channelName, topology.connection.name);
-      ops.nack();
+      if (options.poison) {
+        raw.body = raw.content;
+        raw.contentEncoding = raw.properties.contentEncoding;
+        raw.quarantined = true;
+        topic = `${topic}.quarantined`
+      } else {
+        log.error("Could not deserialize message id %s on queue '%s', connection '%s' - no serializer defined",
+          raw.properties.messageId, channelName, topology.connection.name);
+        track();
+        ops.reject();
+        return;
+      }
     } else {
       try {
         raw.body = serializer.deserialize(raw.content, raw.properties.contentEncoding);
       } catch (err) {
-        ops.nack();
+        if (options.poison) {
+          raw.quarantined = true;
+          raw.body = raw.content;
+          raw.contentEncoding = raw.properties.contentEncoding;
+          topic = `${topic}.quarantined`
+        } else {
+          track();
+          ops.reject();
+          return;
+        }
       }
     }
 
@@ -376,9 +399,7 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
       if (data.activated) {
         handled = true;
       }
-      if (shouldAck && shouldBatch) {
-        messages.addMessage(ops);
-      }
+      track();
 
       if (!handled) {
         unhandledLog.warn("Message of %s on queue '%s', connection '%s' was not processed by any registered handlers",

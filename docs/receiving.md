@@ -73,6 +73,7 @@ rabbit.ignoreHandlerErrors();
 ```
 
 ### Late-bound Error Handling
+
 Provide a strategy for handling errors to multiple handles or attach an error handler after the fact.
 
 ```javascript
@@ -91,6 +92,7 @@ handler.catch( function( err, msg ) {
 Failure to handle errors will result in silent failures and lost messages.
 
 ## Unhandled Messages
+
 The default behavior is that any message received that doesn't have any elligible handlers will get `nack`'d and sent back to the queue immediately.
 
 > Caution: this can create churn on the client and server as the message will be redelivered indefinitely!
@@ -98,6 +100,7 @@ The default behavior is that any message received that doesn't have any elligibl
 To avoid unhandled message churn, select one of the following mutually exclusive strategies:
 
 ### `rabbot.onUnhandled( handler )`
+
 ```javascript
 rabbit.onUnhandled( function( message ) {
    // handle the message here
@@ -105,21 +108,25 @@ rabbit.onUnhandled( function( message ) {
 ```
 
 ### `rabbot.nackUnhandled()` - default
+
 Sends all unhandled messages back to the queue.
 ```javascript
 rabbit.nackUnhandled();
 ```
 
 ### `rabbot.rejectUnhandled()`
+
 Rejects unhandled messages so that will will _not_ be requeued. **DO NOT** use this unless there are dead letter exchanges for all queues.
 ```javascript
 rabbit.rejectUnhandled();
 ```
 
 ## Returned Messages
+
 Unroutable messages that were published with `mandatory: true` will be returned. These messages cannot be ack/nack'ed.
 
 ### `rabbot.onReturned( handler )`
+
 ```javascript
 rabbit.onReturned( function( message ) {
    // the returned message
@@ -138,6 +145,7 @@ Starts a consumer on the queue specified.
 > Caution: using exclusive this way will allow your process to effectively "block" other processes from subscribing to a queue your process did not create. This can cause channel errors and closures on any other processes attempting to subscribe to the same queue. Make sure you know what you're doing.
 
 ## Message Format
+
 The following structure shows and briefly explains the format of the message that is passed to the handle callback:
 
 ```javascript
@@ -163,6 +171,7 @@ The following structure shows and briefly explains the format of the message tha
   content: { "type": "Buffer", "data": [ ... ] }, // raw buffer of message body
   body: , // this could be an object, string, etc - whatever was published
   type: "" // this also contains the type of the message published
+  quarantine: true|false // indicates the message arrived on a poison queue
 }
 ```
 
@@ -248,14 +257,17 @@ rabbit.addConnection( {
 ```
 
 ## Custom Serializers
+
 Serializers are objects with a `serialize` and `deserialize` method and get assigned to a specific content type. When a message is published or received with a specific `content-type`, rabbot will attempt to look up a serializer that matches. If one isn't found, an error will get thrown.
 
 > Note: you can over-write rabbot's default serializers but probably shouldn't unless you know what you're doing.
 
 ### `rabbot.serialize( object )`
+
 The serialize function takes the message content and must return a Buffer object encoded as "utf8".
 
 ### `rabbot.deserialize( bytes, encoding )`
+
 The deserialize function takes both the raw bytes and the encoding sent. While "utf8" is the only supported encoding rabbot produces, the encoding is passed in case the message was produced by another library using a different encoding.
 
 ### `rabbot.addSerializer( contentType, serializer )`
@@ -272,3 +284,22 @@ rabbit.addSerializer( "application/yaml", {
   }
 } );
 ```
+
+## Failed Serialization
+
+Failed serialization is rejected without requeueing. If you want to catch this, you must:
+
+ * assign a deadletter exchange (DLX) to your queues
+ * bind the deadletter queue (DLQ) to the DLX
+ * mark the DLQ with `poison: true`
+ * handle one of the topic forms:
+   * `original.topic.#` - regular and quarantined messages
+   * `original.topic.*` - regular and quarantined messages
+   * `original.topic.quarantined` - one topic's quarantined messages
+   * `#.quarantined` - all quarantined messages
+
+If your handler is getting both regular and quarantined messages, be sure to check the `quarantined` flag on the message to avoid trying to handle it like a usual message (since it will not be deserialized).
+
+### Rationale
+
+Without this approach, nacking a message body that cannot be processed causes the message to be continuously requeued and reprocessed indefinitely and can cause a queue to fill with garbage.

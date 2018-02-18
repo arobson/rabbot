@@ -12,3 +12,4 @@ tmp/
 *.swo
 /Vagrantfile
 package-lock.json
+debug.log

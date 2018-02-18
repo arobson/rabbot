@@ -2,6 +2,10 @@ require('../setup');
 const rabbit = require('../../src/index.js');
 const config = require('./configuration');
 
+/*
+ Demonstrates how bulk publish API works
+ in both formats.
+*/
 describe('Bulk Publish', function () {
   var harness;
 

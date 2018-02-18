@@ -1,4 +1,3 @@
-const _ = require('lodash');
 const postal = require('postal');
 const Monologue = require('monologue.js');
 const signal = postal.channel('rabbit.ack');
@@ -45,7 +44,7 @@ AckBatch.prototype._ackOrNackSequence = function () {
   const call = calls[ firstStatus ];
   if (firstStatus === 'pending') {
   } else {
-    for (let i = 1; i < _.size(this.messages) - 1; i++) {
+    for (let i = 1; i < this.messages.length - 1; i++) {
       if (this.messages[ i ].status !== firstStatus) {
         break;
       }
@@ -58,11 +57,30 @@ AckBatch.prototype._ackOrNackSequence = function () {
 };
 
 AckBatch.prototype._firstByStatus = function (status) {
-  return _.find(this.messages, { status: status });
+  for (var i = 0; i < this.messages.length; i++) {
+    if (this.messages[ i ].status === status) {
+      return this.messages[ i ];
+    }
+  }
+  return undefined;
+};
+
+AckBatch.prototype._findIndex = function (status) {
+  for (var i = 0; i < this.messages.length; i++) {
+    if (this.messages[ i ].status === status) {
+      return i;
+    }
+  }
+  return -1;
 };
 
 AckBatch.prototype._lastByStatus = function (status) {
-  return _.findLast(this.messages, { status: status });
+  for (var i = this.messages.length - 1; i >= 0; i--) {
+    if (this.messages[ i ].status === status) {
+      return this.messages[ i ];
+    }
+  }
+  return undefined;
 };
 
 AckBatch.prototype._nack = function (tag, inclusive) {
@@ -79,10 +97,10 @@ AckBatch.prototype._processBatch = function () {
   this.acking = this.acking !== undefined ? this.acking : false;
   if (!this.acking) {
     this.acking = true;
-    const hasPending = (_.findIndex(this.messages, { status: 'pending' }) >= 0);
-    const hasAck = this.firstAck;
-    const hasNack = this.firstNack;
-    const hasReject = this.firstReject;
+    const hasPending = (this._findIndex('pending') >= 0);
+    const hasAck = this.firstAck !== undefined;
+    const hasNack = this.firstNack !== undefined;
+    const hasReject = this.firstReject !== undefined;
     if (!hasPending && !hasNack && hasAck && !hasReject) {
       // just acks
       this._resolveAll('ack', 'firstAck', 'lastAck');
@@ -112,7 +130,7 @@ AckBatch.prototype._resolveAll = function (status, first, last) {
       this.emit('empty');
     }.bind(this), 10);
   }.bind(this);
-  if (this.messages.length !== 0) {
+  if (this.messages.length > 0) {
     const lastTag = this._lastByStatus(status).tag;
     log.debug('%s ALL (%d) tags on %s up to %d - %s.',
       status,
@@ -163,15 +181,25 @@ AckBatch.prototype._resolveTag = function (tag, operation, inclusive) {
 };
 
 AckBatch.prototype._removeByStatus = function (status) {
-  return _.remove(this.messages, function (message) {
-    return message.status === status;
-  });
+  this.messages = this.messages.reduce((acc, message) => {
+    if (message.status !== status) {
+      acc.push(message);
+    }
+    return acc;
+  }, []);
 };
 
 AckBatch.prototype._removeUpToTag = function (tag) {
-  return _.remove(this.messages, function (message) {
-    return message.tag <= tag;
-  });
+  let removed = 0;
+  this.messages = this.messages.reduce((acc, message) => {
+    if (message.tag > tag) {
+      acc.push(message);
+    } else {
+      removed++;
+    }
+    return acc;
+  }, []);
+  return removed;
 };
 
 AckBatch.prototype.addMessage = function (message) {
@@ -223,9 +251,9 @@ AckBatch.prototype.ignoreSignal = function () {
 
 AckBatch.prototype.listenForSignal = function () {
   if (!this.signalSubscription) {
-    this.signalSubscription = signal.subscribe('#', function () {
+    this.signalSubscription = signal.subscribe('#', () => {
       this._processBatch();
-    }.bind(this));
+    });
   }
 };
 

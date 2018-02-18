@@ -33,7 +33,10 @@ const serializers = {
       return JSON.parse(bytes.toString(encoding || 'utf8'));
     },
     serialize: (object) => {
-      return Buffer.from(JSON.stringify(object), 'utf8');
+      const json = (typeof object === 'string')
+        ? object
+        : JSON.stringify(object);
+      return Buffer.from(json, 'utf8');
     }
   },
   'application/octet-stream': {

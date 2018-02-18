@@ -173,13 +173,13 @@ describe('Ack Batching', function () {
         done();
       });
 
+      batch.listenForSignal();
       batch.addMessage({ tag: 101, status: 'ack' });
       batch.addMessage({ tag: 102, status: 'ack' });
       batch.addMessage({ tag: 103, status: 'ack' });
       batch.addMessage({ tag: 104, status: 'ack' });
       batch.addMessage({ tag: 105, status: 'ack' });
       batch.firstAck = 101;
-      batch.listenForSignal();
       signal.publish('go', {});
     });
 

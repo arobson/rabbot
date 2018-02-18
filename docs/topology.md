@@ -89,6 +89,7 @@ Options is a hash that can contain the following:
 | **deadLetterRoutingKey** | string | the routing key to add to a dead-lettered message
 | **maxPriority** | 2^8 | the highest priority this queue supports | |
 | **unique** | `"hash", `"id", "consistent"` | creates a unique queue name by including the client id or hash in the name | |
+| **poison** | boolean | indicates that this queue is specifically for poison / rejected messages| false |
 
 ### unique
 
@@ -105,6 +106,13 @@ You can specify unique queues by their friendly-name when handling and subscribi
 ```js
 const realQueueName = rabbot.getQueue('friendly-q-name').uniqueName;
 ```
+
+### poison
+
+If you want to capture instances where messages have no serializer or failed to deserialize properly, you can create a dead-letter exchange and bind it to a queue where you set `poison: true` so that in the event of further errors, rabbot will continue to deliver the message without deserialization.
+
+ * `body` will be set to the raw Buffer
+ * `quarantine` will be set to `true` as well
 
 ## `rabbot.bindExchange( sourceExchange, targetExchange, [routingKeys], [connectionName] )`
 
