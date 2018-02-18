@@ -1,10 +1,9 @@
 // This is probably not a true monad, but it seems close based on my current understanding.
 
-var _ = require('lodash');
-var Monologue = require('monologue.js');
-var machina = require('machina');
-var log = require('../log.js')('rabbot.io');
-var staticId = 0;
+const Monologue = require('monologue.js');
+const machina = require('machina');
+const log = require('../log.js')('rabbot.io');
+let staticId = 0;
 
 /* state definitions
   acquiring - waiting to get back a connection or channel
@@ -345,8 +344,11 @@ module.exports = function (options, type, factory, target, close) {
 
   Monologue.mixInto(IOMonad);
   var machine = new IOMonad();
-  _.each(target.prototype, function (prop, name) {
-    if (_.isFunction(prop)) {
+
+  const names = Object.getOwnPropertyNames(target.prototype);
+  names.forEach(name => {
+    const prop = target.prototype[ name ];
+    if (typeof prop === 'function') {
       machine[ name ] = function () {
         var list = Array.prototype.slice.call(arguments, 0);
         return machine.operate(name, list);

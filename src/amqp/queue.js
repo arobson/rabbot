@@ -1,14 +1,13 @@
-var _ = require('lodash');
-var AckBatch = require('../ackBatch.js');
-var postal = require('postal');
-var dispatch = postal.channel('rabbit.dispatch');
-var responses = postal.channel('rabbit.responses');
-var info = require('../info');
-var log = require('../log')('rabbot.queue');
-var format = require('util').format;
-var topLog = require('../log')('rabbot.topology');
-var unhandledLog = require('../log')('rabbot.unhandled');
-var noOp = function () {};
+const AckBatch = require('../ackBatch.js');
+const postal = require('postal');
+const dispatch = postal.channel('rabbit.dispatch');
+const responses = postal.channel('rabbit.responses');
+const info = require('../info');
+const log = require('../log')('rabbot.queue');
+const format = require('util').format;
+const topLog = require('../log')('rabbot.topology');
+const unhandledLog = require('../log')('rabbot.unhandled');
+const noOp = function () {};
 
 /* log
   * `rabbot.amqp-queue`
@@ -28,12 +27,15 @@ var noOp = function () {};
       * queue declaration
 */
 
-function aliasOptions (options, aliases) {
-  var aliased = _.transform(options, function (result, value, key) {
-    var alias = aliases[ key ];
-    result[ alias || key ] = value;
-  });
-  return _.omit(aliased, Array.prototype.slice.call(arguments, 2));
+function aliasOptions (options, aliases, ...omit) {
+  const keys = Object.keys(options);
+  return keys.reduce((result, key) => {
+    const alias = aliases[ key ] || key;
+    if (omit.indexOf(key) < 0) {
+      result[ alias ] = options[ key ];
+    }
+    return result;
+  }, {});
 }
 
 function define (channel, options, subscriber, connectionName) {
@@ -45,7 +47,7 @@ function define (channel, options, subscriber, connectionName) {
     deadLetterRoutingKey: 'deadLetterRoutingKey'
   }, 'subscribe', 'limit', 'noBatch', 'unique');
   topLog.info("Declaring queue '%s' on connection '%s' with the options: %s",
-    options.uniqueName, connectionName, JSON.stringify(_.omit(options, [ 'name' ])));
+    options.uniqueName, connectionName, JSON.stringify(options));
   return channel.assertQueue(options.uniqueName, valid)
     .then(function (q) {
       if (options.limit) {
@@ -65,9 +67,9 @@ function finalize (channel, messages) {
 function getContentType (body, options) {
   if (options && options.contentType) {
     return options.contentType;
-  } else if (_.isString(body)) {
+  } else if (typeof body === 'string') {
     return 'text/plain';
-  } else if (_.isObject(body) && !body.length) {
+  } else if (typeof body === 'object' && !body.length) {
     return 'application/json';
   } else {
     return 'application/octet-stream';
@@ -328,7 +330,7 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
   }
 
   options.consumerTag = info.createTag(channelName);
-  if (_.keys(channel.item.consumers).length > 0) {
+  if (Object.keys(channel.item.consumers).length > 0) {
     log.info('Duplicate subscription to queue %s ignored', channelName);
     return Promise.resolve(options.consumerTag);
   }
@@ -346,7 +348,7 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
     raw.reject = ops.reject.bind(ops);
     raw.nack = ops.nack.bind(ops);
     raw.reply = getReply(channel, serializers, raw, topology.replyQueue.name, topology.connection.name);
-    raw.type = _.isEmpty(raw.properties.type) ? raw.fields.routingKey : raw.properties.type;
+    raw.type = raw.properties.type || raw.fields.routingKey;
     if (exclusive) {
       options.exclusive = true;
     }
@@ -368,7 +370,7 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
         raw.body = raw.content;
         raw.contentEncoding = raw.properties.contentEncoding;
         raw.quarantined = true;
-        topic = `${topic}.quarantined`
+        topic = `${topic}.quarantined`;
       } else {
         log.error("Could not deserialize message id %s on queue '%s', connection '%s' - no serializer defined",
           raw.properties.messageId, channelName, topology.connection.name);
@@ -384,7 +386,7 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
           raw.quarantined = true;
           raw.body = raw.content;
           raw.contentEncoding = raw.properties.contentEncoding;
-          topic = `${topic}.quarantined`
+          topic = `${topic}.quarantined`;
         } else {
           track();
           ops.reject();

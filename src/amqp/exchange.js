@@ -1,9 +1,8 @@
-var _ = require('lodash');
-var defer = require('../defer');
-var info = require('../info');
-var exLog = require('../log.js')('rabbot.exchange');
-var topLog = require('../log.js')('rabbot.topology');
-var format = require('util').format;
+const defer = require('../defer');
+const info = require('../info');
+const exLog = require('../log.js')('rabbot.exchange');
+const topLog = require('../log.js')('rabbot.topology');
+const format = require('util').format;
 
 /* log
   * `rabbot.exchange`
@@ -20,12 +19,15 @@ var format = require('util').format;
 const DIRECT_REPLY_TO = 'amq.rabbitmq.reply-to';
 const DIRECT_REGEX = /^rabbit(mq)?$/i;
 
-function aliasOptions (options, aliases) {
-  var aliased = _.transform(options, function (result, value, key) {
-    var alias = aliases[ key ];
-    result[ alias || key ] = value;
-  });
-  return _.omit(aliased, Array.prototype.slice.call(arguments, 2));
+function aliasOptions (options, aliases, ...omit) {
+  const keys = Object.keys(options);
+  return keys.reduce((result, key) => {
+    const alias = aliases[ key ] || key;
+    if (omit.indexOf(key) < 0) {
+      result[ alias ] = options[ key ];
+    }
+    return result;
+  }, {});
 }
 
 function define (channel, options, connectionName) {
@@ -36,7 +38,7 @@ function define (channel, options, connectionName) {
     options.type,
     options.name,
     connectionName,
-    JSON.stringify(_.omit(valid, [ 'name', 'type' ]))
+    JSON.stringify(valid)
   );
   if (options.name === '') {
     return Promise.resolve(true);
@@ -50,9 +52,9 @@ function define (channel, options, connectionName) {
 function getContentType (message) {
   if (message.contentType) {
     return message.contentType;
-  } else if (_.isString(message.body)) {
+  } else if (typeof message.body === 'string') {
     return 'text/plain';
-  } else if (_.isObject(message.body) && !Buffer.isBuffer(message.body)) {
+  } else if (typeof message.body === 'object' && !Buffer.isBuffer(message.body)) {
     return 'application/json';
   } else {
     return 'application/octet-stream';
@@ -65,7 +67,7 @@ function publish (channel, options, topology, log, serializers, message) {
   var baseHeaders = {
     'CorrelationId': message.correlationId
   };
-  message.headers = _.merge(baseHeaders, message.headers);
+  message.headers = Object.assign(baseHeaders, message.headers);
   var contentType = getContentType(message);
   var serializer = serializers[ contentType ];
   if (!serializer) {
