@@ -1,4 +1,3 @@
-const _ = require('lodash');
 const Monologue = require('monologue.js');
 const connectionFn = require('./connectionFsm.js');
 const topologyFn = require('./topology.js');
@@ -69,7 +68,6 @@ var Broker = function () {
   this.configurations = {};
   this.configuring = {};
   this.log = log;
-  _.bindAll(this);
 };
 
 Broker.prototype.addConnection = function (opts) {
@@ -132,7 +130,7 @@ Broker.prototype.addConnection = function (opts) {
 };
 
 Broker.prototype.addExchange = function (name, type, options = {}, connectionName = DEFAULT) {
-  if (_.isObject(name)) {
+  if (typeof name === 'object') {
     options = name;
     options.connectionName = options.connectionName || type || connectionName;
   } else {
@@ -168,6 +166,66 @@ Broker.prototype.bindQueue = function (source, target, keys, connectionName = DE
     { source: source, target: target, keys: keys, queue: true },
     connectionName
   );
+};
+
+Broker.prototype.bulkPublish = function (set, connectionName = DEFAULT) {
+  if (set.connectionName) {
+    connectionName = set.connectionName;
+  }
+  if (!this.connections[ connectionName ]) {
+    return Promise.reject(new Error(`BulkPublish failed - no connection ${connectionName} has been configured`));
+  }
+
+  const publish = (exchange, options) => {
+    options.appId = options.appId || this.appId;
+    options.timestamp = options.timestamp || Date.now();
+    if (this.connections[ connectionName ] && this.connections[ connectionName ].options.publishTimeout) {
+      options.connectionPublishTimeout = this.connections[ connectionName ].options.publishTimeout;
+    }
+    if (typeof options.body === 'number') {
+      options.body = options.body.toString();
+    }
+    return exchange.publish(options)
+      .then(
+        () => options,
+        err => { return { err, message: options }; }
+      );
+  };
+
+  let exchangeNames = Array.isArray(set)
+    ? set.reduce((acc, m) => {
+      if (acc.indexOf(m.exchange) < 0) {
+        acc.push(m.exchange);
+      }
+      return acc;
+    }, [])
+    : Object.keys(set);
+
+  return this.onExchanges(exchangeNames, connectionName)
+    .then(exchanges => {
+      if (!Array.isArray(set)) {
+        const keys = Object.keys(set);
+        return Promise.all(keys.map(exchangeName => {
+          return Promise.all(set[exchangeName].map(message => {
+            const exchange = exchanges[exchangeName];
+            if (exchange) {
+              return publish(exchange, message);
+            } else {
+              return Promise.reject(new Error(`Publish failed - no exchange ${exchangeName} on connection ${connectionName} is defined`));
+            }
+          }));
+        }));
+      } else {
+        return Promise.all(set.map(message => {
+          const exchange = exchanges[message.exchange];
+          if (exchange) {
+            return publish(exchange, message);
+          } else {
+            return Promise.reject(new Error(`Publish failed - no exchange ${message.exchange} on connection ${connectionName} is defined`));
+          }
+        }));
+      }
+    });
 };
 
 Broker.prototype.clearAckInterval = function () {
@@ -215,7 +273,7 @@ Broker.prototype.getQueue = function (name, connectionName = DEFAULT) {
 Broker.prototype.handle = function (messageType, handler, queueName, context) {
   this.hasHandles = true;
   var options;
-  if (_.isString(messageType)) {
+  if (typeof messageType === 'string') {
     options = {
       type: messageType,
       queue: queueName || '*',
@@ -285,6 +343,36 @@ Broker.prototype.onExchange = function (exchangeName, connectionName = DEFAULT) 
     );
 };
 
+Broker.prototype.onExchanges = function (exchanges, connectionName = DEFAULT) {
+  const connectionPromises = [this.connections[ connectionName ].promise];
+  if (this.configuring[ connectionName ]) {
+    connectionPromises.push(this.configuring[ connectionName ]);
+  }
+  const set = {};
+  return Promise.all(connectionPromises)
+    .then(
+      () => {
+        const exchangePromises = exchanges.map(exchangeName =>
+          this.connections[ connectionName ].promises[`exchange:${exchangeName}`]
+            .then(() => {
+              return { name: exchangeName, exchange: true };
+            })
+        );
+        return Promise.all(exchangePromises);
+      }
+    ).then(
+      list => {
+        list.map(item => {
+          if (item && item.exchange) {
+            const exchange = this.getExchange(item.name, connectionName);
+            set[item.name] = exchange;
+          }
+        });
+        return set;
+      }
+    );
+};
+
 Broker.prototype.onReturned = function (handler) {
   returnedStrategies.onReturned = returnedStrategies.customOnReturned = handler;
 };
@@ -292,9 +380,15 @@ Broker.prototype.onReturned = function (handler) {
 Broker.prototype.publish = function (exchangeName, type, message, routingKey, correlationId, connectionName, sequenceNo) {
   const timestamp = Date.now();
   let options;
-  if (_.isObject(type)) {
+  if (typeof type === 'object') {
     options = type;
-    connectionName = message || options.connectionName || DEFAULT;
+    connectionName = message || DEFAULT;
+    options = Object.assign({
+      appId: this.appId,
+      timestamp: timestamp,
+      connectionName: connectionName
+    }, options);
+    connectionName = options.connectionName;
   } else {
     connectionName = connectionName || message.connectionName || DEFAULT;
     options = {
@@ -315,7 +409,7 @@ Broker.prototype.publish = function (exchangeName, type, message, routingKey, co
   if (this.connections[ connectionName ] && this.connections[ connectionName ].options.publishTimeout) {
     options.connectionPublishTimeout = this.connections[ connectionName ].options.publishTimeout;
   }
-  if (_.isNumber(options.body)) {
+  if (typeof options.body === 'number') {
     options.body = options.body.toString();
   }
 
@@ -407,7 +501,7 @@ Broker.prototype.startSubscription = function (queueName, exclusive = false, con
   if (!this.hasHandles) {
     console.warn("Subscription to '" + queueName + "' was started without any handlers. This will result in lost messages!");
   }
-  if (_.isString(exclusive)) {
+  if (typeof exclusive === 'string') {
     connectionName = exclusive;
     exclusive = false;
   }

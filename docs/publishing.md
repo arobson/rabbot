@@ -56,7 +56,7 @@ rabbit.publish( "exchange.name",
 );
 ```
 
-## `request( exchangeName, options, [connectionName] )`
+## `rabbot.request( exchangeName, options, [connectionName] )`
 
 This works just like a publish except that the promise returned provides the response (or responses) from the other side. A `replyTimeout` is available in the options that controls how long rabbot will wait for a reply before removing the subscription for the request to prevent memory leaks.
 
@@ -73,4 +73,50 @@ rabbit.request( "request.exchange", {
   .then( function( final ) {
     // the last message in a series OR the only reply will be sent to this callback
   } );
+```
+
+## `rabbot.bulkPublish( set, [connectionName] )`
+
+This creates a promise for a set of publishes to one or more exchanges on the same connection.
+
+It is a little more efficient than calling `publish` repeatedly as it performs the precondition checks up-front, a single time before it beings the publishing.
+
+It supports two separate formats for specifying a set of messages: hash and array.
+
+### Hash Format
+
+Each key is the name of the exchange to publish to and the value is an array of messages to send. Each element in the array follows the same format as the `publish` options.
+
+The exchanges are processed serially, so this option will not work if you want finer control over sending messages to multiple exchanges in interleaved order.
+
+```js
+rabbot.publish({
+  'exchange-1': [
+    { type: 'one', body: '1' },
+    { type: 'one', body: '2' }
+  ],
+  'exchange-2': [
+    { type: 'two', body: '1' },
+    { type: 'two', body: '2' }
+  ]
+}).then(
+  () => // a list of the messages of that succeeded,
+  failed => // a list of failed messages and the errors `{ err, message }`
+)
+```
+
+### Array Format
+
+Each element in the array follows the format of `publish`'s option but requires the `exchange` property to control which exchange to publish each message to.
+
+```js
+rabbot.publish([
+  { type: 'one', body: '1', exchange: 'exchange-1' },
+  { type: 'one', body: '2', exchange: 'exchange-1' },
+  { type: 'two', body: '1', exchange: 'exchange-2' },
+  { type: 'two', body: '2', exchange: 'exchange-2' }
+}).then(
+  () => // a list of the messages of that succeeded,
+  failed => // a list of failed messages and the errors `{ err, message }`
+)
 ```
