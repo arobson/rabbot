@@ -10,10 +10,10 @@ const config = require('./configuration');
 describe('Wild Card Type Handling', function () {
   var harness;
 
-  before(function (done) {
-    harness = harnessFactory(rabbit, done, 3);
+  before(function () {
+    harness = harnessFactory(rabbit, () => {}, 3);
     harness.handle('#.a');
-    rabbit.configure({
+    return rabbit.configure({
       connection: config.connection,
       exchanges: [
         {
