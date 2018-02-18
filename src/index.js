@@ -458,10 +458,17 @@ Broker.prototype.request = function (exchangeName, options = {}, notify, connect
           subscription.unsubscribe();
           reject(new Error('No reply received within the configured timeout of ' + replyTimeout + ' ms'));
         }, replyTimeout);
-        const subscription = responses.subscribe(requestId, function (message) {
-          if (message.properties.headers[ 'sequence_end' ]) { // jshint ignore:line
+        const scatter = options.expect;
+        let remaining = options.expect;
+        const subscription = responses.subscribe(requestId, message => {
+          const end = scatter
+            ? --remaining <= 0
+            : message.properties.headers[ 'sequence_end' ];
+          if (end) {
             clearTimeout(timeout);
-            resolve(message);
+            if (!scatter || remaining === 0) {
+              resolve(message);
+            }
             subscription.unsubscribe();
           } else if (notify) {
             notify(message);

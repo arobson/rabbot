@@ -16,7 +16,27 @@ describe('Request & Response', function () {
       ],
       queues: [
         {
-          name: 'rabbot-q.request',
+          name: 'rabbot-q.request-1',
+          autoDelete: true,
+          subscribe: true
+        },
+        {
+          name: 'rabbot-q.request-2',
+          autoDelete: true,
+          subscribe: true
+        },
+        {
+          name: 'rabbot-q.request-3',
+          autoDelete: true,
+          subscribe: true
+        },
+        {
+          name: 'rabbot-q.request-4',
+          autoDelete: true,
+          subscribe: true
+        },
+        {
+          name: 'rabbot-q.request-5',
           autoDelete: true,
           subscribe: true
         }
@@ -24,7 +44,27 @@ describe('Request & Response', function () {
       bindings: [
         {
           exchange: 'rabbot-ex.request',
-          target: 'rabbot-q.request',
+          target: 'rabbot-q.request-1',
+          keys: []
+        },
+        {
+          exchange: 'rabbot-ex.request',
+          target: 'rabbot-q.request-2',
+          keys: []
+        },
+        {
+          exchange: 'rabbot-ex.request',
+          target: 'rabbot-q.request-3',
+          keys: []
+        },
+        {
+          exchange: 'rabbot-ex.request',
+          target: 'rabbot-q.request-4',
+          keys: []
+        },
+        {
+          exchange: 'rabbot-ex.request',
+          target: 'rabbot-q.request-5',
           keys: []
         }
       ]
@@ -38,22 +78,22 @@ describe('Request & Response', function () {
 
     before(function (done) {
       this.timeout(3000);
-      harness = harnessFactory(rabbit, done, 9);
+      harness = harnessFactory(rabbit, done, 21);
 
       harness.handle('polite', (q) => {
         q.reply(':D');
-      });
+      }, 'rabbot-q.request-1');
 
       harness.handle('rude', (q) => {
         q.reply('>:@');
-      });
+      }, 'rabbot-q.request-1');
 
       harness.handle('silly', (q) => {
         q.reply('...', { more: true });
         q.reply('...', { more: true });
         q.reply('...', { more: true });
         setTimeout(() => q.reply('...'), 10);
-      });
+      }, 'rabbot-q.request-1');
 
       rabbit.request('rabbot-ex.request', { type: 'polite', body: 'how are you?' })
         .then((response) => {
@@ -111,11 +151,54 @@ describe('Request & Response', function () {
     });
   });
 
+  describe('when performing scatter-gather', function () {
+    const gather = [];
+    before(function (done) {
+      harness = harnessFactory(rabbit, () => {}, 4);
+      let index = 0;
+      harness.handle('scatter', (q) => {
+        q.reply(`number: ${++index}`);
+      });
+
+      function onReply (msg) {
+        gather.push(msg);
+        msg.ack();
+        done();
+      }
+
+      rabbit.request(
+        'rabbot-ex.request',
+        { type: 'scatter', body: 'whatever', expect: 3 },
+        (msg) => {
+          gather.push(msg);
+          msg.ack();
+        }
+      ).then(
+        onReply
+      );
+    });
+
+    it('should have gathered desired replies', function () {
+      gather.length.should.equal(3);
+    });
+
+    it('should have ignored responses past limit', function () {
+      harness.unhandled.length.should.equal(2);
+    });
+
+    after(function () {
+      harness.clean();
+    });
+  });
+
   describe('when the request times out', function () {
     var timeoutError;
     const timeout = 100;
     before(function () {
-      return rabbit.request('rabbot-ex.request', { type: 'polite', body: 'how are you?', replyTimeout: timeout })
+      return rabbit.request(
+        'rabbot-ex.request',
+        { type: 'polite', body: 'how are you?', replyTimeout: timeout }
+      )
         .then(null, (err) => {
           timeoutError = err;
         });

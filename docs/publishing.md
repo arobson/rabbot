@@ -62,17 +62,96 @@ This works just like a publish except that the promise returned provides the res
 
 > Note: the default replyTimeout will be double the publish timeout or 1 second if no publish timeout was ever specified.
 
-```javascript
-// when multiple responses are provided, all but the last will be passed to an optional progress callback.
-// the last/only reply will always be provided to the .then callback
-rabbit.request( "request.exchange", {
-    // see publish example to see options for the outgoing message
-  }, function ( reply ) {
-    // if multiple replies are provided, all but the last will be sent to this callback
-  } )
-  .then( function( final ) {
-    // the last message in a series OR the only reply will be sent to this callback
-  } );
+Request provides for two ways to get multiple responses; one is to allow a single replier to stream a set of responses back and the other is to send a request to multiple potential responders and wait until a specific number comes back.
+
+### Expecting A Singe Reply
+
+```js
+// request side
+const parts = [];
+rabbit.request('request.ex', {
+    type: 'request',
+    body: id
+  })
+  .then( reply => {
+    // done - do something with all the data?
+    reply.ack();
+  });
+
+// receiver sides
+rabbit.handle('request', (req) => {
+  req.reply(database.get(req.id));
+});
+```
+
+### Expecting A Stream
+
+`reply` takes an additional hash argument where you can set `more` to `true` to indicate there are more messages incoming as part of the reply.
+
+In this case, the third argument to the `request` function will get every message **except** the last.
+
+```js
+// request side
+const parts = [];
+rabbit.request('request.ex', {
+    type: 'request',
+    body: id
+  },
+  reply => {
+    parts.push(part);
+    part.ack();
+  })
+  .then( final => {
+    // done - do something with all the data?
+    final.ack();
+  });
+
+// receiver side
+rabbit.handle('request', (req) => {
+  const stream = data.getById(req.body);
+  stream.on('data', data => {
+    req.reply(data, { more: true });
+  });
+  stream.on('end', () => {
+    req.reply({ body: 'done' });
+  });
+  stream.on('error', (err) => {
+    req.reply({ body: { error: true, detail: err.message });
+  });
+});
+```
+
+### Scatter-Gather
+
+In scatter-gather: the recipients don't know how many of them there are and don't have to be aware that they are participating in scatter-gather/race-conditions.
+
+They just reply. The limit is applied on the requesting side by setting a `expects` property on the outgoing message to let rabbot how many messages to collect before stopping and considering the request satisfied.
+
+Normally this is done with mutliple responders on the other side of a topic or fanout exchange.
+
+> !IMPORTANT! - messages beyond the limit are treated as unhandled. You'll need to have an unhandled message strategy in place or at least understand how rabbot deals with them by default.
+
+```js
+// request side
+const parts = [];
+rabbit.request('request.ex', {
+    type: 'request',
+    body: id,
+    limit: 3 // will stop after 3 even if many more reply
+  },
+  reply => {
+    parts.push(part);
+    part.ack();
+  })
+  .then( final => {
+    // done - do something with all the data?
+    final.ack();
+  });
+
+// receiver sides
+rabbit.handle('request', (req) => {
+  req.reply(database.get(req.id));
+});
 ```
 
 ## `rabbot.bulkPublish( set, [connectionName] )`

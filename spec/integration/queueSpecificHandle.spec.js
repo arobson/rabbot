@@ -131,7 +131,7 @@ describe('Queue Specific Handler', function () {
     });
 
     it('should only handle messages for the specified queue', function () {
-      const uniqueName = rabbit.getQueue('rabbot-q.general1').uniqueName
+      const uniqueName = rabbit.getQueue('rabbot-q.general1').uniqueName;
       const results = harness.received.map((m) => ({
         body: m.body,
         queue: m.queue
