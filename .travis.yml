@@ -10,12 +10,11 @@ node_js:
   - "node"
 
 before_script:
-  - npm run build-image
-  - npm run start-container
+  - npm run bootstrap-container
   - sleep 10
 
 script:
   - nyc npm test && nyc report --reporter=text-lcov | coveralls
 
 after_script:
-  - npm run stop-container
+  - npm run remove-container

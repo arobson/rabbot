@@ -15,8 +15,11 @@
     "coverage": "nyc npm test",
     "release": "standard-version",
     "build-image": "docker build -t rabbot .",
-    "start-container": "docker run -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot",
-    "stop-container": "docker kill rabbot && docker container rm rabbot"
+    "create-container": "docker run -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot",
+    "bootstrap-container": "npm run build-image && npm run create-container",
+    "start-container": "docker start rabbot",
+    "stop-container": "docker stop rabbot",
+    "remove-container": "docker rm -f rabbot"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"

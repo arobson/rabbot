@@ -15,11 +15,14 @@ It is recommended that you not use a RabbitMQ server running outside Docker as f
 
 #### Included Docker Container
 
-The repo includes a Dockerfile as well as npm commands to build, start and stop the container:
+The repo includes a Dockerfile as well as npm commands to build, start and stop and remove the container:
 
- * `npm run build-image`
- * `npm run start-container`
- * `npm run stop-container`
+ * `npm run build-image` - build Docker image (includes plugins needed for rabbot)
+ * `npm run create-container` - creates a container named `rabbot` for tests
+ * `npm run start-container` - starts the container if it was stopped
+ * `npm run stop-container` - stops the container only
+ * `npm run remove-container` - stops and removes the container entirely
+ * `npm run bootstrap-container` - combines `build-container` & `create-container`
 
 ### A Note About Features or Big Refactors
 
