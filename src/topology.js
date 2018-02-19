@@ -62,7 +62,7 @@ function toArray( x, list ) {
 var Topology = function( connection, options, serializers, unhandledStrategies, returnedStrategies ) {
   const autoReplyTo = { name: `${replyId}.response.queue`, autoDelete: true, subscribe: true };
   const rabbitReplyTo = { name: "amq.rabbitmq.reply-to", subscribe: true, noAck: true };
-  const userReplyTo = isObject( options.replyQueue ) ? options.replyQueue : { name: options.replyQueue, autoDelete: true, subscribe: true };
+  const userReplyTo = isObject( options.replyQueue ) ? options.replyQueue : { name: options.replyQueue, autoDelete: true, subscribe: true, exclusive: true };
   this.name = options.name;
   this.connection = connection;
   this.channels = {};
