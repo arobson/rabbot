@@ -1,6 +1,10 @@
 
 # rabbot - Changelog
 
+## 2.0.5 [2018-02-19]
+### Fixed
+* Repair the replyTo for the requests - those are now exclusive on default
+
 ## 2.0.4 [2018-02-01]
 ### Fixed
 * msg.reply serializes to json if body is of type Array
