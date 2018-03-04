@@ -116,6 +116,7 @@ const Adapter = function (parameters) {
   const caPaths = getOption(parameters, 'RABBIT_CA') || getOption(parameters, 'caPath');
   const passphrase = getOption(parameters, 'RABBIT_PASSPHRASE') || getOption(parameters, 'passphrase');
   const pfxPath = getOption(parameters, 'RABBIT_PFX') || getOption(parameters, 'pfxPath');
+  const credentials = getOption(parameters, 'credentials', amqp.credentials.plain(this.user, this.pass));
   const useSSL = certPath || keyPath || passphrase || caPaths || pfxPath || parameters.useSSL;
   this.options = { noDelay: true };
   if (timeout) {
@@ -138,6 +139,9 @@ const Adapter = function (parameters) {
     this.options.ca = list.map((caPath) => {
       fs.existsSync(caPath) ? fs.readFileSync(caPath) : caPath; // eslint-disable-line no-unused-expressions
     });
+  }
+  if (credentials) {
+    this.options.credentials = credentials;
   }
   if (useSSL) {
     this.protocol = 'amqps://';
