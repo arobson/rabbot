@@ -79,7 +79,7 @@ function publish (channel, options, topology, log, serializers, message) {
   var publishOptions = {
     type: message.type || '',
     contentType: contentType,
-    contentEncoding: 'utf8',
+    contentEncoding: 'UTF-8',
     correlationId: message.correlationId || '',
     replyTo: message.replyTo || topology.replyQueue.name || '',
     messageId: message.messageId || message.id || '',

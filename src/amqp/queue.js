@@ -138,7 +138,7 @@ function getReply (channel, serializers, raw, replyQueue, connectionName) {
       var publishOptions = {
         type: replyType,
         contentType: contentType,
-        contentEncoding: 'utf8',
+        contentEncoding: 'UTF-8',
         correlationId: raw.properties.messageId,
         timestamp: options && options.timestamp ? options.timestamp : Date.now(),
         replyTo: replyQueue === false ? undefined : replyQueue,
