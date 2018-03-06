@@ -38,6 +38,8 @@ describe('Duplicate Subscription', function () {
     }).then(() => {
       harness.handle('topic');
       rabbit.startSubscription('rabbot-q.subscription');
+      rabbit.publish('rabbot-ex.subscription', { type: 'topic', routingKey: 'this.is.an.array', body: [1, 2, 3] });
+      rabbit.publish('rabbot-ex.subscription', { type: 'topic', routingKey: 'this.is.an.object', body: {foo: 'bar'} });
       rabbit.publish('rabbot-ex.subscription', { type: 'topic', routingKey: 'this.is.a.test', body: 'broadcast' });
       rabbit.publish('rabbot-ex.subscription', { type: 'topic', routingKey: 'this.is.sparta', body: 'leonidas' });
       rabbit.publish('rabbot-ex.subscription', { type: 'topic', routingKey: 'this.is.not.wine.wtf', body: 'socrates' });
@@ -54,6 +56,8 @@ describe('Duplicate Subscription', function () {
     );
     sortBy(results, 'body').should.eql(
       [
+        { body: [1, 2, 3], key: 'this.is.an.array' },
+        { body: {foo: 'bar'}, key: 'this.is.an.object' },
         { body: 'broadcast', key: 'this.is.a.test' },
         { body: 'leonidas', key: 'this.is.sparta' },
         { body: 'socrates', key: 'this.is.not.wine.wtf' }
