@@ -1,7 +1,7 @@
 
 # rabbot - Changelog
 
-## 2.0.5 [2018-03-14]
+## 2.0.6 [2018-03-14]
 ### Added
 * add user-id property to publish options
 
