@@ -1,6 +1,10 @@
 
 # rabbot - Changelog
 
+## 2.0.5 [2018-03-14]
+### Added
+* add user-id property to publish options
+
 ## 2.0.5 [2018-02-19]
 ### Fixed
 * Repair the replyTo for the requests - those are now exclusive on default
