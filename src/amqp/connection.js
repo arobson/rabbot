@@ -93,15 +93,15 @@ function trim (x) {
 }
 
 function skipNull (params) {
-  return Object.keys (params || {})
+  return Object.keys(params || {})
     .filter(function (key) {
-      const value = params[key]
-      return value !== null && value !== undefined
+      const value = params[key];
+      return value !== null && value !== undefined;
     })
     .reduce(function (acc, key) {
-      acc[key] = params[key]
-      return acc
-    }, {})
+      acc[key] = params[key];
+      return acc;
+    }, {});
 }
 
 const Adapter = function (parameters) {
