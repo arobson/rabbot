@@ -92,9 +92,21 @@ function trim (x) {
   return x.trim(' ');
 }
 
+function skipNull (params) {
+  return Object.keys (params || {})
+    .filter(function (key) {
+      const value = params[key]
+      return value !== null && value !== undefined
+    })
+    .reduce(function (acc, key) {
+      acc[key] = params[key]
+      return acc
+    }, {})
+}
+
 const Adapter = function (parameters) {
   var uriOpts = parseUri(parameters.uri);
-  Object.assign(parameters, uriOpts);
+  Object.assign(parameters, skipNull(uriOpts));
   const hosts = getOption(parameters, 'host');
   const servers = getOption(parameters, 'server');
   const brokers = getOption(parameters, 'RABBIT_BROKER');
