@@ -14,7 +14,7 @@ describe('Connection', function () {
     });
 
     it('should assign uri to connection', function () {
-      connected.uri.should.equal('amqp://guest:guest@127.0.0.1:5672/%2f?heartbeat=30');
+      connected.uri.should.equal('amqp://guest:guest@127.0.0.1:5672/%2f?heartbeat=30&frameMax=4096');
     });
 
     after(function () {

@@ -25,6 +25,7 @@ Options is a hash that can contain the following:
 | **pass** | the password for the specified user. | `"guest"` |
 | **timeout** | how long to wait for a connection to be established in milliseconds. | `2000` |
 | **heartbeat** | how often the client and server check to see if they can still reacheach other, specified in seconds. | `30` |
+| **frameMax** | maximum size of amqp message frame. | `4096` |
 | **replyQueue** | the name of the reply queue to use. | unique to the process |
 | **publishTimeout** | the default timeout in milliseconds for a publish call. | |
 | **replyTimeout** | the default timeout in milliseconds to wait for a reply. | |
@@ -47,6 +48,7 @@ rabbit.addConnection( {
   timeout: 2000,
   vhost: "%2f",
   heartbeat: 10,
+  frameMax: 4096,
   clientProperties: {
     service: "my-awesome-service"
   }
@@ -56,7 +58,7 @@ rabbit.addConnection( {
 __Equivalent URI Example__
 ```javascript
 rabbit.addConnection( {
-  uri: "amqp://someUser:sup3rs3cr3t@my-rqm.server:5672/%2f?heartbeat=10"
+  uri: "amqp://someUser:sup3rs3cr3t@my-rqm.server:5672/%2f?heartbeat=10&frameMax=4096"
 } );
 ```
 

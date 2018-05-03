@@ -47,10 +47,10 @@ function getOption (opts, key, alt) {
   }
 }
 
-function getUri (protocol, user, pass, server, port, vhost, heartbeat) {
+function getUri (protocol, user, pass, server, port, vhost, heartbeat, frameMax) {
   return protocol + user + ':' + pass +
     '@' + server + ':' + port + '/' + vhost +
-    '?heartbeat=' + heartbeat;
+    '?heartbeat=' + heartbeat + '&frameMax=' + frameMax;
 }
 
 function max (x, y) {
@@ -61,7 +61,14 @@ function parseUri (uri) {
   if (uri) {
     var parsed = url.parse(uri);
     var authSplit = parsed.auth ? parsed.auth.split(':') : [ null, null ];
-    var heartbeat = parsed.query ? parsed.query.split('&')[ 0 ].split('=')[ 1 ] : null;
+
+    var queryParams = parsed.query ? parsed.query.split('&').reduce((params, param) => {
+      const [key, value] = param.split('=');
+      return Object.assign({}, params, {[key]: value});
+    }, {}) : {};
+
+    const { heartbeat, frameMax } = queryParams;
+
     return {
       useSSL: parsed.protocol === 'amqps:',
       user: authSplit[ 0 ],
@@ -69,7 +76,8 @@ function parseUri (uri) {
       host: parsed.hostname,
       port: parsed.port,
       vhost: parsed.pathname ? parsed.pathname.slice(1) : undefined,
-      heartbeat: heartbeat
+      heartbeat,
+      frameMax
     };
   }
 }
@@ -106,6 +114,7 @@ const Adapter = function (parameters) {
   this.connectionIndex = getInitialIndex(this.servers.length);
   this.ports = split(portList);
   this.heartbeat = getOption(parameters, 'RABBIT_HEARTBEAT') || getOption(parameters, 'heartbeat', 30);
+  this.frameMax = getOption(parameters, 'RABBIT_FRAME_MAX') || getOption(parameters, 'frameMax', 4096);
   this.protocol = getOption(parameters, 'RABBIT_PROTOCOL') || getOption(parameters, 'protocol', 'amqp://');
   this.pass = getOption(parameters, 'RABBIT_PASSWORD') || getOption(parameters, 'pass', 'guest');
   this.user = getOption(parameters, 'RABBIT_USER') || getOption(parameters, 'user', 'guest');
@@ -196,7 +205,8 @@ Adapter.prototype.bumpIndex = function () {
 Adapter.prototype.getNextUri = function () {
   const server = this.getNext(this.servers);
   const port = this.getNext(this.ports);
-  const uri = getUri(this.protocol, this.user, escape(this.pass), server, port, this.vhost, this.heartbeat);
+  const uri = getUri(this.protocol, this.user, escape(this.pass), server, port, this.vhost, this.heartbeat, this.frameMax);
+
   return uri;
 };
 
