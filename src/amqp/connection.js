@@ -19,6 +19,10 @@ const os = require('os');
       * no reachable endpoints
 */
 
+function pctEncodeForwardSlash (arg) {
+  return arg.split('/').join('%2F');
+}
+
 function getArgs (fn) {
   const fnString = fn.toString();
   const argList = /[(]([^)]*)[)]/.exec(fnString)[ 1 ].split(',');
@@ -196,7 +200,7 @@ Adapter.prototype.bumpIndex = function () {
 Adapter.prototype.getNextUri = function () {
   const server = this.getNext(this.servers);
   const port = this.getNext(this.ports);
-  const uri = getUri(this.protocol, this.user, escape(this.pass), server, port, this.vhost, this.heartbeat);
+  const uri = getUri(this.protocol, this.user, pctEncodeForwardSlash(escape(this.pass)), server, port, this.vhost, this.heartbeat);
   return uri;
 };
 
