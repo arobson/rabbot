@@ -1,5 +1,74 @@
+# Change Log
+
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+<a name="2.1.0"></a>
+# [2.1.0](https://github.com/arobson/rabbot/compare/v1.1.0...v2.1.0) (2018-02-18)
+
+
+### Bug Fixes
+
+* ([#104](https://github.com/arobson/rabbot/issues/104)) improve poison message handling ([9d5ccc3](https://github.com/arobson/rabbot/commit/9d5ccc3))
+* ([#109](https://github.com/arobson/rabbot/issues/109)) randomize initial connection index based on pid or hostname ([2d6f372](https://github.com/arobson/rabbot/commit/2d6f372))
+* ([#74](https://github.com/arobson/rabbot/issues/74)) correct errors in direct reply queue implementation ([cccdf09](https://github.com/arobson/rabbot/commit/cccdf09))
+* ([#78](https://github.com/arobson/rabbot/issues/78)) make it possible to handle messages from a unique queue using the alias/friendly name ([50045a8](https://github.com/arobson/rabbot/commit/50045a8))
+* correct issue where publishes and requests before connection or configuration had completed would get lost ([1f58c0b](https://github.com/arobson/rabbot/commit/1f58c0b))
+* remove remaining lodash references in core that got missed ([9aa3b04](https://github.com/arobson/rabbot/commit/9aa3b04))
+
+
+### Features
+
+* ([#87](https://github.com/arobson/rabbot/issues/87)) add support for scatter-gather pattern via request ([db23b48](https://github.com/arobson/rabbot/commit/db23b48))
+* ([#93](https://github.com/arobson/rabbot/issues/93)) add support for bulkPublish operation ([d2df5ea](https://github.com/arobson/rabbot/commit/d2df5ea))
+* add support for purging queues ([19a678d](https://github.com/arobson/rabbot/commit/19a678d))
+
+
+
+<a name="2.1.0"></a>
+# [2.1.0](https://github.com/arobson/rabbot/compare/v1.1.0...v2.1.0) (2018-02-18)
+
+
+### Bug Fixes
+
+* ([#104](https://github.com/arobson/rabbot/issues/104)) improve poison message handling ([9d5ccc3](https://github.com/arobson/rabbot/commit/9d5ccc3))
+* ([#109](https://github.com/arobson/rabbot/issues/109)) randomize initial connection index based on pid or hostname ([2d6f372](https://github.com/arobson/rabbot/commit/2d6f372))
+* ([#74](https://github.com/arobson/rabbot/issues/74)) correct errors in direct reply queue implementation ([cccdf09](https://github.com/arobson/rabbot/commit/cccdf09))
+* ([#78](https://github.com/arobson/rabbot/issues/78)) make it possible to handle messages from a unique queue using the alias/friendly name ([50045a8](https://github.com/arobson/rabbot/commit/50045a8))
+* correct issue where publishes and requests before connection or configuration had completed would get lost ([1f58c0b](https://github.com/arobson/rabbot/commit/1f58c0b))
+
+
+### Features
+
+* ([#87](https://github.com/arobson/rabbot/issues/87)) add support for scatter-gather pattern via request ([db23b48](https://github.com/arobson/rabbot/commit/db23b48))
+* ([#93](https://github.com/arobson/rabbot/issues/93)) add support for bulkPublish operation ([d2df5ea](https://github.com/arobson/rabbot/commit/d2df5ea))
+* add support for purging queues ([19a678d](https://github.com/arobson/rabbot/commit/19a678d))
+
+
+
 
 # rabbot
+
+## 2.0.0
+
+ * Allow publisher confirms to be turned off per exchange
+ * Moving towards ES6 features
+ * Clean up cases where arguments were being re-written (perf issue)
+ * Reduce cases where properties are introduced to hashes after instantiation (perf issue)
+ * Rewrite tests into single modules with individual config to make contributing & maintenance easier
+ * Move build system to Travis
+ * Use coveralls to track code coverage
+ * Remove lodash dependency
+ * Remove when dependency
+ * Change logging to bole
+ * Change commit style to conventional commits
+ * Adopt semistandard as format style
+ * Improve README badges
+ * Break docs into multiple docs
+ * Add code of conduct
+ * Add contributor guidelines
+ * #80 - fixes issue where multiple messages were nack'd in nobatch mode
+ * #42 - fixes issue regarding broken build status
+ * Fixes for: #120, #107, #97, #42
 
 ## 1.0.x
 
