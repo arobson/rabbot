@@ -110,6 +110,9 @@ describe( "Topology", function() {
 				replyQueue = queue;
 				done();
 			} );
+      setTimeout(() => {
+        q.raise('subscribed');
+      }, 100)
 			process.nextTick( function() {
 				q.raise( "defined" );
 				ex.raise( "defined" );
@@ -211,6 +214,9 @@ describe( "Topology", function() {
 				replyQueue = queue;
 				done();
 			} );
+      setTimeout(() => {
+        q.raise('subscribed');
+      }, 100);
 			process.nextTick( function() {
 				q.raise( "defined" );
 			} );
