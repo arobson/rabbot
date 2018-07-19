@@ -353,7 +353,7 @@ Broker.prototype.request = function( exchangeName, options, notify, connectionNa
   options = options === undefined ? {} : options;
   connectionName = connectionName === undefined ? DEFAULT : connectionName;
 
-  const requestId = uuid.v1();
+  const requestId = uuid.v4();
   options.messageId = requestId;
   options.connectionName = options.connectionName || connectionName;
   const connection = this.connections[ options.connectionName ].options;
