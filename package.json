@@ -1,6 +1,6 @@
 {
   "name": "@huf/rabbot",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "engines": {
@@ -104,6 +104,7 @@
     "chai": "^3.4.1",
     "chai-as-promised": "^5.1.0",
     "coveralls": "^2.13.1",
+    "jshint": "2.9.5",
     "mocha": "^3.4.1",
     "nyc": "^10.3.2",
     "sinon": "^1.17.2",
