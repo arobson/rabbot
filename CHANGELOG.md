@@ -1,6 +1,11 @@
 
 # rabbot - Changelog
 
+## 2.1.1 [2018-07-??]
+### Fixed
+* use `uuid.v4()` for creation of requestId in `request()`
+* Handle replyQueue binding properly and resolve after binding in `addConnection()`
+
 ## 2.1.0 [2018-03-14]
 ### Added
 * add user-id property to publish options

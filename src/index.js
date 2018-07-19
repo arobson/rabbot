@@ -91,11 +91,22 @@ Broker.prototype.addConnection = function( opts ) {
       connection = connectionFn( options );
       const topology = topologyFn( connection, options, serializers, unhandledStrategies, returnedStrategies );
 
+      // if a replyQueue is desired, we gotta wait for it's binding
+      if ( opts.replyQueue ) {
+        topology.on( "replyQueue.ready", () => {
+          resolve( topology );
+        });
+      }
+
       connection.on( "connected", () => {
         self.emit( "connected", connection );
         self.emit( connection.name + ".connection.opened", connection );
         self.setAckInterval( 500 );
-        resolve( topology )
+
+        // If there's no replyQueue, we use the old behaviour.
+        if ( !opts.replyQueue ) {
+          resolve( topology )
+        }
       } );
 
       connection.on( "closed", () => {

@@ -246,8 +246,11 @@ Topology.prototype.createReplyQueue = function() {
     promise = this.createQueue( this.replyQueue );
     promise.then(
       ( channel ) => {
-        this.channels[ key ] = channel;
-        this.emit( "replyQueue.ready", this.replyQueue );
+
+        channel.once( "subscribed", () => {
+          this.channels[ key ] = channel;
+          this.emit( "replyQueue.ready", this.replyQueue );
+        });
       },
       this.onReplyQueueFailed.bind( this )
     );
