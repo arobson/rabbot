@@ -22,7 +22,7 @@ You can register your own serializers using `addSerializer` but make sure to do 
 
 Things to remember when publishing a message:
 
- * A type sepcifier is required so that the recipient knows what kind of message its getting and which handler should process it
+ * A type specifier is required so that the recipient knows what kind of message its getting and which handler should process it
  * If `contentType` is provided, then that will be used for the message's contentType
  * If `body` is an object or an array, it will be serialized as JSON and `contentType` will be "application/json"
  * If `body` is a string, it will be sent as a utf8 encoded string and `contentType` will be "text/plain"
