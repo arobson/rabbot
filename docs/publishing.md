@@ -43,7 +43,7 @@ rabbit.publish( "exchange.name",
     contentType: "application/json",
     body: { text: "hello!" },
     messageId: "100",
-    expiresAfter: 1000 // TTL in ms, in this example 1 second
+    expiresAfter: 1000, // TTL in ms, in this example 1 second
     timestamp: // posix timestamp (long)
     mandatory: true, //Must be set to true for onReturned to receive unqueued message
     persistent: true, //If either message or exchange defines persistent=true queued messages will be saved to disk.
