@@ -7,7 +7,7 @@ const config = require( "./configuration" );
 /*
   Demonstrates handling Messages With No Type Provided
 */
-describe.skip( "No Type Handling", function() {
+describe( "No Type Handling", function() {
   var harness;
 
   before( function( done ) {

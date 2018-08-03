@@ -3,7 +3,7 @@
 require( "../setup" );
 const rabbit = require( "../../src/index.js" );
 
-describe.skip( "Bad Connection", function() {
+describe( "Bad Connection", function() {
   const noop = () => {};
   describe( "when attempting a connection", function() {
     var error;

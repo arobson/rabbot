@@ -22,7 +22,7 @@ describe.skip( "Connection", function() {
     } );
 
     after( function() {
-      return rabbit.close( "default" );
+      return rabbit.close( config.connection.name );
     } );
   } );
 } );
