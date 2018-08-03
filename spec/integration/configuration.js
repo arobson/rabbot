@@ -1,6 +1,6 @@
 module.exports = {
 	connection: {
-		name: "default",
+		name: "foppen",
 		user: "guest",
 		pass: "guest",
 		host: "127.0.0.1",

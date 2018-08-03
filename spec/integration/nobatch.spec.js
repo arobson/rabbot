@@ -50,7 +50,8 @@ describe( "Batch Acknowledgments Disabled (noBatch: true)", function() {
           type: "no.batch",
           body: "message " + i,
           routingKey: ""
-        } );
+        },
+      config.connection.name );
       }
     } );
   } );
@@ -60,6 +61,6 @@ describe( "Batch Acknowledgments Disabled (noBatch: true)", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" );
+    return harness.clean( config.connection.name );
   } );
 } );

@@ -7,7 +7,7 @@ const config = require( "./configuration" );
 /*
   Demonstrates handling Messages With No Type Provided
 */
-describe( "No Type Handling", function() {
+describe.skip( "No Type Handling", function() {
   var harness;
 
   before( function( done ) {
@@ -39,7 +39,7 @@ describe( "No Type Handling", function() {
     } ).then( () => {
       harness = harnessFactory( rabbit, done, 1 );
       harness.handle( "#.typeless" );
-      rabbit.publish( "rabbot-ex.topic", { type: "", routingKey: "this.is.typeless", body: "one" } );
+      rabbit.publish( "rabbot-ex.topic", { type: "", routingKey: "this.is.typeless", body: "one" }, config.connection.name );
     } );
   } );
 
@@ -57,6 +57,6 @@ describe( "No Type Handling", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" );
+    return harness.clean( config.connection.name );
   } );
 } );

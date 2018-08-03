@@ -27,12 +27,12 @@ describe( "Random Queue Name", function() {
       ]
     } ).then( () => {
       harness.handle( "rando", undefined, queueName );
-      rabbit.addQueue( "", { autoDelete: true, subscribe: true } )
+      rabbit.addQueue( "", { autoDelete: true, subscribe: true }, config.connection.name )
         .then( function( queue ) {
           queueName = queue.name;
-          rabbit.publish( "", { type: "rando", routingKey: queueName, body: "one" } );
-          rabbit.publish( "", { type: "rando", routingKey: queueName, body: Buffer.from( "two" ) } );
-          rabbit.publish( "", { type: "rando", routingKey: queueName, body: [ 0x62, 0x75, 0x66, 0x66, 0x65, 0x72 ] } );
+          rabbit.publish( "", { type: "rando", routingKey: queueName, body: "one" }, config.connection.name );
+          rabbit.publish( "", { type: "rando", routingKey: queueName, body: Buffer.from( "two" ) }, config.connection.name );
+          rabbit.publish( "", { type: "rando", routingKey: queueName, body: [ 0x62, 0x75, 0x66, 0x66, 0x65, 0x72 ] }, config.connection.name );
         } );
     } );
     harness = harnessFactory( rabbit, done, 3 );
@@ -52,6 +52,6 @@ describe( "Random Queue Name", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" );
+    return harness.clean( config.connection.name );
   } );
 } );

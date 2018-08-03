@@ -49,8 +49,10 @@ global.harnessFactory = function( rabbit, cb, expected ) {
     handlers = [];
     received = [];
     if( connectionName ) {
-      return rabbit.close( connectionName, true );
+      rabbit.close( connectionName, true );
     }
+
+    return rabbit.shutdown();
   }
 
   rabbit.onUnhandled( ( message ) => {

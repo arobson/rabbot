@@ -4,7 +4,7 @@ require( "../setup" );
 const rabbit = require( "../../src/index.js" );
 const config = require( "./configuration" );
 
-describe( "Connection", function() {
+describe.skip( "Connection", function() {
   const noop = () => {};
 
   describe( "on connection", function() {

@@ -42,7 +42,7 @@ describe( "No Reply Queue (replyQueue: false)", function () {
           type: "no.replyQueue",
           body: "message " + i,
           routingKey: ""
-        } );
+        }, config.noReplyQueue.name );
       }
     } );
   } );
@@ -52,6 +52,6 @@ describe( "No Reply Queue (replyQueue: false)", function () {
   } );
 
   after( function() {
-    return harness.clean( "noReplyQueue" );
+    return harness.clean( config.noReplyQueue.name );
   } );
 } );

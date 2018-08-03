@@ -75,7 +75,8 @@ describe( "Rejecting Messages To A Deadletter", function() {
           type: "reject",
           routingKey: "this.is.rejection",
           body: "haters gonna hate"
-        }
+        },
+        config.connection.name
       );
     } );
   } );
@@ -96,6 +97,6 @@ describe( "Rejecting Messages To A Deadletter", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" );
+    return harness.clean( config.connection.name );
   } );
 } );
