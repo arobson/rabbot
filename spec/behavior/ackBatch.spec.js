@@ -1,6 +1,6 @@
 require('../setup.js');
 var postal = require('postal');
-var signal = postal.channel('rabbit.ack');
+const uuid = require('uuid');
 var AckBatch = require('../../src/ackBatch.js');
 var noOp = function () {};
 
@@ -9,7 +9,8 @@ describe('Ack Batching', function () {
     var batch;
     var messageData;
     before(function () {
-      batch = new AckBatch('test-queue', 'test-connection', noOp);
+      const pubSubNamespace = uuid.v4();
+      batch = new AckBatch('test-queue', 'test-connection', noOp, { pubSubNamespace });
       messageData = batch.getMessageOps(101);
       batch.addMessage(messageData);
     });
@@ -58,7 +59,9 @@ describe('Ack Batching', function () {
         status = s;
         done();
       };
-      batch = new AckBatch('test-queue', 'test-connection', resolver);
+      const pubSubNamespace = uuid.v4();
+      const signal = postal.channel(`rabbit.ack.${pubSubNamespace}`);
+      batch = new AckBatch('test-queue', 'test-connection', resolver, { pubSubNamespace });
       batch.listenForSignal();
       signal.publish('go', {});
     });
@@ -85,7 +88,9 @@ describe('Ack Batching', function () {
         status = s;
         done();
       };
-      batch = new AckBatch('test-queue', 'test-connection', resolver);
+      const pubSubNamespace = uuid.v4();
+      const signal = postal.channel(`rabbit.ack.${pubSubNamespace}`);
+      batch = new AckBatch('test-queue', 'test-connection', resolver, { pubSubNamespace });
       batch.addMessage({ tag: 101, status: 'pending' });
       batch.addMessage({ tag: 102, status: 'pending' });
       batch.addMessage({ tag: 103, status: 'pending' });
@@ -125,7 +130,9 @@ describe('Ack Batching', function () {
         status = s;
         done();
       };
-      batch = new AckBatch('test-queue', 'test-connection', resolver);
+      const pubSubNamespace = uuid.v4();
+      const signal = postal.channel(`rabbit.ack.${pubSubNamespace}`);
+      batch = new AckBatch('test-queue', 'test-connection', resolver, { pubSubNamespace });
       batch.addMessage({ tag: 101, status: 'pending' });
       batch.addMessage({ tag: 102, status: 'pending' });
       batch.addMessage({ tag: 103, status: 'ack' });
@@ -168,7 +175,9 @@ describe('Ack Batching', function () {
         data = d;
         return Promise.resolve(true);
       };
-      batch = new AckBatch('test-queue', 'test-connection', resolver);
+      const pubSubNamespace = uuid.v4();
+      const signal = postal.channel(`rabbit.ack.${pubSubNamespace}`);
+      batch = new AckBatch('test-queue', 'test-connection', resolver, { pubSubNamespace });
       batch.on('empty', function () {
         done();
       });
@@ -219,7 +228,9 @@ describe('Ack Batching', function () {
         data = d;
         return Promise.resolve(true);
       };
-      batch = new AckBatch('test-queue', 'test-connection', resolver);
+      const pubSubNamespace = uuid.v4();
+      const signal = postal.channel(`rabbit.ack.${pubSubNamespace}`);
+      batch = new AckBatch('test-queue', 'test-connection', resolver, { pubSubNamespace });
       batch.on('empty', function () {
         done();
       });
@@ -270,7 +281,9 @@ describe('Ack Batching', function () {
         data = d;
         return Promise.resolve(true);
       };
-      batch = new AckBatch('test-queue', 'test-connection', resolver);
+      const pubSubNamespace = uuid.v4();
+      const signal = postal.channel(`rabbit.ack.${pubSubNamespace}`);
+      batch = new AckBatch('test-queue', 'test-connection', resolver, { pubSubNamespace });
       batch.on('empty', function () {
         done();
       });
@@ -322,7 +335,9 @@ describe('Ack Batching', function () {
         data.push(d);
         return Promise.resolve(true);
       };
-      batch = new AckBatch('test-queue', 'test-connection', resolver);
+      const pubSubNamespace = uuid.v4();
+      const signal = postal.channel(`rabbit.ack.${pubSubNamespace}`);
+      batch = new AckBatch('test-queue', 'test-connection', resolver, { pubSubNamespace });
       batch.on('empty', function () {
         done();
       });

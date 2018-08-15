@@ -97,7 +97,7 @@ describe('Topology', function () {
         .once()
         .resolves(control);
 
-      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue, 'test');
+      topology = topologyFn(conn.instance, { pubSubNamespace: 'test' }, {}, undefined, undefined, Exchange, Queue, 'test');
       Promise.all([
         topology.createExchange({ name: 'top-ex', type: 'topic' }),
         topology.createQueue({ name: 'top-q', unique: 'hash' })
@@ -119,6 +119,7 @@ describe('Topology', function () {
         {
           name: 'test.response.queue',
           uniqueName: 'test.response.queue',
+          pubSubNamespace: 'test',
           autoDelete: true,
           subscribe: true
         }
@@ -167,6 +168,7 @@ describe('Topology', function () {
           {
             name: 'test.response.queue',
             uniqueName: 'test.response.queue',
+            pubSubNamespace: 'test',
             autoDelete: true,
             subscribe: true
           }
@@ -202,7 +204,8 @@ describe('Topology', function () {
           uniqueName: 'mine',
           autoDelete: false,
           subscribe: true
-        }
+        },
+        pubSubNamespace: 'test'
       };
       topology = topologyFn(conn.instance, options, {}, undefined, undefined, Exchange, Queue, 'test');
       topology.once('replyQueue.ready', function (queue) {
@@ -219,6 +222,7 @@ describe('Topology', function () {
         {
           name: 'mine',
           uniqueName: 'mine',
+          pubSubNamespace: 'test',
           autoDelete: false,
           subscribe: true
         }
@@ -240,6 +244,7 @@ describe('Topology', function () {
           {
             name: 'mine',
             uniqueName: 'mine',
+            pubSubNamespace: 'test',
             autoDelete: false,
             subscribe: true
           }
