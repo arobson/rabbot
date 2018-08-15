@@ -1,5 +1,6 @@
 require('../setup');
-const rabbit = require('../../src/index.js');
+const Rabbit = require('../../src/index.js');
+const rabbit = new Rabbit();
 
 describe('Bad Connection', function () {
   const noop = () => {};

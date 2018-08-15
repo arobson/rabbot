@@ -1,5 +1,6 @@
 require('../setup');
-const rabbit = require('../../src/index.js');
+const Rabbit = require('../../src/index.js');
+const rabbit = new Rabbit();
 const config = require('./configuration');
 
 describe('Fanout Exchange With Multiple Subscribed Queues', function () {
