@@ -15,7 +15,8 @@ describe('Connection', function () {
     });
 
     it('should assign uri to connection', function () {
-      connected.uri.should.equal('amqp://guest:guest@127.0.0.1:5672/%2f?heartbeat=30');
+      const con = config.connection;
+      connected.uri.should.equal(`amqp://${con.user}:${con.pass}@${con.host}:${con.port}/${con.vhost}?heartbeat=30`);
     });
 
     after(function () {
