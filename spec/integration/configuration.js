@@ -8,6 +8,15 @@ module.exports = {
     vhost: '%2f',
     replyQueue: 'customReplyQueue'
   },
+  differentVhost: {
+    name: 'differentVhost',
+    user: 'guest',
+    pass: 'guest',
+    host: '127.0.0.1',
+    port: 5672,
+    vhost: '%2fdifferent',
+    replyQueue: 'customReplyQueue'
+  },
 
   noReplyQueue: {
     name: 'noReplyQueue',
