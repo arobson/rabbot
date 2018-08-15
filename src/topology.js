@@ -232,6 +232,7 @@ Topology.prototype.createExchange = function (options) {
 
 Topology.prototype.createQueue = function (options) {
   options.uniqueName = this.getUniqueName(options);
+  options.pubSubNamespace = this.options.pubSubNamespace;
   return this.createPrimitive(Queue, 'queue', options);
 };
 

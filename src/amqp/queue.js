@@ -1,7 +1,5 @@
 const AckBatch = require('../ackBatch.js');
 const postal = require('postal');
-const dispatch = postal.channel('rabbit.dispatch');
-const responses = postal.channel('rabbit.responses');
 const info = require('../info');
 const log = require('../log')('rabbot.queue');
 const format = require('util').format;
@@ -320,6 +318,8 @@ function resolveTags (channel, queue, connection) {
 }
 
 function subscribe (channelName, channel, topology, serializers, messages, options, exclusive) {
+  const dispatch = postal.channel(`rabbit.dispatch.${options.pubSubNamespace}`);
+  const responses = postal.channel(`rabbit.responses.${options.pubSubNamespace}`);
   var shouldAck = !options.noAck;
   var shouldBatch = !options.noBatch;
   var shouldCacheKeys = !options.noCacheKeys;
@@ -456,7 +456,7 @@ module.exports = function (options, topology, serializers) {
   var channelName = [ 'queue', options.uniqueName ].join(':');
   return topology.connection.getChannel(channelName, false, 'queue channel for ' + options.name)
     .then(function (channel) {
-      var messages = new AckBatch(options.name, topology.connection.name, resolveTags(channel, options.name, topology.connection.name));
+      var messages = new AckBatch(options.name, topology.connection.name, resolveTags(channel, options.name, topology.connection.name), options);
       var subscriber = subscribe.bind(undefined, options.uniqueName, channel, topology, serializers, messages, options);
       var definer = define.bind(undefined, channel, options, subscriber, topology.connection.name);
       return {

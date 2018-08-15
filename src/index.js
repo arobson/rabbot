@@ -3,9 +3,6 @@ const connectionFn = require('./connectionFsm.js');
 const topologyFn = require('./topology.js');
 const postal = require('postal');
 const uuid = require('uuid');
-const dispatch = postal.channel('rabbit.dispatch');
-const responses = postal.channel('rabbit.responses');
-const signal = postal.channel('rabbit.ack');
 const log = require('./log');
 
 const DEFAULT = 'default';
@@ -64,6 +61,7 @@ const serializers = {
 };
 
 var Broker = function () {
+  this.pubSubNamespace = uuid.v4();
   this.connections = {};
   this.hasHandles = false;
   this.autoNack = false;
@@ -71,6 +69,9 @@ var Broker = function () {
   this.configurations = {};
   this.configuring = {};
   this.log = log;
+  this.dispatch = postal.channel(`rabbit.dispatch.${this.pubSubNamespace}`);
+  this.responses = postal.channel(`rabbit.responses.${this.pubSubNamespace}`);
+  this.signal = postal.channel(`rabbit.ack.${this.pubSubNamespace}`);
 };
 
 Broker.prototype.addConnection = function (opts) {
@@ -82,6 +83,7 @@ Broker.prototype.addConnection = function (opts) {
     failAfter: 60
   }, opts);
   const name = options.name;
+  options.pubSubNamespace = this.pubSubNamespace;
   let connection;
 
   const connectionPromise = new Promise((resolve, reject) => {
@@ -157,7 +159,7 @@ Broker.prototype.addSerializer = function (contentType, serializer) {
 };
 
 Broker.prototype.batchAck = function () {
-  signal.publish('ack', {});
+  this.signal.publish('ack', {});
 };
 
 Broker.prototype.bindExchange = function (source, target, keys, connectionName = DEFAULT) {
@@ -301,7 +303,7 @@ Broker.prototype.handle = function (messageType, handler, queueName, context) {
   }
 
   const target = parts.join('.');
-  const subscription = dispatch.subscribe(target, options.handler.bind(options.context));
+  const subscription = this.dispatch.subscribe(target, options.handler.bind(options.context));
   if (options.autoNack) {
     subscription.catch(function (err, msg) {
       console.log("Handler for '" + target + "' failed with:", err.stack);
@@ -445,7 +447,7 @@ Broker.prototype.request = function (exchangeName, options = {}, notify, connect
   const requestId = uuid.v1();
   options.messageId = requestId;
   options.connectionName = options.connectionName || connectionName;
-
+  const responses = this.responses;
   if (!this.connections[ options.connectionName ]) {
     return Promise.reject(new Error(`Request failed - no connection ${options.connectionName} has been configured`));
   }
@@ -497,7 +499,7 @@ Broker.prototype.setAckInterval = function (interval) {
   if (this.ackIntervalId) {
     this.clearAckInterval();
   }
-  this.ackIntervalId = setInterval(this.batchAck, interval);
+  this.ackIntervalId = setInterval(this.batchAck.bind(this), interval);
 };
 
 Broker.prototype.shutdown = function () {

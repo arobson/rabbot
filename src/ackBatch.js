@@ -1,6 +1,5 @@
 const postal = require('postal');
 const Monologue = require('monologue.js');
-const signal = postal.channel('rabbit.ack');
 const log = require('./log.js')('rabbot.acknack');
 
 /* log
@@ -21,10 +20,12 @@ const calls = {
   reject: '_reject'
 };
 
-const AckBatch = function (name, connectionName, resolver) {
+const AckBatch = function (name, connectionName, resolver, options) {
   this.name = name;
   this.connectionName = connectionName;
   this.resolver = resolver;
+  this.options = options || {};
+  this.signal = postal.channel(`rabbit.ack.${options.pubSubNamespace}`);
   this.reset();
 };
 
@@ -251,7 +252,7 @@ AckBatch.prototype.ignoreSignal = function () {
 
 AckBatch.prototype.listenForSignal = function () {
   if (!this.signalSubscription) {
-    this.signalSubscription = signal.subscribe('#', () => {
+    this.signalSubscription = this.signal.subscribe('#', () => {
       this._processBatch();
     });
   }
