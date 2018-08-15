@@ -548,6 +548,4 @@ require('./config.js')(Broker);
 
 Monologue.mixInto(Broker);
 
-var broker = new Broker();
-
-module.exports = broker;
+module.exports = Broker;
