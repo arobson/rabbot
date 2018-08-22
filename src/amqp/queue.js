@@ -46,13 +46,18 @@ function define (channel, options, subscriber, connectionName) {
   }, 'subscribe', 'limit', 'noBatch', 'unique');
   topLog.info("Declaring queue '%s' on connection '%s' with the options: %s",
     options.uniqueName, connectionName, JSON.stringify(options));
-  return channel.assertQueue(options.uniqueName, valid)
-    .then(function (q) {
-      if (options.limit) {
-        channel.prefetch(options.limit);
-      }
-      return q;
-    });
+
+  if (options.passive){
+    return channel.checkQueue(options.uniqueName);
+  } else {
+    return channel.assertQueue(options.uniqueName, valid)
+      .then(function (q) {
+        if (options.limit) {
+          channel.prefetch(options.limit);
+        }
+        return q;
+      });
+  }
 }
 
 function finalize (channel, messages) {
