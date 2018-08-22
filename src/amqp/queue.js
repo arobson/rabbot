@@ -128,6 +128,7 @@ function getReply (channel, serializers, raw, replyQueue, connectionName) {
     var replyType = options ? (options.replyType || defaultReplyType) : defaultReplyType;
     var contentType = getContentType(reply, options);
     var serializer = serializers[ contentType ];
+    var timestamp = Math.floor(Date.now()/1000);
     if (!serializer) {
       var message = format('Failed to publish message with contentType %s - no serializer defined', contentType);
       log.error(message);
@@ -143,7 +144,7 @@ function getReply (channel, serializers, raw, replyQueue, connectionName) {
         contentType: contentType,
         contentEncoding: 'utf8',
         correlationId: raw.properties.messageId,
-        timestamp: options && options.timestamp ? options.timestamp : Date.now(),
+        timestamp: options && options.timestamp ? options.timestamp : timestamp,
         replyTo: replyQueue === false ? undefined : replyQueue,
         headers: options && options.headers ? options.headers : {}
       };

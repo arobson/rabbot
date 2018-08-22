@@ -180,10 +180,11 @@ Broker.prototype.bulkPublish = function (set, connectionName = DEFAULT) {
   if (!this.connections[ connectionName ]) {
     return Promise.reject(new Error(`BulkPublish failed - no connection ${connectionName} has been configured`));
   }
+  var timestamp = Math.floor(Date.now()/1000);
 
   const publish = (exchange, options) => {
     options.appId = options.appId || this.appId;
-    options.timestamp = options.timestamp || Date.now();
+    options.timestamp = options.timestamp || timestamp;
     if (this.connections[ connectionName ] && this.connections[ connectionName ].options.publishTimeout) {
       options.connectionPublishTimeout = this.connections[ connectionName ].options.publishTimeout;
     }
@@ -383,7 +384,7 @@ Broker.prototype.onReturned = function (handler) {
 };
 
 Broker.prototype.publish = function (exchangeName, type, message, routingKey, correlationId, connectionName, sequenceNo) {
-  const timestamp = Date.now();
+  const timestamp = Math.floor(Date.now()/1000);
   let options;
   if (typeof type === 'object') {
     options = type;

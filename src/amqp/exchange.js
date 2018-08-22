@@ -76,6 +76,7 @@ function publish (channel, options, topology, log, serializers, message) {
     return Promise.reject(new Error(errMessage));
   }
   var payload = serializer.serialize(message.body);
+  var timestamp = Math.floor(Date.now()/1000);
   var publishOptions = {
     type: message.type || '',
     contentType: contentType,
@@ -83,7 +84,7 @@ function publish (channel, options, topology, log, serializers, message) {
     correlationId: message.correlationId || '',
     replyTo: message.replyTo || topology.replyQueue.name || '',
     messageId: message.messageId || message.id || '',
-    timestamp: message.timestamp || Date.now(),
+    timestamp: message.timestamp || timestamp,
     appId: message.appId || info.id,
     headers: message.headers || {},
     expiration: message.expiresAfter || undefined,
