@@ -57,11 +57,11 @@ describe( "Topic Exchange With Alternate Bindings", function() {
       ]
     } ).then( () => {
       // this message only arrives via the alternate
-      rabbit.publish( "rabbot-ex.topic", { type: "topic", routingKey: "this.is.a.test", body: "broadcast" } );
+      rabbit.publish( "rabbot-ex.topic", { type: "topic", routingKey: "this.is.a.test", body: "broadcast" }, config.connection.name );
       // this message is deliver by the topic route
-      rabbit.publish( "rabbot-ex.topic", { type: "topic", routingKey: "this.is.sparta", body: "leonidas" } );
+      rabbit.publish( "rabbot-ex.topic", { type: "topic", routingKey: "this.is.sparta", body: "leonidas" }, config.connection.name );
       // this message only arrives via the alternate
-      rabbit.publish( "rabbot-ex.topic", { type: "topic", routingKey: "a.test.this.is", body: "yoda" } );
+      rabbit.publish( "rabbot-ex.topic", { type: "topic", routingKey: "a.test.this.is", body: "yoda" }, config.connection.name );
     } );
 
     harness = harnessFactory( rabbit, done, 3 );
@@ -83,6 +83,6 @@ describe( "Topic Exchange With Alternate Bindings", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" );
+    return harness.clean( config.connection.name );
   } );
 } );

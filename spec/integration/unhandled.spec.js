@@ -47,8 +47,8 @@ describe( "Unhandled Strategies", function() {
           }
         ]
       } ).then( () => {
-        rabbit.publish( "rabbot-ex.direct", { type: "junk", routingKey: "", body: "uh oh" } );
-        rabbit.publish( "rabbot-ex.direct", { type: "garbage", routingKey: "", body: "uh oh" } );
+        rabbit.publish( "rabbot-ex.direct", { type: "junk", routingKey: "", body: "uh oh" }, config.connection.name );
+        rabbit.publish( "rabbot-ex.direct", { type: "garbage", routingKey: "", body: "uh oh" }, config.connection.name );
       } );
 
       harness = harnessFactory( rabbit, done, 2 );
@@ -67,7 +67,7 @@ describe( "Unhandled Strategies", function() {
     } );
 
     after( function() {
-      return harness.clean( "default" );
+      return harness.clean( config.connection.name );
     } );
   } );
 
@@ -124,14 +124,15 @@ describe( "Unhandled Strategies", function() {
       } ).then( () => {
         harness = harnessFactory( rabbit, done, 1 );
         rabbit.rejectUnhandled();
-        harness.handle( { queue: "rabbot-q-deadletter" } );
+        harness.handle( { queue: "rabbot-q-deadletter" }, config.connection.name );
         rabbit.publish(
           "rabbot-ex.topic",
           {
             type: "noonecares",
             routingKey: "this.is.rejection",
             body: "haters gonna hate"
-          }
+          },
+          config.connection.name
         );
       } );
     } );
@@ -151,7 +152,7 @@ describe( "Unhandled Strategies", function() {
     } );
 
     after( function() {
-      return harness.clean( "default" );
+      return harness.clean( config.connection.name );
     } );
   } );
 } );

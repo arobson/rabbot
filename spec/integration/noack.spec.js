@@ -43,7 +43,7 @@ describe( "Message Acknowledgments Disabled (noAck: true)", function() {
           type: "no.ack",
           body: "message " + i,
           routingKey: ""
-        } );
+        }, config.connection.name );
       }
     } );
   } );
@@ -53,6 +53,6 @@ describe( "Message Acknowledgments Disabled (noAck: true)", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" );
+    return harness.clean( config.connection.name );
   } );
 } );

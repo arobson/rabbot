@@ -38,9 +38,9 @@ describe( "Unroutable Messages - Alternate Exchanges", function() {
         }
       ]
     } ).then( () => {
-      rabbit.publish( "rabbot-ex.deadend", { type: "deadend", routingKey: "empty", body: "one" } );
-      rabbit.publish( "rabbot-ex.deadend", { type: "deadend", routingKey: "nothing", body: "two" } );
-      rabbit.publish( "rabbot-ex.deadend", { type: "deadend", routingKey: "de.nada", body: "three" } );
+      rabbit.publish( "rabbot-ex.deadend", { type: "deadend", routingKey: "empty", body: "one" }, config.connection.name );
+      rabbit.publish( "rabbot-ex.deadend", { type: "deadend", routingKey: "nothing", body: "two" }, config.connection.name );
+      rabbit.publish( "rabbot-ex.deadend", { type: "deadend", routingKey: "de.nada", body: "three" }, config.connection.name );
     } );
 
     harness = harnessFactory( rabbit, done, 3 );
@@ -61,6 +61,6 @@ describe( "Unroutable Messages - Alternate Exchanges", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" );
+    return harness.clean( config.connection.name );
   } );
 } );

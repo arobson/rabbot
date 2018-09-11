@@ -120,7 +120,7 @@ var Adapter = function( parameters ) {
 	if ( caPaths ) {
 		var list = caPaths.split( ',' );
 		this.options.ca = list.map( ( caPath ) => {
-			fs.existsSync(caPath) ? fs.readFileSync( caPath ) : caPath;
+			return fs.existsSync(caPath) ? fs.readFileSync( caPath ) : caPath;
 		} );
 	}
 	if ( useSSL ) {

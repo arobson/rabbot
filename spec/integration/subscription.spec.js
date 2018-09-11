@@ -39,10 +39,12 @@ describe( "Duplicate Subscription", function() {
       ]
     } ).then( () => {
       harness.handle( "topic" );
-      rabbit.startSubscription( "rabbot-q.subscription" );
-      rabbit.publish( "rabbot-ex.subscription", { type: "topic", routingKey: "this.is.a.test", body: "broadcast" } );
-      rabbit.publish( "rabbot-ex.subscription", { type: "topic", routingKey: "this.is.sparta", body: "leonidas" } );
-      rabbit.publish( "rabbot-ex.subscription", { type: "topic", routingKey: "this.is.not.wine.wtf", body: "socrates" } );
+      rabbit.startSubscription( "rabbot-q.subscription" , false, config.connection.name);
+      rabbit.publish( "rabbot-ex.subscription", { type: "topic", routingKey: "this.is.an.array", body: [ 1, 2, 3 ] }, config.connection.name );
+      rabbit.publish( "rabbot-ex.subscription", { type: "topic", routingKey: "this.is.an.object", body: { foo: 'bar' } }, config.connection.name );
+      rabbit.publish( "rabbot-ex.subscription", { type: "topic", routingKey: "this.is.a.test", body: "broadcast" }, config.connection.name );
+      rabbit.publish( "rabbot-ex.subscription", { type: "topic", routingKey: "this.is.sparta", body: "leonidas" }, config.connection.name );
+      rabbit.publish( "rabbot-ex.subscription", { type: "topic", routingKey: "this.is.not.wine.wtf", body: "socrates" }, config.connection.name );
     } );
     harness = harnessFactory( rabbit, done, 3 );
   } );
@@ -56,6 +58,8 @@ describe( "Duplicate Subscription", function() {
     );
     sortBy( results, "body" ).should.eql(
       [
+        { body: [ 1, 2, 3 ], key: "this.is.an.array" },
+        { body: { foo: "bar" }, key: "this.is.an.object" },
         { body: "broadcast", key: "this.is.a.test" },
         { body: "leonidas", key: "this.is.sparta" },
         { body: "socrates", key: "this.is.not.wine.wtf" }
@@ -63,6 +67,6 @@ describe( "Duplicate Subscription", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" );
+    return harness.clean( config.connection.name );
   } );
 } );

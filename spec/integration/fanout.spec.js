@@ -43,7 +43,7 @@ describe( "Fanout Exchange With Multiple Subscribed Queues", function() {
         }
       ]
     } ).then( () => {
-      rabbit.publish( "rabbot-ex.fanout", { type: "fanned", routingKey: "this.is.ignored", body: "hello, everyone" } );
+      rabbit.publish( "rabbot-ex.fanout", { type: "fanned", routingKey: "this.is.ignored", body: "hello, everyone" }, config.connection.name );
     } );
 
     harness = harnessFactory( rabbit, done, 2 );
@@ -63,6 +63,6 @@ describe( "Fanout Exchange With Multiple Subscribed Queues", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" );
+    return harness.clean( config.connection.name );
   } );
 } );

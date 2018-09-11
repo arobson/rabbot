@@ -48,9 +48,9 @@ describe( "Queue Specific Handler", function() {
         }
       ]
     } ).then( () => {
-      rabbit.publish( "rabbot-ex.fanout", { type: "", routingKey: "", body: "one" } );
-      rabbit.publish( "rabbot-ex.fanout", { type: "", routingKey: "", body: "two" } );
-      rabbit.publish( "rabbot-ex.fanout", { type: "", routingKey: "", body: "three" } );
+      rabbit.publish( "rabbot-ex.fanout", { type: "", routingKey: "", body: "one" }, config.connection.name );
+      rabbit.publish( "rabbot-ex.fanout", { type: "", routingKey: "", body: "two" }, config.connection.name );
+      rabbit.publish( "rabbot-ex.fanout", { type: "", routingKey: "", body: "three" }, config.connection.name );
     } );
 
     harness = harnessFactory( rabbit, done, 6 );
@@ -75,6 +75,6 @@ describe( "Queue Specific Handler", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" );
+    return harness.clean( config.connection.name );
   } );
 } );

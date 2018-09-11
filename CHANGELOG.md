@@ -1,6 +1,10 @@
 
 # rabbot - Changelog
 
+## 2.1.2 [2018-09-11]
+### Fixed
+Inserted some changes from the past that were lost
+
 ## 2.1.1 [2018-07-??]
 ### Fixed
 * use `uuid.v4()` for creation of requestId in `request()`

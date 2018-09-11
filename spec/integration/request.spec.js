@@ -57,14 +57,14 @@ describe( "Request & Response", function() {
         setTimeout( () => q.reply( '...' ), 10 );
       } );
 
-      rabbit.request( "rabbot-ex.request", { type: "polite", body: "how are you?" } )
+      rabbit.request( "rabbot-ex.request", { type: "polite", body: "how are you?" }, () => {}, config.connection.name )
         .then( ( response ) => {
           response1 = response.body;
           harness.add( response );
           response.ack();
         } );
 
-      rabbit.request( "rabbot-ex.request", { type: "rude", body: "why so dumb?" } )
+      rabbit.request( "rabbot-ex.request", { type: "rude", body: "why so dumb?" }, () => {}, config.connection.name )
         .then( ( response ) => {
           response2 = response.body;
           harness.add( response );
@@ -80,7 +80,8 @@ describe( "Request & Response", function() {
       rabbit.request(
         "rabbot-ex.request",
         { type: "silly", body: "do you like my yak-hair-shirt?" },
-        onPart
+        onPart,
+        config.connection.name
       ).then( onPart );
     } );
 
@@ -117,7 +118,7 @@ describe( "Request & Response", function() {
     var timeoutError;
     const timeout = 100;
     before( function() {
-      return rabbit.request( "rabbot-ex.request", { type: "polite", body: "how are you?", replyTimeout: timeout } )
+      return rabbit.request( "rabbot-ex.request", { type: "polite", body: "how are you?", timeout: timeout, replyTimeout: timeout }, () => {}, config.connection.name )
         .then( null, ( err ) => {
           timeoutError = err;
         } )
@@ -129,6 +130,6 @@ describe( "Request & Response", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" )
+    return harness.clean( config.connection.name )
   } );
 } );

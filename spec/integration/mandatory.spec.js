@@ -37,8 +37,8 @@ describe( "Undeliverable & Mandatory: true", function() {
         }
       ]
     } ).then( () => {
-      rabbit.publish( "rabbot-ex.direct", { mandatory: true, routingKey: "completely.un.routable.1", body: "returned message #1" } );
-      rabbit.publish( "rabbot-ex.direct", { mandatory: true, routingKey: "completely.un.routable.2", body: "returned message #2" } );
+      rabbit.publish( "rabbot-ex.direct", { mandatory: true, routingKey: "completely.un.routable.1", body: "returned message #1" }, config.connection.name );
+      rabbit.publish( "rabbot-ex.direct", { mandatory: true, routingKey: "completely.un.routable.2", body: "returned message #2" }, config.connection.name );
     } );
 
     harness = harnessFactory( rabbit, done, 2 );
@@ -57,6 +57,6 @@ describe( "Undeliverable & Mandatory: true", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" );
+    return harness.clean( config.connection.name );
   } );
 } );

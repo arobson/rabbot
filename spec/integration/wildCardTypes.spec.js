@@ -14,6 +14,7 @@ describe( "Wild Card Type Handling", function() {
 
   before( function( done ) {
     harness = harnessFactory( rabbit, done, 3 );
+
     harness.handle( "#.a" );
     rabbit.configure( {
       connection: config.connection,
@@ -41,10 +42,10 @@ describe( "Wild Card Type Handling", function() {
         }
       ]
     } ).then( () => {
-      rabbit.publish( "rabbot-ex.topic", { type: "one.a", routingKey: "this.is.one", body: "one" } );
-      rabbit.publish( "rabbot-ex.topic", { type: "two.i.a", routingKey: "this.is.two", body: "two" } );
-      rabbit.publish( "rabbot-ex.topic", { type: "three-b.a", routingKey: "this.is.three", body: "three" } );
-      rabbit.publish( "rabbot-ex.topic", { type: "a.four", routingKey: "this.is.four", body: "four" } );
+      rabbit.publish( "rabbot-ex.topic", { type: "one.a", routingKey: "this.is.one", body: "one" }, config.connection.name );
+      rabbit.publish( "rabbot-ex.topic", { type: "two.i.a", routingKey: "this.is.two", body: "two" } , config.connection.name);
+      rabbit.publish( "rabbot-ex.topic", { type: "three-b.a", routingKey: "this.is.three", body: "three" }, config.connection.name );
+      rabbit.publish( "rabbot-ex.topic", { type: "a.four", routingKey: "this.is.four", body: "four" } , config.connection.name);
     } );
   } );
 
@@ -69,6 +70,6 @@ describe( "Wild Card Type Handling", function() {
   } );
 
   after( function() {
-    return harness.clean( "default" );
+    return harness.clean( config.connection.name );
   } );
 } );
