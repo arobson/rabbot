@@ -59,7 +59,7 @@ This contrived example is here to make it easy to see what the API looks like no
 
 
 ```js
-const rabbit = require('rabbot');
+const rabbot = require('rabbot');
 
 rabbot.handle('MyMessage', (msg) => {
   console.log('received msg', msg.body);
