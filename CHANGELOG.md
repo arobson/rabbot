@@ -1,6 +1,10 @@
 
 # rabbot - Changelog
 
+## 2.2.0 [2018-11-??]
+### Added
+* Allow to specify the clientProperties of a connection.
+
 ## 2.1.2 [2018-09-11]
 ### Fixed
 Inserted some changes from the past that were lost

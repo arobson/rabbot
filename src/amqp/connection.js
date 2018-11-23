@@ -6,6 +6,12 @@ var log = require( "../log" )( "rabbot.connection" );
 var info = require( "../info" );
 var url = require( "url" );
 
+const CLIENT_PROPERTIES = {
+  host: info.host(),
+  process: info.process(),
+  lib: info.lib()
+};
+
 /* log
 	* `rabbot.amqp-connection`
 	  * `debug`
@@ -101,6 +107,7 @@ var Adapter = function( parameters ) {
 	var passphrase = getOption( parameters, "RABBIT_PASSPHRASE" ) || getOption( parameters, "passphrase" );
 	var pfxPath = getOption( parameters, "RABBIT_PFX" ) || getOption( parameters, "pfxPath" );
 	var useSSL = certPath || keyPath || passphrase || caPaths || pfxPath;
+  var clientProperties = getOption( parameters, "clientProperties");
 	this.options = { noDelay: true };
 	if ( timeout ) {
 		this.options.timeout = timeout;
@@ -126,12 +133,8 @@ var Adapter = function( parameters ) {
 	if ( useSSL ) {
 		this.protocol = 'amqps://';
 	}
-	this.options.clientProperties = {
-		host: info.host(),
-		process: info.process(),
-		lib: info.lib()
-	};
 	this.limit = max( this.servers.length, this.ports.length );
+  this.options.clientProperties = Object.assign(CLIENT_PROPERTIES, clientProperties);
 };
 
 Adapter.prototype.connect = function() {

@@ -72,6 +72,7 @@ Options is a hash that can contain the following:
  * `replyTimeout` - the default timeout in milliseconds to wait for a reply.
  * `failAfter` - limits how long rabbot will attempt to connect (in seconds). Defaults to `60`.
  * `retryLimit` - limits how many consecutive failed attempts rabbot will make. Defaults to 3.
+ * `clientProperties` - Sets the clientProperties for this connection for specific application referencing.
 
 Note that the "default" connection (by name) is used when any method is called without a connection name supplied.
 
