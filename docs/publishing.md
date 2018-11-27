@@ -169,7 +169,7 @@ Each key is the name of the exchange to publish to and the value is an array of 
 The exchanges are processed serially, so this option will not work if you want finer control over sending messages to multiple exchanges in interleaved order.
 
 ```js
-rabbot.publish({
+rabbot.bulkPublish({
   'exchange-1': [
     { type: 'one', body: '1' },
     { type: 'one', body: '2' }
@@ -189,7 +189,7 @@ rabbot.publish({
 Each element in the array follows the format of `publish`'s option but requires the `exchange` property to control which exchange to publish each message to.
 
 ```js
-rabbot.publish([
+rabbot.bulkPublish([
   { type: 'one', body: '1', exchange: 'exchange-1' },
   { type: 'one', body: '2', exchange: 'exchange-1' },
   { type: 'two', body: '1', exchange: 'exchange-2' },
