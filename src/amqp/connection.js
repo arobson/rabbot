@@ -107,7 +107,7 @@ var Adapter = function( parameters ) {
 	var passphrase = getOption( parameters, "RABBIT_PASSPHRASE" ) || getOption( parameters, "passphrase" );
 	var pfxPath = getOption( parameters, "RABBIT_PFX" ) || getOption( parameters, "pfxPath" );
 	var useSSL = certPath || keyPath || passphrase || caPaths || pfxPath;
-  var clientProperties = getOption( parameters, "clientProperties");
+	var clientProperties = getOption( parameters, "clientProperties");
 	this.options = { noDelay: true };
 	if ( timeout ) {
 		this.options.timeout = timeout;
@@ -134,7 +134,7 @@ var Adapter = function( parameters ) {
 		this.protocol = 'amqps://';
 	}
 	this.limit = max( this.servers.length, this.ports.length );
-  this.options.clientProperties = Object.assign(CLIENT_PROPERTIES, clientProperties);
+	this.options.clientProperties = Object.assign(CLIENT_PROPERTIES, clientProperties);
 };
 
 Adapter.prototype.connect = function() {
