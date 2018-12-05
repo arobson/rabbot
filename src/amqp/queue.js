@@ -45,16 +45,24 @@ function define (channel, options, subscriber, connectionName) {
     deadletter: 'deadLetterExchange',
     deadLetter: 'deadLetterExchange',
     deadLetterRoutingKey: 'deadLetterRoutingKey'
-  }, 'subscribe', 'limit', 'noBatch', 'unique');
+  }, 'subscribe', 'limit', 'noBatch', 'unique', 'passive');
   topLog.info("Declaring queue '%s' on connection '%s' with the options: %s",
     options.uniqueName, connectionName, JSON.stringify(options));
-  return channel.assertQueue(options.uniqueName, valid)
-    .then(function (q) {
-      if (options.limit) {
-        channel.prefetch(options.limit);
-      }
-      return q;
-    });
+
+  let queuePromise;
+
+  if (options.passive) {
+    queuePromise = channel.checkQueue(options.uniqueName);
+  } else {
+    queuePromise = channel.assertQueue(options.uniqueName, valid);
+  }
+
+  return queuePromise.then(function (q) {
+    if (options.limit) {
+      channel.prefetch(options.limit);
+    }
+    return q;
+  });
 }
 
 function finalize (channel, messages) {
