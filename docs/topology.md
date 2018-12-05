@@ -90,6 +90,7 @@ Options is a hash that can contain the following:
 | **maxPriority** | 2^8 | the highest priority this queue supports | |
 | **unique** | `"hash", `"id", "consistent"` | creates a unique queue name by including the client id or hash in the name | |
 | **poison** | boolean | indicates that this queue is specifically for poison / rejected messages| false |
+| **passive** | boolean | when `true` will not create the queueName specified | false |
 
 ### unique
 
