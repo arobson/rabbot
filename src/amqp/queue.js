@@ -45,7 +45,7 @@ function define (channel, options, subscriber, connectionName) {
     deadletter: 'deadLetterExchange',
     deadLetter: 'deadLetterExchange',
     deadLetterRoutingKey: 'deadLetterRoutingKey'
-  }, 'subscribe', 'limit', 'noBatch', 'unique', 'passive');
+  }, 'subscribe', 'limit', 'noBatch', 'unique');
   topLog.info("Declaring queue '%s' on connection '%s' with the options: %s",
     options.uniqueName, connectionName, JSON.stringify(options));
 
