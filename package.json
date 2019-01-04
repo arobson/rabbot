@@ -78,7 +78,7 @@
     "amqplib": "~0.5.2",
     "bole": "^3.0.2",
     "debug": "^3.1.0",
-    "machina": "2.0.2",
+    "machina": "4.0.2",
     "monologue.js": "^0.3.5",
     "postal": "^2.0.5",
     "uuid": "^3.1.0"
