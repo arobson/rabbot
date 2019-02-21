@@ -1,5 +1,9 @@
 
-# rabbot - Changelog
+# @huf/rabbot - Changelog
+
+## 2.3.0 [2019-02-??]
+### Added
+* Exposed functions to unbind Exchanges and Queues
 
 ## 2.2.0 [2018-12-03]
 ### Added

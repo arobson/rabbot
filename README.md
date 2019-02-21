@@ -537,6 +537,12 @@ Binds the target exchange to the source exchange. Messages flow from source to t
 ### bindQueue( sourceExchange, targetQueue, [routingKeys], [connectionName] )
 Binds the target queue to the source exchange. Messages flow from source to target.
 
+### unbindExchange( sourceExchange, targetExchange, [routingKeys], [connectionName] )
+Unbinds the target exchange to the source exchange.
+
+### unbindQueue( sourceExchange, targetQueue, [routingKeys], [connectionName] )
+Unbinds the target queue to the source exchange.
+
 ## Configuration via JSON
 
 > Note: setting subscribe to true will result in subscriptions starting immediately upon queue creation.
