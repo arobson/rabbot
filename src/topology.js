@@ -158,7 +158,7 @@ Topology.prototype.configureExchanges = function( exchangeDef, list ) {
 Topology.prototype._binding = function ( options, isCreateOperation ) {
 
   const queueOperation = isCreateOperation ? "bindQueue" : "unbindQueue";
-  const ExchangeOperation = isCreateOperation ? "bindExchange" : "unbindExchange";
+  const exchangeOperation = isCreateOperation ? "bindExchange" : "unbindExchange";
 
   let id = `${options.source}->${options.target}`;
   const keys = getKeys( options.keys );
@@ -168,7 +168,7 @@ Topology.prototype._binding = function ( options, isCreateOperation ) {
   let promise = this.promises[ id ];
   if( !promise ) {
     this.definitions.bindings[ id ] = options;
-    const call = options.queue ? queueOperation : ExchangeOperation;
+    const call = options.queue ? queueOperation : exchangeOperation;
     const source = options.source;
     let target = options.target;
     if( options.queue ) {
@@ -194,7 +194,6 @@ Topology.prototype.destroyBinding = function( options ) {
 };
 
 Topology.prototype.createBinding = function( options ) {
-  console.log('createBinding')
   return this._binding(options, true);
 };
 
