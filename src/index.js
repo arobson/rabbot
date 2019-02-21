@@ -188,11 +188,27 @@ Broker.prototype.bindExchange = function( source, target, keys, connectionName )
   return this.connections[ connectionName ].createBinding( { source: source, target: target, keys: keys } );
 };
 
-Broker.prototype.bindQueue = function( source, target, keys, connectionName ) {
+Broker.prototype.unbindExchange = function( source, target, keys, connectionName ) {
 
   connectionName = connectionName === undefined ? DEFAULT : connectionName;
 
+  return this.connections[ connectionName ].destroyBinding( { source: source, target: target, keys: keys } );
+};
+
+Broker.prototype.bindQueue = function( source, target, keys, connectionName ) {
+
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
   return this.connections[ connectionName ].createBinding(
+    { source: source, target: target, keys: keys, queue: true },
+    connectionName
+  );
+};
+
+Broker.prototype.unbindQueue = function( source, target, keys, connectionName ) {
+
+  connectionName = connectionName === undefined ? DEFAULT : connectionName;
+
+  return this.connections[ connectionName ].destroyBinding(
     { source: source, target: target, keys: keys, queue: true },
     connectionName
   );
