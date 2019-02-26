@@ -145,7 +145,7 @@ module.exports = function (options, type, factory, target, close) {
         }.bind(this));
         this.once('released', function () {
           reject(new Error(`Cannot reacquire released ${type} '${this.name}'`));
-        });
+        }.bind(this));
       }.bind(this));
     },
     operate: function (call, args) {
