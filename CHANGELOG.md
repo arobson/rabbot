@@ -1,6 +1,10 @@
 
 # @huf/rabbot - Changelog
 
+## 2.3.1 [2019-02-27]
+### Fixed
+* Make sure the old bindings are removed properly
+
 ## 2.3.0 [2019-02-21]
 ### Added
 * Exposed functions to unbind Exchanges and Queues
