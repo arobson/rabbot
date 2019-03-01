@@ -160,7 +160,7 @@ Topology.prototype._binding = function ( options, isCreateOperation ) {
   const queueOperation = isCreateOperation ? "bindQueue" : "unbindQueue";
   const exchangeOperation = isCreateOperation ? "bindExchange" : "unbindExchange";
 
-  let id = `${options.source}->${options.target}`;
+  let id = `${options.source}->${options.target}_${queueOperation}_${exchangeOperation}`;
   const keys = getKeys( options.keys );
   if ( keys[0] !== "" ) {
     id += ":" + keys.join(':');
