@@ -1,6 +1,6 @@
 {
   "name": "@huf/rabbot",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "engines": {
@@ -12,7 +12,7 @@
     "test": "./node_modules/mocha/bin/mocha spec/**/*.spec.js",
     "coverage": "nyc npm test",
     "build-image": "docker build -t rabbot .",
-    "start-image": "docker run -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot",
+    "start-image": "docker run --rm -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot",
     "stop-image": "docker kill rabbot"
   },
   "author": "Alex Robson",
