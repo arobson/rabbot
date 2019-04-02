@@ -576,7 +576,7 @@ describe( "Topology", function() {
 		} );
 
 		it( "should add binding to definitions", function() {
-			topology.definitions.bindings[ "from->to" ].should.eql( { source: "from", target: "to" } );
+			topology.definitions.bindings[ "from->to_bindQueue_bindExchange" ].should.eql( { source: "from", target: "to" } );
 		} );
 	} );
 
@@ -614,7 +614,7 @@ describe( "Topology", function() {
 		} );
 
 		it( "should add binding to definitions", function() {
-			topology.definitions.bindings[ "from->to" ].should.eql(
+    topology.definitions.bindings[ "from->to_bindQueue_bindExchange" ].should.eql(
 				{ source: "from", target: "to", keys: undefined, queue: true }
 			);
 		} );
@@ -653,7 +653,7 @@ describe( "Topology", function() {
 		} );
 
 		it( "should add binding to definitions", function() {
-			topology.definitions.bindings[ "from->to:a.*:b.*" ].should.eql(
+			topology.definitions.bindings[ "from->to_bindQueue_bindExchange:a.*:b.*" ].should.eql(
 				{ source: "from", target: "to", keys: [ "a.*", "b.*" ], queue: true }
 			);
 		} );
