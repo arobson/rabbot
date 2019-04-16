@@ -2,7 +2,7 @@
 
 const rabbot = require('../../src/index.js');
 
-rabbot.addConnection({uri: 'amqp://shitface:shitface@localhost:5672/', replyQueue: false})
+rabbot.addConnection({uri: 'amqp://guest:guest@localhost:5672/', replyQueue: false})
   .then((con) => {
     let counter = 0;
     rabbot.handle('#', (msg) => {

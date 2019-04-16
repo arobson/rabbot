@@ -2,7 +2,7 @@
 
 const rabbot = require('../../src/index.js');
 
-rabbot.addConnection({uri: 'amqp://shitface:shitface@localhost:5672/'})
+rabbot.addConnection({uri: 'amqp://guest:guest@localhost:5672/'})
   .then((con) => {
 
     const intermediate = (msg) => {
