@@ -104,20 +104,20 @@
     "chai": "^3.4.1",
     "chai-as-promised": "^5.1.0",
     "coveralls": "^2.13.1",
-    "jshint": "2.9.5",
+    "jshint": "^2.10.2",
     "mocha": "^3.4.1",
     "nyc": "^10.3.2",
     "sinon": "^1.17.2",
     "sinon-as-promised": "^4.0.0"
   },
   "dependencies": {
-    "amqplib": "~0.5.1",
+    "amqplib": "^0.5.3",
     "bole": "^3.0.2",
-    "debug": "^2.2.0",
+    "debug": "^4.1.1",
     "lodash": "3.x",
     "machina": "^2.0.0",
     "monologue.js": "^0.3.5",
     "postal": "^2.0.5",
-    "uuid": "^3.0.0"
+    "uuid": "^3.3.2"
   }
 }
