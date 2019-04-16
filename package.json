@@ -1,6 +1,6 @@
 {
   "name": "@huf/rabbot",
-  "version": "2.3.2",
+  "version": "2.3.3",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "engines": {
