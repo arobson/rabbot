@@ -237,7 +237,11 @@ Broker.prototype.close = function( connectionName, reset ) {
     if( reset ) {
       this.connections[ connectionName ].reset();
     }
-    return connection.close( reset );
+    return connection.close( reset )
+      .then((result) => {
+        delete this.connections[ connectionName ];
+        return result;
+      });
   } else {
     return Promise.resolve( true );
   }
