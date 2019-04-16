@@ -1,7 +1,7 @@
 
 # @huf/rabbot - Changelog
 
-## 2.3.2 [2019-04-??]
+## 2.3.2 [2019-04-16]
 ### Fixed
 * Delete connection from the cache when not needed
 
