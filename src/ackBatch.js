@@ -83,7 +83,9 @@ AckBatch.prototype._reject = function( tag, inclusive ) {
 
 AckBatch.prototype._processBatch = function() {
   this.acking = this.acking !== undefined ? this.acking : false;
-  if ( !this.acking ) {
+  const hasMessages = this.messages.length > 0;
+
+  if ( !this.acking && hasMessages ) {
     this.acking = true;
     const hasPending = ( _.findIndex( this.messages, { status: "pending" } ) >= 0 );
     const hasAck = this.firstAck;
@@ -111,6 +113,9 @@ AckBatch.prototype._processBatch = function() {
       this.resolver( "waiting" );
       this.acking = false;
     }
+  } else if ( !hasMessages ) {
+    this.resolver( "waiting" );
+    this.acking = false;
   }
 };
 
