@@ -45,7 +45,7 @@ const Connection = function (options, connectionFn, channelFn) {
     connected: false,
     consecutiveFailures: 0,
     connectTimeout: undefined,
-    failAfter: (options.failAfter || 60) * 1000,
+    failAfter: options.failAfter === 0 ? 0 : ((options.failAfter || 60) * 1000),
 
     initialize: function () {
       options.name = this.name;
@@ -170,7 +170,7 @@ const Connection = function (options, connectionFn, channelFn) {
     },
 
     setConnectionTimeout: function () {
-      if (!this.connectionTimeout) {
+      if (!this.connectionTimeout && this.failAfter !== 0) {
         this.connectionTimeout = setTimeout(() => {
           this.transition('unreachable');
         }, this.failAfter);
