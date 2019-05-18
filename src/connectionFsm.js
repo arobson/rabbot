@@ -336,7 +336,7 @@ const Connection = function (options, connectionFn, channelFn) {
         _onEnter: function () {
           this.setConnectionTimeout();
           this.consecutiveFailures++;
-          const tooManyFailures = this.consecutiveFailures >= options.retryLimit;
+          const tooManyFailures = this.consecutiveFailures >= options.retryLimit && options.retryLimit !== 0;
           if (tooManyFailures) {
             this.transition('unreachable');
           }
