@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 
 // var log = require( "whistlepunk" ).log;
 const log = require( "bole" );
@@ -8,7 +8,9 @@ const debugEnv = process.env.DEBUG;
 const debugOut = {
   write: function( data ) {
     const entry = JSON.parse( data );
-    debug( debug( entry.name )( entry.level, entry.message ) );
+    const debugEnv = debug( entry.name );
+
+    debugEnv( entry.level, entry.message );
   }
 };
 
