@@ -1,6 +1,6 @@
 {
   "name": "@huf/rabbot",
-  "version": "2.3.3",
+  "version": "2.3.4",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "engines": {
@@ -9,7 +9,7 @@
   "repository": "https://github.com/arobson/rabbot",
   "scripts": {
     "lint": "jshint ./",
-    "test": "./node_modules/mocha/bin/mocha spec/**/*.spec.js",
+    "test": "./node_modules/mocha/bin/mocha spec/**/*.spec.js --exit",
     "coverage": "nyc npm test",
     "build-image": "docker build -t rabbot .",
     "start-image": "docker run --rm -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot",
@@ -101,20 +101,19 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "chai": "^3.4.1",
+    "chai": "^4.2.0",
     "chai-as-promised": "^5.1.0",
-    "coveralls": "^2.13.1",
+    "coveralls": "^3.0.5",
     "jshint": "^2.10.2",
-    "mocha": "^3.4.1",
-    "nyc": "^10.3.2",
-    "sinon": "^1.17.2",
-    "sinon-as-promised": "^4.0.0"
+    "mocha": "^6.1.4",
+    "nyc": "^14.1.1",
+    "sinon": "^7.3.2"
   },
   "dependencies": {
     "amqplib": "^0.5.3",
     "bole": "^3.0.2",
     "debug": "^4.1.1",
-    "lodash": "3.x",
+    "lodash": "^4.17.14",
     "machina": "^2.0.0",
     "monologue.js": "^0.3.5",
     "postal": "^2.0.5",

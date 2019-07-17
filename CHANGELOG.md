@@ -1,6 +1,10 @@
 
 # @huf/rabbot - Changelog
 
+## 2.3.4 [2019-07-16]
+### Fixed
+* Establish debug interface properly
+
 ## 2.3.3 [2019-04-17]
 ### Fixed
 * Properly ack the messages when you have some
