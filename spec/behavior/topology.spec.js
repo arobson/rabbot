@@ -120,14 +120,10 @@ describe( "Topology", function() {
 		} );
 
 		it( "should create default reply queue", function() {
-			replyQueue.should.eql(
-				{
-					name: "test.response.queue",
-					uniqueName: "test.response.queue",
-					autoDelete: true,
-					subscribe: true
-				}
-			);
+      replyQueue.autoDelete.should.eql(true);
+      replyQueue.subscribe.should.eql(true);
+      replyQueue.name.should.match(/test.response.queue-/);
+      replyQueue.uniqueName.should.match(/test.response.queue-/);
 		} );
 
 		it( "should bind queue", function() {
@@ -168,14 +164,10 @@ describe( "Topology", function() {
 			} );
 
 			it( "should recreate default reply queue", function() {
-				replyQueue.should.eql(
-					{
-						name: "test.response.queue",
-						uniqueName: "test.response.queue",
-						autoDelete: true,
-						subscribe: true
-					}
-				);
+        replyQueue.autoDelete.should.eql(true);
+        replyQueue.subscribe.should.eql(true);
+        replyQueue.name.should.match(/test.response.queue-/);
+        replyQueue.uniqueName.should.match(/test.response.queue-/);
 			} );
 
 			it( "should bindQueue", function() {
@@ -223,14 +215,10 @@ describe( "Topology", function() {
 		} );
 
 		it( "should create custom reply queue", function() {
-			replyQueue.should.eql(
-				{
-					name: "mine",
-					uniqueName: "mine",
-					autoDelete: false,
-					subscribe: true
-				}
-			);
+      replyQueue.autoDelete.should.eql(false);
+      replyQueue.subscribe.should.eql(true);
+      replyQueue.name.should.match(/mine-/);
+      replyQueue.uniqueName.should.match(/mine-/);
 		} );
 
 		describe( "when recovering from disconnection", function() {
@@ -244,14 +232,14 @@ describe( "Topology", function() {
 			} );
 
 			it( "should recreate custom reply queue", function() {
-				replyQueue.should.eql(
-					{
-						name: "mine",
-						uniqueName: "mine",
-						autoDelete: false,
-						subscribe: true
-					}
-				);
+        replyQueue.should.contain(
+          {
+            autoDelete: false,
+            subscribe: true
+          }
+        );
+        replyQueue.name.should.match(/mine-/);
+        replyQueue.uniqueName.should.match(/mine-/);
 			} );
 		} );
 	} );
@@ -344,7 +332,7 @@ describe( "Topology", function() {
 				return Promise.resolve();
 			};
 			var Exchange = function() {
-				calls = calls + 1;
+				calls += 1;
 				return ex;
 			};
 			var Queue = function() {
