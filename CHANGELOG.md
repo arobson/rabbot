@@ -1,6 +1,10 @@
 
 # @huf/rabbot - Changelog
 
+## 2.4.0 [2019-07-22]
+### Changed
+* ReplyTo Queues now get a new unique suffix on reconnect
+
 ## 2.3.4 [2019-07-16]
 ### Fixed
 * Establish debug interface properly
