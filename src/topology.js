@@ -96,6 +96,8 @@ var Topology = function( connection, options, serializers, unhandledStrategies, 
   connection.on( "reconnected", this.onReconnect.bind( this ) );
   connection.on( "return", this.handleReturned.bind( this ) );
 
+  this.replyQueue.baseName = this.replyQueue.name;
+
   this.createDefaultExchange().then( null, noop );
   // delay creation to allow for subscribers to attach a handler
   process.nextTick( () => {
@@ -250,7 +252,7 @@ Topology.prototype.createQueue = function( options ) {
 };
 
 const newSuffixedQueue = (queue, suffix) => {
-  const suffixedName = `${queue.name}-${suffix}`;
+  const suffixedName = `${queue.baseName}-${suffix}`;
   return { ...queue, name: suffixedName, uniqueName: suffixedName };
 }
 
