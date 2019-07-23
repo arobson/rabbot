@@ -1,6 +1,10 @@
 
 # @huf/rabbot - Changelog
 
+## 2.4.1 [2019-07-22]
+### Changed
+* Fix queue length of reply queue
+
 ## 2.4.0 [2019-07-22]
 ### Changed
 * ReplyTo Queues now get a new unique suffix on reconnect
