@@ -244,7 +244,7 @@ describe( "Topology", function() {
 				replyQueueAfterReconnect.name.should.match(/mine-/);
 				replyQueueAfterReconnect.name.length.should.eql(41);
 				replyQueueAfterReconnect.uniqueName.should.match(/mine-/);
-				replyQueueAfterReconnect.name.length.uniqueName.eql(41);
+				replyQueueAfterReconnect.uniqueName.length.should.eql(41);
 				replyQueueAfterReconnect.name.should.not.eql(replyQueue.name);
 				
 			} );
