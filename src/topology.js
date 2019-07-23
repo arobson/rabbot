@@ -1,5 +1,6 @@
 'use strict'
 
+var uuid = require( "uuid" );
 var Monologue = require( "monologue.js" );
 var log = require( "./log" )( "rabbot.topology" );
 var info = require( "./info" );
@@ -248,27 +249,37 @@ Topology.prototype.createQueue = function( options ) {
   return this.createPrimitive( Queue, "queue", options );
 };
 
+const newSuffixedQueue = (queue, suffix) => {
+  const suffixedName = `${queue.name}-${suffix}`;
+  return { ...queue, name: suffixedName, uniqueName: suffixedName };
+}
+
 Topology.prototype.createReplyQueue = function() {
   if ( this.replyQueue.name === undefined || this.replyQueue.name === false ) {
     return Promise.resolve();
   }
+
+  const suffixedQueue = newSuffixedQueue( this.replyQueue, uuid.v4() );
+
   var key = "queue:" + this.replyQueue.name;
   var promise;
   if ( !this.channels[ key ] ) {
-    promise = this.createQueue( this.replyQueue );
+    promise = this.createPrimitive( Queue, "queue", suffixedQueue );
+
     promise.then(
       ( channel ) => {
 
         channel.once( "subscribed", () => {
           this.channels[ key ] = channel;
-          this.emit( "replyQueue.ready", this.replyQueue );
+          this.replyQueue = suffixedQueue;
+          this.emit( "replyQueue.ready", suffixedQueue );
         });
       },
       this.onReplyQueueFailed.bind( this )
     );
   } else {
     promise = Promise.resolve( this.channels[ key ] );
-    this.emit( "replyQueue.ready", this.replyQueue );
+    this.emit( "replyQueue.ready", suffixedQueue );
   }
   return promise;
 };

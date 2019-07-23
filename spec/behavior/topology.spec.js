@@ -27,8 +27,8 @@ function connectionFn() {
 			handlers[ ev ] = [ handle ];
 		}
 		return { unsubscribe: function( h ) {
-				handlers[ ev ].splice( _.indexOf( handlers[ ev ], h ) );
-			} };
+			handlers[ ev ].splice( _.indexOf( handlers[ ev ], h ) );
+		} };
 	}
 
 	function reset() {
@@ -101,18 +101,18 @@ describe( "Topology", function() {
 
 			topology = topologyFn( conn.instance, {}, {}, undefined, undefined, Exchange, Queue, "test" );
 			Promise.all( [
-					topology.createExchange( { name: "top-ex", type: "topic" } ),
-					topology.createQueue( { name: "top-q", unique: "hash" } )
-				] ).then( function() {
-					topology.configureBindings( { exchange: "top-ex", target: "top-q" } );
-				} );
+				topology.createExchange( { name: "top-ex", type: "topic" } ),
+				topology.createQueue( { name: "top-q", unique: "hash" } )
+			] ).then( function() {
+				topology.configureBindings( { exchange: "top-ex", target: "top-q" } );
+			} );
 			topology.once( "replyQueue.ready", function( queue ) {
 				replyQueue = queue;
 				done();
 			} );
-      setTimeout(() => {
-        q.raise('subscribed');
-      }, 100)
+			setTimeout(() => {
+				q.raise('subscribed');
+			}, 100)
 			process.nextTick( function() {
 				q.raise( "defined" );
 				ex.raise( "defined" );
@@ -120,14 +120,10 @@ describe( "Topology", function() {
 		} );
 
 		it( "should create default reply queue", function() {
-			replyQueue.should.eql(
-				{
-					name: "test.response.queue",
-					uniqueName: "test.response.queue",
-					autoDelete: true,
-					subscribe: true
-				}
-			);
+			replyQueue.autoDelete.should.eql(true);
+			replyQueue.subscribe.should.eql(true);
+			replyQueue.name.should.match(/test.response.queue-/);
+			replyQueue.uniqueName.should.match(/test.response.queue-/);
 		} );
 
 		it( "should bind queue", function() {
@@ -168,14 +164,10 @@ describe( "Topology", function() {
 			} );
 
 			it( "should recreate default reply queue", function() {
-				replyQueue.should.eql(
-					{
-						name: "test.response.queue",
-						uniqueName: "test.response.queue",
-						autoDelete: true,
-						subscribe: true
-					}
-				);
+				replyQueue.autoDelete.should.eql(true);
+				replyQueue.subscribe.should.eql(true);
+				replyQueue.name.should.match(/test.response.queue-/);
+				replyQueue.uniqueName.should.match(/test.response.queue-/);
 			} );
 
 			it( "should bindQueue", function() {
@@ -214,44 +206,40 @@ describe( "Topology", function() {
 				replyQueue = queue;
 				done();
 			} );
-      setTimeout(() => {
-        q.raise('subscribed');
-      }, 100);
+			setTimeout(() => {
+				q.raise('subscribed');
+			}, 100);
 			process.nextTick( function() {
 				q.raise( "defined" );
 			} );
 		} );
 
 		it( "should create custom reply queue", function() {
-			replyQueue.should.eql(
-				{
-					name: "mine",
-					uniqueName: "mine",
-					autoDelete: false,
-					subscribe: true
-				}
-			);
+			replyQueue.autoDelete.should.eql(false);
+			replyQueue.subscribe.should.eql(true);
+			replyQueue.name.should.match(/mine-/);
+			replyQueue.uniqueName.should.match(/mine-/);
 		} );
 
 		describe( "when recovering from disconnection", function() {
 			before( function( done ) {
 				replyQueue = undefined;
-        topology.once( "replyQueue.ready", function( queue ) {
-          replyQueue = queue;
+				topology.once( "replyQueue.ready", function( queue ) {
+					replyQueue = queue;
 					done();
 				} );
 				conn.instance.raise( "reconnected" );
 			} );
 
 			it( "should recreate custom reply queue", function() {
-				replyQueue.should.eql(
+				replyQueue.should.contain(
 					{
-						name: "mine",
-						uniqueName: "mine",
 						autoDelete: false,
 						subscribe: true
 					}
 				);
+				replyQueue.name.should.match(/mine-/);
+				replyQueue.uniqueName.should.match(/mine-/);
 			} );
 		} );
 	} );
@@ -344,7 +332,7 @@ describe( "Topology", function() {
 				return Promise.resolve();
 			};
 			var Exchange = function() {
-				calls = calls + 1;
+				calls += 1;
 				return ex;
 			};
 			var Queue = function() {
@@ -614,7 +602,7 @@ describe( "Topology", function() {
 		} );
 
 		it( "should add binding to definitions", function() {
-    topology.definitions.bindings[ "from->to_bindQueue_bindExchange" ].should.eql(
+			topology.definitions.bindings[ "from->to_bindQueue_bindExchange" ].should.eql(
 				{ source: "from", target: "to", keys: undefined, queue: true }
 			);
 		} );
