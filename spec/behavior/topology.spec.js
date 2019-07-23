@@ -167,7 +167,9 @@ describe( "Topology", function() {
 				replyQueue.autoDelete.should.eql(true);
 				replyQueue.subscribe.should.eql(true);
 				replyQueue.name.should.match(/test.response.queue-/);
+				replyQueue.name.length.should.eql(56);
 				replyQueue.uniqueName.should.match(/test.response.queue-/);
+				replyQueue.name.length.should.eql(56);
 			} );
 
 			it( "should bindQueue", function() {
@@ -222,24 +224,29 @@ describe( "Topology", function() {
 		} );
 
 		describe( "when recovering from disconnection", function() {
+			let replyQueueAfterReconnect;
 			before( function( done ) {
-				replyQueue = undefined;
+				replyQueueAfterReconnect = undefined;
 				topology.once( "replyQueue.ready", function( queue ) {
-					replyQueue = queue;
+					replyQueueAfterReconnect = queue;
 					done();
 				} );
 				conn.instance.raise( "reconnected" );
 			} );
 
 			it( "should recreate custom reply queue", function() {
-				replyQueue.should.contain(
+				replyQueueAfterReconnect.should.contain(
 					{
 						autoDelete: false,
 						subscribe: true
 					}
 				);
-				replyQueue.name.should.match(/mine-/);
-				replyQueue.uniqueName.should.match(/mine-/);
+				replyQueueAfterReconnect.name.should.match(/mine-/);
+				replyQueueAfterReconnect.name.length.should.eql(41);
+				replyQueueAfterReconnect.uniqueName.should.match(/mine-/);
+				replyQueueAfterReconnect.uniqueName.length.should.eql(41);
+				replyQueueAfterReconnect.name.should.not.eql(replyQueue.name);
+				
 			} );
 		} );
 	} );
