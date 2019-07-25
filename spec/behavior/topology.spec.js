@@ -231,12 +231,7 @@ describe( "Topology", function() {
 			let replyQueueAfterReconnect;
 			before( function( done ) {
 				replyQueueAfterReconnect = undefined;
-				let countQueuesReady = 0;
 				topology.on( "replyQueue.ready", function( queue ) {
-					countQueuesReady ++;
-					if (countQueuesReady < 2) {
-						return;
-					}
 					replyQueueAfterReconnect = queue;
 				} );
 				topology.once( "bindings.completed", function( bindings ) {
