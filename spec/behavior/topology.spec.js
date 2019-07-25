@@ -158,7 +158,11 @@ describe( "Topology", function() {
 					replyQueue = queue;
 				} );
 				topology.once( "bindings.completed", function( bindings ) {
-					done();
+					q.raise( "defined" );
+					process.nextTick( function() {
+						q.raise( "subscribed" );
+						done();
+					} );
 				} );
 				conn.instance.raise( "reconnected" );
 			} );
@@ -227,9 +231,15 @@ describe( "Topology", function() {
 			let replyQueueAfterReconnect;
 			before( function( done ) {
 				replyQueueAfterReconnect = undefined;
-				topology.once( "replyQueue.ready", function( queue ) {
+				topology.on( "replyQueue.ready", function( queue ) {
 					replyQueueAfterReconnect = queue;
-					done();
+				} );
+				topology.once( "bindings.completed", function( bindings ) {
+					q.raise( "defined" );
+					process.nextTick( function() {
+						q.raise( "subscribed" );
+						done();
+					} );
 				} );
 				conn.instance.raise( "reconnected" );
 			} );

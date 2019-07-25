@@ -263,8 +263,10 @@ Topology.prototype.createReplyQueue = function() {
 
   const suffixedQueue = newSuffixedQueue( this.replyQueue, uuid.v4() );
 
-  var key = "queue:" + this.replyQueue.name;
+  var key = "queue:" + suffixedQueue.name;
   var promise;
+  delete this.channels[ `queue:${this.replyQueue.name}` ];
+
   if ( !this.channels[ key ] ) {
     promise = this.createPrimitive( Queue, "queue", suffixedQueue );
 
@@ -347,7 +349,7 @@ Topology.prototype.onReconnect = function() {
   log.info( "Reconnection to '%s' established - rebuilding topology", this.name );
   this.promises = {};
 
-  this.createReplyQueue().then( null, this.onReplyQueueFailed );
+  this.createReplyQueue().then( null, (err) => { return this.onReplyQueueFailed(err); } );
   this.createDefaultExchange().then( null, noop );
   const channelPromises = this.reconnectChannels();
   return Promise.all( channelPromises || [] )

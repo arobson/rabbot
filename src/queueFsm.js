@@ -104,10 +104,10 @@ var Factory = function( options, connection, topology, serializers, queueFn ) {
       this.subscriber = subscriber;
       this.releasers.push( releaser );
 
-      handlers.push( queue.channel.on( "acquired", function() {
-          this._define( queue );
-        }.bind( this ) )
-      );
+      handlers.push( queue.channel.on( "acquired", () => {
+        setTimeout(() => this._define( queue ), 5000);
+      }));
+
       handlers.push( queue.channel.on( "released", function() {
           this.handle( "released", queue );
         }.bind( this ) )
