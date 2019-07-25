@@ -1,6 +1,11 @@
 
 # @huf/rabbot - Changelog
 
+## 2.5.0 [2019-07-22]
+### Fixed
+* create new reply to queue name after reconnect
+* wait 5000 ms before redefine queue after queue create failure to avoid DoS on broker
+
 ## 2.4.1 [2019-07-22]
 ### Changed
 * Fix queue length of reply queue
