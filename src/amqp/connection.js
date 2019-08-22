@@ -135,9 +135,7 @@ const Adapter = function (parameters) {
   }
   if (caPaths) {
     const list = caPaths.split(',');
-    this.options.ca = list.map((caPath) => {
-      fs.existsSync(caPath) ? fs.readFileSync(caPath) : caPath; // eslint-disable-line no-unused-expressions
-    });
+    this.options.ca = list.map((caPath) => fs.existsSync(caPath) ? fs.readFileSync(caPath) : caPath);
   }
   if (useSSL) {
     this.protocol = 'amqps://';
