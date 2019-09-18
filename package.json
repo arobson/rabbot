@@ -25,7 +25,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "author": "Zach Lintz",
-  "contributors": 
+  "contributors": [
     {
       "name": "Parker Johansen",
       "email": "johansen.parker@gmail.com",
