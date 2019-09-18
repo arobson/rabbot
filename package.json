@@ -25,7 +25,12 @@
     "registry": "https://registry.npmjs.org/"
   },
   "author": "Zach Lintz",
-  "contributors": [
+  "contributors": 
+    {
+      "name": "Parker Johansen",
+      "email": "johansen.parker@gmail.com",
+      "url": "https://github.com/auroq"
+    },
     {
       "name": "Alex Robson",
       "email": "asrobson@gmail.com",
