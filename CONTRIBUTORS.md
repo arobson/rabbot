@@ -1,7 +1,8 @@
 ## Contributors
 
-These folks have all made significant or ongoing contributions to Rabbot:
+These folks have all made significant or ongoing contributions to the original [rabbot](https://github.com/arobson/rabbot) implementation this project is based on:
 
+ * [Alex Robson](http://github.com/arobson)
  * [Derick Bailey](http://derickbailey.com/)
  * [Doug Neiner](http://code.dougneiner.com)
  * [Brian Edgerton](https://github.com/brianedgerton)

@@ -7,7 +7,7 @@ This document covers:
  * connection level events
  * how connectivity affects publish and subscribe behaviors
 
-## `rabbot.addConnection ( options )`
+## `rabbit.addConnection ( options )`
 
 The call returns a promise that can be used to determine when the connection to the server has been established.
 
@@ -28,7 +28,7 @@ Options is a hash that can contain the following:
 | **replyQueue** | the name of the reply queue to use. | unique to the process |
 | **publishTimeout** | the default timeout in milliseconds for a publish call. | |
 | **replyTimeout** | the default timeout in milliseconds to wait for a reply. | |
-| **failAfter** | limits how long rabbot will attempt to connect (in seconds). | `60` |
+| **failAfter** | limits how long foofoomq will attempt to connect (in seconds). | `60` |
 | **retryLimit** | limits how many consecutive failed attempts rabbot will make. | `3` |
 | **waitMin** | how long to delay (in ms) before initial reconnect. | `0` |
 | **waitMax** | maximum delay (in ms) between retry attempts. | `5000` |

@@ -3,7 +3,11 @@
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
 <a name="2.1.0"></a>
-# [2.1.0](https://github.com/arobson/rabbot/compare/v1.1.0...v2.1.0) (2018-02-18)
+# [3.0.0](https://github.com/zlintz/foo-foo-mq)
+Initial take over of Rabbot with doc changes, matches 2.1.0 of rabbot 
+
+<a name="2.1.0"></a>
+# [2.1.0](https://github.com/zlintz/foo-foo-mq/compare/v1.1.0...v2.1.0) (2018-02-18)
 
 
 ### Bug Fixes

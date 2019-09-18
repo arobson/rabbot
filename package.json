@@ -1,12 +1,12 @@
 {
-  "name": "rabbot",
-  "version": "2.1.0",
+  "name": "foo-foo-mq",
+  "version": "3.0.0",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "engines": {
     "node": ">=6.0.0"
   },
-  "repository": "https://github.com/arobson/rabbot",
+  "repository": "https://github.com/zlintz/foo-foo-mq",
   "scripts": {
     "lint": "semistandard",
     "lint-fix": "semistandard --fix",
@@ -14,17 +14,17 @@
     "test": "./node_modules/mocha/bin/mocha spec/**/*.spec.js",
     "coverage": "nyc npm test",
     "release": "standard-version",
-    "build-image": "docker build -t rabbot .",
-    "create-container": "docker run -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot",
+    "build-image": "docker build -t foofoomq .",
+    "create-container": "docker run -d --name foofoomq -p 15672:15672 -p 5672:5672 foofoomq",
     "bootstrap-container": "npm run build-image && npm run create-container",
-    "start-container": "docker start rabbot",
-    "stop-container": "docker stop rabbot",
-    "remove-container": "docker rm -f rabbot"
+    "start-container": "docker start foofoomq",
+    "stop-container": "docker stop foofoomq",
+    "remove-container": "docker rm -f foofoomq"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
-  "author": "Alex Robson",
+  "author": "Zach Lintz",
   "contributors": [
     {
       "name": "Alex Robson",
