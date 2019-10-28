@@ -1,6 +1,6 @@
 {
   "name": "@huf/rabbot",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "engines": {
@@ -114,7 +114,7 @@
     "bole": "^3.0.2",
     "debug": "^4.1.1",
     "lodash": "^4.17.14",
-    "machina": "^2.0.0",
+    "machina": "4.0.2",
     "monologue.js": "^0.3.5",
     "postal": "^2.0.5",
     "uuid": "^3.3.2"

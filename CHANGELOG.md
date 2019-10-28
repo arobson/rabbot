@@ -1,6 +1,10 @@
 
 # @huf/rabbot - Changelog
 
+## 2.5.1 [2019-10-28]
+### Changed
+* PLSA-51 : update huf/rabbot dependencies - update the machina dependency.
+
 ## 2.5.0 [2019-07-22]
 ### Fixed
 * create new reply to queue name after reconnect
