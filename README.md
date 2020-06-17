@@ -6,6 +6,12 @@
 [![npm Downloads][downloads-image]][downloads-url]
 [![Dependencies][dependencies-image]][dependencies-url]
 
+## Deprecated
+
+As many have already noticed, I have not had the time to maintain this library in quite some time. I appreciate that [Zach Lintz](https://github.com/zlintz) has taken the initiative to fork this and continue maintenance over at [https://github.com/foo-foo-mq/foo-foo-mq]. I appreciate that Zach has made it possible for folks to continue using this approach. Thanks, Zach! :tada:
+
+## Summary
+
 This is a very opinionated abstraction over amqplib to help simplify the implementation of several messaging patterns on RabbitMQ.
 
 > !Important! - successful use of this library will require a conceptual knowledge of AMQP and an understanding of RabbitMQ.
