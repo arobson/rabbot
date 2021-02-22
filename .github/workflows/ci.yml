@@ -1,0 +1,22 @@
+name: CI for Rabbot
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+jobs:
+  build:
+    environment: build
+    runs-on: ubuntu-latest
+    name: install & test
+    steps:
+      - uses: actions/checkout@v2
+        name: git checkout
+      - uses: actions/setup-node@v1
+        name: setup node
+        with:
+          node-version: v14
+      - run: |
+          npm ci
+          npm test
+        name: run tests

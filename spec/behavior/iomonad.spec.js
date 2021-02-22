@@ -20,13 +20,13 @@ Resource.prototype.close = function () {
 
 describe('IO Monad', function () {
   describe('when resource is acquired successfully', function () {
-    var resource, acquiring, releasedHandle, opResult;
-    before(function (done) {
+    var resource, acquiring, opResult;
+    before(function () {
       var factory = function () {
         return Promise.resolve(new Resource());
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.emit('released');
       });
@@ -40,13 +40,11 @@ describe('IO Monad', function () {
           .then(function (result) {
             opResult = result;
             resource.release();
+            console.log('item', resource.item)
             resource.item.emit('close', 'closed');
           });
       });
-
-      releasedHandle = resource.on('released', function () {
-        done();
-      });
+      return resource.after('released')
     });
 
     it('should emit acquiring', function () {
@@ -54,7 +52,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in released state', function () {
-      resource.state.should.equal('released');
+      resource.currentState.should.equal('released');
     });
 
     it('should not retain handle to resource', function () {
@@ -66,7 +64,7 @@ describe('IO Monad', function () {
     });
 
     after(function () {
-      releasedHandle.off();
+      resource.cleanup()
     });
   });
 
@@ -100,7 +98,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in released state', function () {
-      resource.state.should.equal('released');
+      resource.currentState.should.equal('released');
     });
 
     it('should have retried acquisition', function () {
@@ -162,7 +160,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in released state', function () {
-      resource.state.should.equal('released');
+      resource.currentState.should.equal('released');
     });
 
     it('should have called resource rejection handler', function () {
@@ -224,7 +222,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in closed state', function () {
-      resource.state.should.equal('closed');
+      resource.currentState.should.equal('closed');
     });
 
     it('should not retain handle to resource', function () {
@@ -278,7 +276,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in released state', function () {
-      resource.state.should.equal('released');
+      resource.currentState.should.equal('released');
     });
 
     it('should not retain handle to resource', function () {
@@ -337,7 +335,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in a released state', function () {
-      resource.state.should.equal('released');
+      resource.currentState.should.equal('released');
     });
 
     it('should not retain handle to resource', function () {
@@ -401,7 +399,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in a released state', function () {
-      resource.state.should.equal('released');
+      resource.currentState.should.equal('released');
     });
 
     it('should not retain handle to resource', function () {

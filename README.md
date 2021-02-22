@@ -6,9 +6,11 @@
 [![npm Downloads][downloads-image]][downloads-url]
 [![Dependencies][dependencies-image]][dependencies-url]
 
-## Deprecated
+## Un-Deprecation
 
-As many have already noticed, I have not had the time to maintain this library in quite some time. I appreciate that [Zach Lintz](https://github.com/zlintz) has taken the initiative to fork this and continue maintenance over at [https://github.com/foo-foo-mq/foo-foo-mq]. I appreciate that Zach has made it possible for folks to continue using this approach. Thanks, Zach! :tada:
+I am pulling this old thing out of retirement and redesigning a lot of it.
+
+If you want something easy to work with that will likely get continued care and feeding, please see [Zach Lintz's](https://github.com/zlintz) fork over at [https://github.com/foo-foo-mq/foo-foo-mq]. I appreciate that Zach has made it possible for folks to continue using the original approach. Thanks, Zach! :tada:
 
 ## Summary
 
