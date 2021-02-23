@@ -86,6 +86,7 @@ describe('IO Monad', function () {
       });
 
       failedHandle = resource.on('failed', function (err) {
+        console.log('yeah, it failed')
         if (acquiring > 1) {
           error = err;
           resource.release();
@@ -93,6 +94,7 @@ describe('IO Monad', function () {
       });
 
       resource.once('released', function () {
+         console.log('sweet releases pieces')
         done();
       });
     });

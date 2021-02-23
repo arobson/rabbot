@@ -177,7 +177,6 @@ function getDefinition(options, type, factory, close) {
     states: {
       acquiring: {
         onEntry: function () {
-          console.log('entered acquiring')
           this._acquire();
         },
         blocked: { deferUntil: 'acquired' },
