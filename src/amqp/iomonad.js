@@ -43,7 +43,7 @@ let staticId = 0;
 function getDefinition(options, type, factory, close) {
   return {
     init: {
-      id: staticId++,
+      identifier: staticId++,
       default: 'acquiring',
       item: undefined,
       name: options.name,
@@ -55,9 +55,6 @@ function getDefinition(options, type, factory, close) {
     },
     api: {
       _acquire: function () {
-        process.nextTick(() => {
-          this.emit('acquiring');
-        });
         log.debug(`Attempting acquisition of ${type} '${this.name}'`);
         factory()
           .then(
@@ -91,29 +88,24 @@ function getDefinition(options, type, factory, close) {
           this.handle('released', info);
         });
         this.item.on('error', (err) => {
-          console.log('error', err)
           log.error(`Error emitted by ${type} '${this.name}' - '${err.stack}'`);
           this._clearEventHandlers();
-          this.emit('failed', err);
           this.handle('failed', err);
         });
         this.item
           .on('unblocked', () => {
             log.warn(`${type} '${this.name}' was unblocked by the broker`);
-            this.emit('unblocked');
             this.handle('unblocked');
           })
           .on('blocked', () => {
             log.warn(`${type} '${this.name}' was blocked by the broker`);
-            this.emit('blocked');
             this.handle('blocked');
           });
         this.next('acquired');
       },
       _onAcquisitionError: function (err) {
         log.error(`Acquisition of ${type} '${this.name}' failed with '${err}'`);
-        this.emit('failed', err);
-        this.handle('failed');
+        this.handle('failed', err);
       },
       _release: function () {
         if (this.retry) {
@@ -237,7 +229,6 @@ function getDefinition(options, type, factory, close) {
           if (this.retry) {
             clearTimeout(this.retry);
           }
-          this.emit('closed', this.closeReason);
           this.item = null;
           this.closeReason = null;
         },
@@ -283,7 +274,6 @@ function getDefinition(options, type, factory, close) {
       released: {
         onEntry: function () {
           this._finalize();
-          this.emit('released', this.id);
         },
         acquire: { next: 'acquiring' },
         operate: function (call) {

@@ -26,7 +26,7 @@ describe('IO Monad', function () {
         return Promise.resolve(new Resource());
       };
 
-      resource = Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = Monad({ name: 'acq-success' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.emit('released');
       });
@@ -71,22 +71,21 @@ describe('IO Monad', function () {
   describe('when resource is unavailable', function () {
     var resource, error;
     var acquiring = 0;
-    var acquiringHandle, failedHandle;
     before(function (done) {
       var factory = function () {
         return Promise.reject(new Error('because no one likes you'));
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = Monad({ name: 'unavailable' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.raise('closed', '');
       });
-      acquiringHandle = resource.on('acquiring', function () {
+
+      resource.on('acquiring', function () {
         acquiring++;
       });
 
-      failedHandle = resource.on('failed', function (err) {
-        console.log('yeah, it failed')
+      resource.on('failed', function (e, err) {
         if (acquiring > 1) {
           error = err;
           resource.release();
@@ -94,7 +93,7 @@ describe('IO Monad', function () {
       });
 
       resource.once('released', function () {
-         console.log('sweet releases pieces')
+        console.log('sweet releases pieces')
         done();
       });
     });
@@ -116,8 +115,7 @@ describe('IO Monad', function () {
     });
 
     after(function () {
-      acquiringHandle.off();
-      failedHandle.off();
+      resource.cleanup()
     });
   });
 
@@ -130,7 +128,7 @@ describe('IO Monad', function () {
         return Promise.resolve(new Resource());
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = Monad({ name: 'error-emitter' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.emit('released');
       });
@@ -193,7 +191,7 @@ describe('IO Monad', function () {
         });
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = Monad({ name: 'remote-close' }, 'resource', factory, Resource, (x) => {
         x.close();
       });
 
@@ -250,7 +248,7 @@ describe('IO Monad', function () {
         });
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = Monad({ name: 'local-release' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.emit('released');
       });
@@ -304,7 +302,7 @@ describe('IO Monad', function () {
         });
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = Monad({ name: 'released' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.emit('close', 'closed');
       });
@@ -363,7 +361,7 @@ describe('IO Monad', function () {
         });
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = Monad({ name: 'closed' }, 'resource', factory, Resource, (x) => {
         x.close();
         x.emit('close', 'you did this');
       });
@@ -427,7 +425,7 @@ describe('IO Monad', function () {
         return Promise.resolve(new Resource());
       };
 
-      resource = new Monad(options, 'resource', factory, Resource, (x) => {
+      resource = Monad(options, 'custom', factory, Resource, (x) => {
         x.close();
         x.emit('released');
       });
