@@ -1,8 +1,8 @@
-const defer = require('../defer');
-const info = require('../info');
-const exLog = require('../log.js')('rabbot.exchange');
-const topLog = require('../log.js')('rabbot.topology');
-const format = require('util').format;
+const defer = require('../defer')
+const info = require('../info')
+const exLog = require('../log.js')('rabbot.exchange')
+const topLog = require('../log.js')('rabbot.topology')
+const format = require('util').format
 
 /* log
   * `rabbot.exchange`
@@ -16,67 +16,67 @@ const format = require('util').format;
       * exchange declaration
 */
 
-const DIRECT_REPLY_TO = 'amq.rabbitmq.reply-to';
-const DIRECT_REGEX = /^rabbit(mq)?$/i;
+const DIRECT_REPLY_TO = 'amq.rabbitmq.reply-to'
+const DIRECT_REGEX = /^rabbit(mq)?$/i
 
 function aliasOptions (options, aliases, ...omit) {
-  const keys = Object.keys(options);
+  const keys = Object.keys(options)
   return keys.reduce((result, key) => {
-    const alias = aliases[ key ] || key;
+    const alias = aliases[key] || key
     if (omit.indexOf(key) < 0) {
-      result[ alias ] = options[ key ];
+      result[alias] = options[key]
     }
-    return result;
-  }, {});
+    return result
+  }, {})
 }
 
 function define (channel, options, connectionName) {
-  var valid = aliasOptions(options, {
+  const valid = aliasOptions(options, {
     alternate: 'alternateExchange'
-  }, 'limit', 'persistent', 'publishTimeout');
+  }, 'limit', 'persistent', 'publishTimeout')
   topLog.info("Declaring %s exchange '%s' on connection '%s' with the options: %s",
     options.type,
     options.name,
     connectionName,
     JSON.stringify(valid)
-  );
+  )
   if (options.name === '') {
-    return Promise.resolve(true);
+    return Promise.resolve(true)
   } else if (options.passive) {
-    return channel.checkExchange(options.name);
+    return channel.checkExchange(options.name)
   } else {
-    return channel.assertExchange(options.name, options.type, valid);
+    return channel.assertExchange(options.name, options.type, valid)
   }
 }
 
 function getContentType (message) {
   if (message.contentType) {
-    return message.contentType;
+    return message.contentType
   } else if (typeof message.body === 'string') {
-    return 'text/plain';
+    return 'text/plain'
   } else if (typeof message.body === 'object' && !Buffer.isBuffer(message.body)) {
-    return 'application/json';
+    return 'application/json'
   } else {
-    return 'application/octet-stream';
+    return 'application/octet-stream'
   }
 }
 
 function publish (channel, options, topology, log, serializers, message) {
-  var channelName = options.name;
-  var type = options.type;
-  var baseHeaders = {
-    'CorrelationId': message.correlationId
-  };
-  message.headers = Object.assign(baseHeaders, message.headers);
-  var contentType = getContentType(message);
-  var serializer = serializers[ contentType ];
-  if (!serializer) {
-    var errMessage = format("Failed to publish message with contentType '%s' - no serializer defined", contentType);
-    exLog.error(errMessage);
-    return Promise.reject(new Error(errMessage));
+  const channelName = options.name
+  const type = options.type
+  const baseHeaders = {
+    CorrelationId: message.correlationId
   }
-  var payload = serializer.serialize(message.body);
-  var publishOptions = {
+  message.headers = Object.assign(baseHeaders, message.headers)
+  const contentType = getContentType(message)
+  const serializer = serializers[contentType]
+  if (!serializer) {
+    const errMessage = format("Failed to publish message with contentType '%s' - no serializer defined", contentType)
+    exLog.error(errMessage)
+    return Promise.reject(new Error(errMessage))
+  }
+  const payload = serializer.serialize(message.body)
+  const publishOptions = {
     type: message.type || '',
     contentType: contentType,
     contentEncoding: 'utf8',
@@ -88,18 +88,18 @@ function publish (channel, options, topology, log, serializers, message) {
     headers: message.headers || {},
     expiration: message.expiresAfter || undefined,
     mandatory: message.mandatory || false
-  };
+  }
   if (publishOptions.replyTo === DIRECT_REPLY_TO || DIRECT_REGEX.test(publishOptions.replyTo)) {
-    publishOptions.headers[ 'direct-reply-to' ] = 'true';
+    publishOptions.headers['direct-reply-to'] = 'true'
   }
   if (!options.noConfirm && !message.sequenceNo) {
-    log.add(message);
+    log.add(message)
   }
   if (options.persistent || message.persistent) {
-    publishOptions.persistent = true;
+    publishOptions.persistent = true
   }
 
-  var effectiveKey = message.routingKey === '' ? '' : message.routingKey || publishOptions.type;
+  const effectiveKey = message.routingKey === '' ? '' : message.routingKey || publishOptions.type
   exLog.debug("Publishing message ( type: '%s' topic: '%s', sequence: '%s', correlation: '%s', replyTo: '%s' ) to %s exchange '%s' on connection '%s'",
     publishOptions.type,
     effectiveKey,
@@ -108,16 +108,16 @@ function publish (channel, options, topology, log, serializers, message) {
     JSON.stringify(publishOptions),
     type,
     channelName,
-    topology.connection.name);
+    topology.connection.name)
 
   function onRejected (err) {
-    log.remove(message);
-    throw err;
+    log.remove(message)
+    throw err
   }
 
   function onConfirmed (sequence) {
-    log.remove(message);
-    return sequence;
+    log.remove(message)
+    return sequence
   }
 
   if (options.noConfirm) {
@@ -126,11 +126,11 @@ function publish (channel, options, topology, log, serializers, message) {
       effectiveKey,
       payload,
       publishOptions
-    );
-    return Promise.resolve();
+    )
+    return Promise.resolve()
   } else {
-    var deferred = defer();
-    var promise = deferred.promise;
+    const deferred = defer()
+    const promise = deferred.promise
 
     channel.publish(
       channelName,
@@ -139,14 +139,14 @@ function publish (channel, options, topology, log, serializers, message) {
       publishOptions,
       function (err, i) {
         if (err) {
-          deferred.reject(err);
+          deferred.reject(err)
         } else {
-          deferred.resolve(i);
+          deferred.resolve(i)
         }
       }
-    );
+    )
     return promise
-      .then(onConfirmed, onRejected);
+      .then(onConfirmed, onRejected)
   }
 }
 
@@ -158,12 +158,12 @@ module.exports = function (options, topology, publishLog, serializers) {
         define: define.bind(undefined, channel, options, topology.connection.name),
         release: function () {
           if (channel) {
-            channel.release();
-            channel = undefined;
+            channel.release()
+            channel = undefined
           }
-          return Promise.resolve(true);
+          return Promise.resolve(true)
         },
         publish: publish.bind(undefined, channel, options, topology, publishLog, serializers)
-      };
-    });
-};
+      }
+    })
+}

@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
 /*
   In this test it is worth noting the setup and the topics
@@ -12,7 +12,7 @@ const config = require('./configuration');
   this works when in use in rabbot.
 */
 describe('Topic Exchange With Alternate Bindings', function () {
-  var harness;
+  let harness
 
   before(function (done) {
     rabbit.configure({
@@ -57,32 +57,32 @@ describe('Topic Exchange With Alternate Bindings', function () {
       ]
     }).then(() => {
       // this message only arrives via the alternate
-      rabbit.publish('rabbot-ex.topic', { type: 'topic', routingKey: 'this.is.a.test', body: 'broadcast' });
+      rabbit.publish('rabbot-ex.topic', { type: 'topic', routingKey: 'this.is.a.test', body: 'broadcast' })
       // this message is deliver by the topic route
-      rabbit.publish('rabbot-ex.topic', { type: 'topic', routingKey: 'this.is.sparta', body: 'leonidas' });
+      rabbit.publish('rabbot-ex.topic', { type: 'topic', routingKey: 'this.is.sparta', body: 'leonidas' })
       // this message only arrives via the alternate
-      rabbit.publish('rabbot-ex.topic', { type: 'topic', routingKey: 'a.test.this.is', body: 'yoda' });
-    });
+      rabbit.publish('rabbot-ex.topic', { type: 'topic', routingKey: 'a.test.this.is', body: 'yoda' })
+    })
 
-    harness = harnessFactory(rabbit, done, 3);
-    harness.handle('topic');
-  });
+    harness = harnessFactory(rabbit, done, 3)
+    harness.handle('topic')
+  })
 
   it('should receive matched an unmatched topics due to alternate exchange', function () {
     const results = harness.received.map((m) => ({
       body: m.body,
       key: m.fields.routingKey,
       queue: m.queue
-    }));
+    }))
     sortBy(results, 'body').should.eql(
       [
         { body: 'broadcast', key: 'this.is.a.test', queue: 'rabbot-q.alternate' },
         { body: 'leonidas', key: 'this.is.sparta', queue: 'rabbot-q.topic' },
         { body: 'yoda', key: 'a.test.this.is', queue: 'rabbot-q.alternate' }
-      ]);
-  });
+      ])
+  })
 
   after(function () {
-    return harness.clean('default');
-  });
-});
+    return harness.clean('default')
+  })
+})

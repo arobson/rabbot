@@ -1,40 +1,40 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
+require('../setup')
+const rabbit = require('../../src/index.js')
 
 describe('Bad Connection', function () {
-  const noop = () => {};
+  const noop = () => {}
   describe('when attempting a connection', function () {
-    var error;
+    let error
     before((done) => {
       rabbit.once('#.connection.failed', (err) => {
-        error = err;
-        done();
-      });
+        error = err
+        done()
+      })
 
       rabbit.addConnection({
         name: 'silly',
         server: 'shfifty-five.gov',
         publishTimeout: 50,
         timeout: 100
-      }).catch(noop);
+      }).catch(noop)
 
-      rabbit.addExchange({ name: 'silly-ex' }, 'silly').then(null, noop);
-    });
+      rabbit.addExchange({ name: 'silly-ex' }, 'silly').then(null, noop)
+    })
 
     it('should fail to connect', () =>
       error.should.equal('No endpoints could be reached')
-    );
+    )
 
     it('should reject publish after timeout', () =>
       rabbit.publish('silly-ex', { body: 'test' }, 'silly')
         .should.be.rejectedWith('No endpoints could be reached')
-    );
+    )
 
-    after(() => rabbit.close('silly', true));
-  });
+    after(() => rabbit.close('silly', true))
+  })
 
   describe('when configuring against a bad connection', function () {
-    var config;
+    let config
     before(() => {
       config = {
         connection: {
@@ -63,16 +63,16 @@ describe('Bad Connection', function () {
             keys: ''
           }
         ]
-      };
-    });
+      }
+    })
 
     it('should fail to connect', function () {
       return rabbit.configure(config)
-        .should.be.rejectedWith('No endpoints could be reached');
-    });
+        .should.be.rejectedWith('No endpoints could be reached')
+    })
 
     after(function () {
-      return rabbit.close('silly2', true);
-    });
-  });
-});
+      return rabbit.close('silly2', true)
+    })
+  })
+})

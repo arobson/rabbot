@@ -1,50 +1,50 @@
-const crypto = require('crypto');
-const os = require('os');
-const format = require('util').format;
-const self = require('../package.json');
+const crypto = require('crypto')
+const os = require('os')
+const format = require('util').format
+const self = require('../package.json')
 
-const host = os.hostname();
-const platform = os.platform();
-const architecture = os.arch();
-const title = process.title;
-const pid = process.pid;
-const consumerId = format('%s.%s.%s', host, title, pid);
-const consistentId = format('%s.%s', host, title);
-const toBE = os.endianness() === 'BE';
+const host = os.hostname()
+const platform = os.platform()
+const architecture = os.arch()
+const title = process.title
+const pid = process.pid
+const consumerId = format('%s.%s.%s', host, title, pid)
+const consistentId = format('%s.%s', host, title)
+const toBE = os.endianness() === 'BE'
 
 function createConsumerTag (queueName) {
   if (queueName.indexOf(consumerId) === 0) {
-    return queueName;
+    return queueName
   } else {
-    return format('%s.%s', consumerId, queueName);
+    return format('%s.%s', consumerId, queueName)
   }
 }
 
 function hash (id) {
-  var bytes = crypto.createHash('md4').update(id).digest();
-  var num = toBE ? bytes.readdInt16BE() : bytes.readInt16LE();
-  return num < 0 ? Math.abs(num) + 0xffffffff : num;
+  const bytes = crypto.createHash('md4').update(id).digest()
+  const num = toBE ? bytes.readdInt16BE() : bytes.readInt16LE()
+  return num < 0 ? Math.abs(num) + 0xffffffff : num
 }
 
 // not great, but good enough for our purposes
 function createConsumerHash () {
-  return hash(consumerId);
+  return hash(consumerId)
 }
 
 function createConsistentHash () {
-  return hash(consistentId);
+  return hash(consistentId)
 }
 
 function getHostInfo () {
-  return format('%s (%s %s)', host, platform, architecture);
+  return format('%s (%s %s)', host, platform, architecture)
 }
 
 function getProcessInfo () {
-  return format('%s (pid: %d)', title, pid);
+  return format('%s (pid: %d)', title, pid)
 }
 
 function getLibInfo () {
-  return format('rabbot - %s', self.version);
+  return format('rabbot - %s', self.version)
 }
 
 module.exports = {
@@ -55,4 +55,4 @@ module.exports = {
   createTag: createConsumerTag,
   createHash: createConsumerHash,
   createConsistentHash: createConsistentHash
-};
+}

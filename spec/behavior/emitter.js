@@ -1,30 +1,32 @@
 module.exports = (name) => {
-  var handlers = {};
+  let handlers = {}
 
   function raise (ev) {
-    if (handlers[ ev ]) {
-      var args = Array.prototype.slice.call(arguments, 1);
-      handlers[ ev ].forEach(function (handler) {
+    if (handlers[ev]) {
+      const args = Array.prototype.slice.call(arguments, 1)
+      handlers[ev].forEach(function (handler) {
         if (handler) {
-          handler.apply(undefined, args);
+          handler.apply(undefined, args)
         }
-      });
+      })
     }
   }
 
   function on (ev, handle) {
-    if (handlers[ ev ]) {
-      handlers[ ev ].push(handle);
+    if (handlers[ev]) {
+      handlers[ev].push(handle)
     } else {
-      handlers[ ev ] = [ handle ];
+      handlers[ev] = [handle]
     }
-    return { unsubscribe: function (h) {
-      handlers[ ev ].splice(handlers[ ev ].indexOf(h || handle)); // jshint ignore:line
-    } };
+    return {
+      unsubscribe: function (h) {
+        handlers[ev].splice(handlers[ev].indexOf(h || handle)) // jshint ignore:line
+      }
+    }
   }
 
   function reset () {
-    handlers = {};
+    handlers = {}
   }
 
   return {
@@ -34,5 +36,5 @@ module.exports = (name) => {
     once: on,
     raise: raise,
     reset: reset
-  };
-};
+  }
+}

@@ -1,10 +1,10 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
 describe('Batch Acknowledgments Disabled (noBatch: true)', function () {
-  var messagesToSend;
-  var harness;
+  let messagesToSend
+  let harness
 
   before(function (done) {
     rabbit.configure({
@@ -32,32 +32,32 @@ describe('Batch Acknowledgments Disabled (noBatch: true)', function () {
         }
       ]
     }).then(() => {
-      messagesToSend = 10;
-      harness = harnessFactory(rabbit, done, messagesToSend);
-      var messageCount = 0;
+      messagesToSend = 10
+      harness = harnessFactory(rabbit, done, messagesToSend)
+      let messageCount = 0
 
       harness.handle('no.batch', (message) => {
         if (messageCount > 0) {
-          message.ack();
+          message.ack()
         }
-        messageCount += 1;
-      });
+        messageCount += 1
+      })
 
       for (let i = 0; i < messagesToSend; i++) {
         rabbit.publish('rabbot-ex.no-batch', {
           type: 'no.batch',
           body: 'message ' + i,
           routingKey: ''
-        });
+        })
       }
-    });
-  });
+    })
+  })
 
   it('should receive all messages', function () {
-    harness.received.length.should.equal(messagesToSend);
-  });
+    harness.received.length.should.equal(messagesToSend)
+  })
 
   after(function () {
-    return harness.clean('default');
-  });
-});
+    return harness.clean('default')
+  })
+})

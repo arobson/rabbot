@@ -1,16 +1,16 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
 /*
  Demonstrates how bulk publish API works
  in both formats.
 */
 describe('Bulk Publish', function () {
-  var harness;
+  let harness
 
   before(function (done) {
-    this.timeout(10000);
+    this.timeout(10000)
     rabbit.configure({
       connection: config.connection,
       exchanges: [
@@ -64,9 +64,9 @@ describe('Bulk Publish', function () {
           keys: ''
         }
       ]
-    });
-    harness = harnessFactory(rabbit, done, 18);
-    harness.handle('bulk');
+    })
+    harness = harnessFactory(rabbit, done, 18)
+    harness.handle('bulk')
     rabbit.bulkPublish({
       'rabbot-ex.direct-1': [
         { type: 'bulk', routingKey: '', body: 1 },
@@ -83,7 +83,7 @@ describe('Bulk Publish', function () {
         { type: 'bulk', routingKey: '', body: 8 },
         { type: 'bulk', routingKey: '', body: 9 }
       ]
-    });
+    })
 
     rabbit.bulkPublish([
       { type: 'bulk', routingKey: '', body: 10, exchange: 'rabbot-ex.direct-1' },
@@ -95,13 +95,13 @@ describe('Bulk Publish', function () {
       { type: 'bulk', routingKey: '', body: 16, exchange: 'rabbot-ex.direct-3' },
       { type: 'bulk', routingKey: '', body: 17, exchange: 'rabbot-ex.direct-3' },
       { type: 'bulk', routingKey: '', body: 18, exchange: 'rabbot-ex.direct-3' }
-    ]);
-  });
+    ])
+  })
 
   it('should bulk publish all messages successfully', function () {
     const results = harness.received.map((m) => (
       parseInt(m.body)
-    ));
+    ))
     results.sort((a, b) => a - b).should.eql(
       [
         1,
@@ -122,10 +122,10 @@ describe('Bulk Publish', function () {
         16,
         17,
         18
-      ]);
-  });
+      ])
+  })
 
   after(function () {
-    return harness.clean('default');
-  });
-});
+    return harness.clean('default')
+  })
+})

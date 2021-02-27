@@ -1,4 +1,4 @@
-const log = require('./log')('rabbot.configuration');
+const log = require('./log')('rabbot.configuration')
 
 /* log
   * `rabbot.configuration`
@@ -8,23 +8,23 @@ const log = require('./log')('rabbot.configuration');
 
 module.exports = function (Broker) {
   Broker.prototype.configure = function (config) {
-    const emit = this.emit.bind(this);
-    const configName = config.name || 'default';
-    this.configurations[ configName ] = config;
-    this.configuring[ configName ] = new Promise(function (resolve, reject) {
+    const emit = this.emit.bind(this)
+    const configName = config.name || 'default'
+    this.configurations[configName] = config
+    this.configuring[configName] = new Promise(function (resolve, reject) {
       function onExchangeError (connection, err) {
-        log.error('Configuration of %s failed due to an error in one or more exchange settings: %s', connection.name, err);
-        reject(err);
+        log.error('Configuration of %s failed due to an error in one or more exchange settings: %s', connection.name, err)
+        reject(err)
       }
 
       function onQueueError (connection, err) {
-        log.error('Configuration of %s failed due to an error in one or more queue settings: %s', connection.name, err.stack);
-        reject(err);
+        log.error('Configuration of %s failed due to an error in one or more queue settings: %s', connection.name, err.stack)
+        reject(err)
       }
 
       function onBindingError (connection, err) {
-        log.error('Configuration of %s failed due to an error in one or more bindings: %s', connection.name, err.stack);
-        reject(err);
+        log.error('Configuration of %s failed due to an error in one or more bindings: %s', connection.name, err.stack)
+        reject(err)
       }
 
       function createExchanges (connection) {
@@ -32,7 +32,7 @@ module.exports = function (Broker) {
           .then(
             createQueues.bind(null, connection),
             onExchangeError.bind(null, connection)
-          );
+          )
       }
 
       function createQueues (connection) {
@@ -40,7 +40,7 @@ module.exports = function (Broker) {
           .then(
             createBindings.bind(null, connection),
             onQueueError.bind(null, connection)
-          );
+          )
       }
 
       function createBindings (connection) {
@@ -48,23 +48,23 @@ module.exports = function (Broker) {
           .then(
             finish.bind(null, connection),
             onBindingError.bind(null, connection)
-          );
+          )
       }
 
       function finish (connection) {
-        emit(connection.name + '.connection.configured', connection);
-        resolve();
+        emit(connection.name + '.connection.configured', connection)
+        resolve()
       }
 
       this.addConnection(config.connection)
         .then(
           function (connection) {
-            createExchanges(connection);
-            return connection;
+            createExchanges(connection)
+            return connection
           },
           reject
-        );
-    }.bind(this));
-    return this.configuring[ configName ];
-  };
-};
+        )
+    }.bind(this))
+    return this.configuring[configName]
+  }
+}

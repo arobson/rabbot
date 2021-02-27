@@ -1,12 +1,12 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
 /*
   Demonstrates handling Messages With No Type Provided
 */
 describe('No Type Handling', function () {
-  var harness;
+  let harness
 
   before(function (done) {
     rabbit.configure({
@@ -35,11 +35,11 @@ describe('No Type Handling', function () {
         }
       ]
     }).then(() => {
-      harness = harnessFactory(rabbit, done, 1);
-      harness.handle('#.typeless');
-      rabbit.publish('rabbot-ex.topic', { type: '', routingKey: 'this.is.typeless', body: 'one' });
-    });
-  });
+      harness = harnessFactory(rabbit, done, 1)
+      harness.handle('#.typeless')
+      rabbit.publish('rabbot-ex.topic', { type: '', routingKey: 'this.is.typeless', body: 'one' })
+    })
+  })
 
   it('should handle messages based on the message topic instead of type', function () {
     const results = harness.received.map((m) =>
@@ -47,14 +47,14 @@ describe('No Type Handling', function () {
         body: m.body,
         key: m.fields.routingKey
       })
-    );
+    )
     sortBy(results, 'body').should.eql(
       [
         { body: 'one', key: 'this.is.typeless' }
-      ]);
-  });
+      ])
+  })
 
   after(function () {
-    return harness.clean('default');
-  });
-});
+    return harness.clean('default')
+  })
+})

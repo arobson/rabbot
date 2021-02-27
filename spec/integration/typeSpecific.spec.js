@@ -1,12 +1,12 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
 /*
   Demonstrates handling by type specification from *any* queue
 */
 describe('Type Handling On Any Queue', function () {
-  var harness;
+  let harness
 
   before(function (done) {
     rabbit.configure({
@@ -46,14 +46,14 @@ describe('Type Handling On Any Queue', function () {
         }
       ]
     }).then(() => {
-      harness = harnessFactory(rabbit, done, 2);
-      harness.handle('Type.*');
+      harness = harnessFactory(rabbit, done, 2)
+      harness.handle('Type.*')
       Promise.all([
         rabbit.publish('rabbot-ex.topic', { type: 'Type.A', body: 'one' }),
         rabbit.publish('rabbot-ex.topic', { type: 'Type.B', body: 'two' })
-      ]);
-    });
-  });
+      ])
+    })
+  })
 
   it('should handle messages based on the message type', function () {
     const results = harness.received.map((m) =>
@@ -61,15 +61,15 @@ describe('Type Handling On Any Queue', function () {
         body: m.body,
         key: m.fields.routingKey
       })
-    );
+    )
     sortBy(results, 'body').should.eql(
       [
         { body: 'one', key: 'Type.A' },
         { body: 'two', key: 'Type.B' }
-      ]);
-  });
+      ])
+  })
 
   after(function () {
-    return harness.clean('default');
-  });
-});
+    return harness.clean('default')
+  })
+})

@@ -5,7 +5,7 @@ module.exports = function (rabbit) {
     connection: {
       user: 'guest',
       pass: 'guest',
-      server: [ '127.0.0.1' ],
+      server: ['127.0.0.1'],
       port: 5672,
       vhost: '%2f',
       timeout: 1000,
@@ -14,15 +14,15 @@ module.exports = function (rabbit) {
     },
 
     // define the exchanges
-    exchanges: [ {
+    exchanges: [{
       name: 'topic-example-x',
       type: 'topic',
       autoDelete: true
-    } ],
+    }],
 
     // setup the queues, only subscribing to the one this service
     // will consume messages from
-    queues: [ {
+    queues: [{
       name: 'topic-example-left-q',
       autoDelete: true,
       subscribe: true
@@ -30,19 +30,19 @@ module.exports = function (rabbit) {
       name: 'topic-example-right-q',
       autoDelete: true,
       subscribe: true
-    } ],
+    }],
 
     // binds exchanges and queues to one another
-    bindings: [ {
+    bindings: [{
       exchange: 'topic-example-x',
       target: 'topic-example-left-q',
-      keys: [ 'left' ]
+      keys: ['left']
     }, {
       exchange: 'topic-example-x',
       target: 'topic-example-right-q',
-      keys: [ 'right' ]
-    } ]
+      keys: ['right']
+    }]
   }).then(null, function (err) {
-    console.error('Could not connect or configure:', err);
-  });
-};
+    console.error('Could not connect or configure:', err)
+  })
+}

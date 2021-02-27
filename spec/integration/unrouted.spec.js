@@ -1,9 +1,9 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
 describe('Unroutable Messages - Alternate Exchanges', function () {
-  var harness;
+  let harness
 
   before(function (done) {
     rabbit.configure({
@@ -36,29 +36,29 @@ describe('Unroutable Messages - Alternate Exchanges', function () {
         }
       ]
     }).then(() => {
-      rabbit.publish('rabbot-ex.deadend', { type: 'deadend', routingKey: 'empty', body: 'one' });
-      rabbit.publish('rabbot-ex.deadend', { type: 'deadend', routingKey: 'nothing', body: 'two' });
-      rabbit.publish('rabbot-ex.deadend', { type: 'deadend', routingKey: 'de.nada', body: 'three' });
-    });
+      rabbit.publish('rabbot-ex.deadend', { type: 'deadend', routingKey: 'empty', body: 'one' })
+      rabbit.publish('rabbot-ex.deadend', { type: 'deadend', routingKey: 'nothing', body: 'two' })
+      rabbit.publish('rabbot-ex.deadend', { type: 'deadend', routingKey: 'de.nada', body: 'three' })
+    })
 
-    harness = harnessFactory(rabbit, done, 3);
-    harness.handle('deadend');
-  });
+    harness = harnessFactory(rabbit, done, 3)
+    harness.handle('deadend')
+  })
 
   it('should capture all unrouted messages via the alternate exchange and queue', function () {
     const results = harness.received.map((m) => ({
       body: m.body,
       key: m.fields.routingKey
-    }));
+    }))
     sortBy(results, 'body').should.eql(
       [
         { body: 'one', key: 'empty' },
         { body: 'three', key: 'de.nada' },
         { body: 'two', key: 'nothing' }
-      ]);
-  });
+      ])
+  })
 
   after(function () {
-    return harness.clean('default');
-  });
-});
+    return harness.clean('default')
+  })
+})

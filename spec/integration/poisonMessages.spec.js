@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
 /*
   When garbage is in the queue from a publisher
@@ -8,7 +8,7 @@ const config = require('./configuration');
   message instead of melting down the process
 */
 describe('Invalid Message Format', function () {
-  var harness;
+  let harness
 
   before(function (done) {
     rabbit.configure({
@@ -58,19 +58,19 @@ describe('Invalid Message Format', function () {
         routingKey: '',
         body: 'lol{":parse this',
         contentType: 'application/json'
-      });
-    });
+      })
+    })
 
-    harness = harnessFactory(rabbit, done, 1);
-    harness.handle('yuck.quarantined');
-  });
+    harness = harnessFactory(rabbit, done, 1)
+    harness.handle('yuck.quarantined')
+  })
 
   it('should have quarantined messages in unhandled', function () {
     const results = harness.received.map((m) => ({
       body: m.body.toString(),
       key: m.fields.routingKey,
       quarantined: m.quarantined
-    }));
+    }))
     sortBy(results, 'body').should.eql(
       [
         {
@@ -79,10 +79,10 @@ describe('Invalid Message Format', function () {
           quarantined: true
         }
       ]
-    );
-  });
+    )
+  })
 
   after(function () {
-    return harness.clean('default');
-  });
-});
+    return harness.clean('default')
+  })
+})

@@ -1,14 +1,14 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
-describe(`Direct Reply Queue (replyQueue: 'rabbit')`, function () {
-  var messagesToSend;
-  var harness;
-  var replies = [];
+describe('Direct Reply Queue (replyQueue: \'rabbit\')', function () {
+  let messagesToSend
+  let harness
+  const replies = []
 
   before(function (done) {
-    harness = harnessFactory(rabbit, () => {}, messagesToSend);
+    harness = harnessFactory(rabbit, () => {}, messagesToSend)
     rabbit.configure({
       connection: config.directReplyQueue,
       exchanges: [
@@ -33,11 +33,11 @@ describe(`Direct Reply Queue (replyQueue: 'rabbit')`, function () {
         }
       ]
     }).then(() => {
-      messagesToSend = 3;
+      messagesToSend = 3
       harness.handle('no.replyQueue', (req) => {
-        req.reply({ reply: req.body.message });
-      });
-      for (var i = 0; i < messagesToSend; i++) {
+        req.reply({ reply: req.body.message })
+      })
+      for (let i = 0; i < messagesToSend; i++) {
         rabbit.request('noreply-ex.direct', {
           connectionName: 'directReplyQueue',
           type: 'no.replyQueue',
@@ -46,23 +46,23 @@ describe(`Direct Reply Queue (replyQueue: 'rabbit')`, function () {
         })
           .then(
             r => {
-              replies.push(r.body.reply);
-              r.ack();
+              replies.push(r.body.reply)
+              r.ack()
               if (replies.length >= messagesToSend) {
-                done();
+                done()
               }
             }
-          );
+          )
       }
-    });
-  });
+    })
+  })
 
   it('should receive all replies', function () {
-    harness.received.length.should.equal(messagesToSend);
-    replies.should.eql([0, 1, 2]);
-  });
+    harness.received.length.should.equal(messagesToSend)
+    replies.should.eql([0, 1, 2])
+  })
 
   after(function () {
-    return harness.clean('directReplyQueue');
-  });
-});
+    return harness.clean('directReplyQueue')
+  })
+})

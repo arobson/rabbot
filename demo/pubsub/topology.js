@@ -4,7 +4,7 @@ module.exports = function (rabbit, subscribeTo) {
     connection: {
       user: 'guest',
       pass: 'guest',
-      server: [ '127.0.0.1' ],
+      server: ['127.0.0.1'],
       port: 5672,
       vhost: '%2f',
       publishTimeout: 100,
@@ -49,7 +49,7 @@ module.exports = function (rabbit, subscribeTo) {
       {
         exchange: 'wascally-pubsub-requests-x',
         target: 'wascally-pubsub-requests-q',
-        keys: [ '' ]
+        keys: ['']
       },
       {
         exchange: 'wascally-pubsub-messages-x',
@@ -57,5 +57,5 @@ module.exports = function (rabbit, subscribeTo) {
         keys: []
       }
     ]
-  }).then(null, function () {});
-};
+  }).then(null, function () {})
+}

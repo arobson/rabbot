@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
 /*
   Demonstrates handling types based on wild card matching.
@@ -8,11 +8,11 @@ const config = require('./configuration');
   provided.
 */
 describe('Wild Card Type Handling', function () {
-  var harness;
+  let harness
 
   before(function () {
-    harness = harnessFactory(rabbit, () => {}, 3);
-    harness.handle('#.a');
+    harness = harnessFactory(rabbit, () => {}, 3)
+    harness.handle('#.a')
     return rabbit.configure({
       connection: config.connection,
       exchanges: [
@@ -45,8 +45,8 @@ describe('Wild Card Type Handling', function () {
         rabbit.publish('rabbot-ex.topic', { type: 'three-b.a', routingKey: 'this.is.three', body: 'three' }),
         rabbit.publish('rabbot-ex.topic', { type: 'a.four', routingKey: 'this.is.four', body: 'four' })
       ])
-    );
-  });
+    )
+  })
 
   it('should handle all message types ending in "a"', function () {
     const results = harness.received.map((m) =>
@@ -54,21 +54,21 @@ describe('Wild Card Type Handling', function () {
         body: m.body,
         key: m.fields.routingKey
       })
-    );
+    )
     sortBy(results, 'body').should.eql(
       [
         { body: 'one', key: 'this.is.one' },
         { body: 'three', key: 'this.is.three' },
         { body: 'two', key: 'this.is.two' }
-      ]);
-  });
+      ])
+  })
 
   it("should not handle message types that don't match the pattern", function () {
-    harness.unhandled.length.should.equal(1);
-    harness.unhandled[ 0 ].body.should.eql('four');
-  });
+    harness.unhandled.length.should.equal(1)
+    harness.unhandled[0].body.should.eql('four')
+  })
 
   after(function () {
-    return harness.clean('default');
-  });
-});
+    return harness.clean('default')
+  })
+})

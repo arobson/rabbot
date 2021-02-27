@@ -28,4 +28,4 @@ module.exports = {
     vhost: '%2f',
     replyQueue: 'rabbit'
   }
-};
+}

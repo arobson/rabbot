@@ -1,461 +1,449 @@
-require('../setup.js');
-var Monad = require('../../src/amqp/iomonad.js');
-var EventEmitter = require('events');
-var util = require('util');
+require('../setup.js')
+const Monad = require('../../src/amqp/iomonad.js')
+const EventEmitter = require('events')
+const util = require('util')
 
-var Resource = function () {
-  this.closed = false;
-  EventEmitter.call(this);
-};
+const Resource = function () {
+  this.closed = false
+  EventEmitter.call(this)
+}
 
-util.inherits(Resource, EventEmitter);
+util.inherits(Resource, EventEmitter)
 
 Resource.prototype.sayHi = function () {
-  return 'hello';
-};
+  return 'hello'
+}
 
 Resource.prototype.close = function () {
-  this.closed = true;
-};
+  this.closed = true
+}
 
 describe('IO Monad', function () {
   describe('when resource is acquired successfully', function () {
-    var resource, acquiring, opResult;
+    let resource, acquiring, opResult
     before(function () {
-      var factory = function () {
-        return Promise.resolve(new Resource());
-      };
+      const factory = function () {
+        return Promise.resolve(new Resource())
+      }
 
       resource = Monad({ name: 'acq-success' }, 'resource', factory, Resource, (x) => {
-        x.close();
-        x.emit('released');
-      });
+        x.close()
+        x.emit('released')
+      })
 
       resource.once('acquiring', function () {
-        acquiring = true;
-      });
+        acquiring = true
+      })
 
       resource.once('acquired', function () {
         opResult = resource.sayHi()
           .then(function (result) {
-            opResult = result;
-            resource.release();
-            console.log('item', resource.item)
-            resource.item.emit('close', 'closed');
-          });
-      });
+            opResult = result
+            resource.release()
+            resource._delegate('close', 'closed')
+          })
+      })
       return resource.after('released')
-    });
+    })
 
     it('should emit acquiring', function () {
-      acquiring.should.equal(true);
-    });
+      acquiring.should.equal(true)
+    })
 
     it('should end in released state', function () {
-      resource.currentState.should.equal('released');
-    });
+      resource.currentState.should.equal('released')
+    })
 
     it('should not retain handle to resource', function () {
-      should.not.exist(resource.item);
-    });
+      should.not.exist(resource.item)
+    })
 
     it('should resolve operation successfully', function () {
-      opResult.should.equal('hello');
-    });
+      opResult.should.equal('hello')
+    })
 
     after(function () {
       resource.cleanup()
-    });
-  });
+    })
+  })
 
   describe('when resource is unavailable', function () {
-    var resource, error;
-    var acquiring = 0;
+    let resource, error
+    let acquiring = 0
     before(function (done) {
-      var factory = function () {
-        return Promise.reject(new Error('because no one likes you'));
-      };
+      const factory = function () {
+        return Promise.reject(new Error('because no one likes you'))
+      }
 
       resource = Monad({ name: 'unavailable' }, 'resource', factory, Resource, (x) => {
-        x.close();
-        x.raise('closed', '');
-      });
+        x.close()
+        x.raise('closed', '')
+      })
 
       resource.on('acquiring', function () {
-        acquiring++;
-      });
+        acquiring++
+      })
 
       resource.on('failed', function (e, err) {
         if (acquiring > 1) {
-          error = err;
-          resource.release();
+          error = err
+          resource.release()
         }
-      });
+      })
 
       resource.once('released', function () {
-        console.log('sweet releases pieces')
-        done();
-      });
-    });
+        done()
+      })
+    })
 
     it('should end in released state', function () {
-      resource.currentState.should.equal('released');
-    });
+      resource.currentState.should.equal('released')
+    })
 
     it('should have retried acquisition', function () {
-      acquiring.should.be.greaterThan(1);
-    });
+      acquiring.should.be.greaterThan(1)
+    })
 
     it('should not retain handle to resource', function () {
-      should.not.exist(resource.item);
-    });
+      should.not.exist(resource.item)
+    })
 
     it('should have called resource rejection handler', function () {
-      error.should.match(/^Error: because no one likes you$/);
-    });
+      error.should.match(/^Error: because no one likes you$/)
+    })
 
     after(function () {
       resource.cleanup()
-    });
-  });
+    })
+  })
 
   describe('when acquired resource emits an error', function () {
-    var resource, error;
-    var acquiring = 0;
-    var acquiredHandle, acquiringHandle, failedHandle;
+    let resource, error
+    let acquiring = 0
     before(function (done) {
-      var factory = function () {
-        return Promise.resolve(new Resource());
-      };
+      const factory = function () {
+        return Promise.resolve(new Resource())
+      }
 
       resource = Monad({ name: 'error-emitter' }, 'resource', factory, Resource, (x) => {
-        x.close();
-        x.emit('released');
-      });
+        x.close()
+        x.emit('released')
+      })
 
-      acquiringHandle = resource.on('acquiring', function () {
-        acquiring++;
-      });
+      resource.on('acquiring', function () {
+        acquiring++
+      })
 
-      acquiredHandle = resource.on('acquired', function () {
+      resource.on('acquired', function () {
         if (acquiring > 1) {
-          resource.release();
-          resource.item.emit('close', 'closed');
+          resource.release()
+          resource._delegate('close', 'closed')
         } else {
-          resource.item.emit('error', 'E_TOO_MUCH_BUNNIES - the rabbits caught fire');
+          resource._delegate('error', 'E_TOO_MUCH_BUNNIES - the rabbits caught fire')
         }
-      });
+      })
 
-      failedHandle = resource.on('failed', function (err) {
-        error = error || err;
-      });
+      resource.on('failed', function (ev, err) {
+        error = error || err
+      })
 
       resource.once('released', function () {
-        done();
-      });
-    });
+        done()
+      })
+    })
 
     it('should re-acquire (retry)', function () {
-      acquiring.should.equal(2);
-    });
+      acquiring.should.equal(2)
+    })
 
     it('should end in released state', function () {
-      resource.currentState.should.equal('released');
-    });
+      resource.currentState.should.equal('released')
+    })
 
     it('should have called resource rejection handler', function () {
-      error.should.match(/^E_TOO_MUCH_BUNNIES - the rabbits caught fire$/);
-    });
+      error.should.match(/^E_TOO_MUCH_BUNNIES - the rabbits caught fire$/)
+    })
 
     it('should not retain handle to resource', function () {
-      should.not.exist(resource.item);
-    });
+      should.not.exist(resource.item)
+    })
 
     after(function () {
-      acquiredHandle.off();
-      acquiringHandle.off();
-      failedHandle.off();
-    });
-  });
+      resource.cleanup()
+    })
+  })
 
   describe('when acquired resource is closed remotely', function () {
-    var resource, closeReason;
-    var acquiring = 0;
-    var acquiredHandle, acquiringHandle;
+    let resource, closeReason
+    let acquiring = 0
     before(function (done) {
-      var factory = function () {
+      const factory = function () {
         return new Promise(function (resolve) {
           process.nextTick(function () {
-            resolve(new Resource());
-          });
-        });
-      };
+            resolve(new Resource())
+          })
+        })
+      }
 
       resource = Monad({ name: 'remote-close' }, 'resource', factory, Resource, (x) => {
-        x.close();
-      });
+        x.close()
+      })
 
-      acquiringHandle = resource.on('acquiring', function () {
-        acquiring++;
-      });
+      resource.on('acquiring', function () {
+        acquiring++
+      })
 
-      acquiredHandle = resource.on('acquired', function () {
+      resource.on('acquired', function () {
         if (acquiring > 1) {
-          resource.item.emit('close', 'RabbitMQ hates your face');
+          resource._delegate('close', 'RabbitMQ hates your face')
         } else {
-          resource.item.emit('error', new Error('you didda dum ting'));
+          resource._delegate('error', new Error('you didda dum ting'))
         }
-      });
+      })
 
-      resource.once('closed', function (reason) {
-        closeReason = reason;
-        done();
-      });
-    });
+      resource.once('closed', function (ev, reason) {
+        console.log(arguments)
+        closeReason = reason
+        done()
+      })
+    })
 
     it('should re-acquire (retry)', function () {
-      acquiring.should.equal(2);
-    });
+      acquiring.should.equal(2)
+    })
 
     it('should capture that resource was closed', function () {
-      closeReason.should.eql('RabbitMQ hates your face');
-    });
+      closeReason.should.eql('RabbitMQ hates your face')
+    })
 
     it('should end in closed state', function () {
-      resource.currentState.should.equal('closed');
-    });
+      resource.currentState.should.equal('closed')
+    })
 
     it('should not retain handle to resource', function () {
-      should.not.exist(resource.item);
-    });
+      should.not.exist(resource.item)
+    })
 
     after(function () {
-      acquiredHandle.off();
-      acquiringHandle.off();
-    });
-  });
+      resource.cleanup()
+    })
+  })
 
   describe('when acquired resource is released locally', function () {
-    var resource, closeReason;
-    var acquiring = 0;
-    var acquiredHandle, acquiringHandle;
+    let resource, closeReason
+    let acquiring = 0
     before(function (done) {
-      var factory = function () {
+      const factory = function () {
         return new Promise(function (resolve) {
           process.nextTick(function () {
-            resolve(new Resource());
-          });
-        });
-      };
+            resolve(new Resource())
+          })
+        })
+      }
 
       resource = Monad({ name: 'local-release' }, 'resource', factory, Resource, (x) => {
-        x.close();
-        x.emit('released');
-      });
+        x.close()
+        x.emit('released')
+      })
 
-      acquiringHandle = resource.on('acquiring', function () {
-        acquiring++;
-      });
+      resource.on('acquiring', function () {
+        acquiring++
+      })
 
-      acquiredHandle = resource.on('acquired', function () {
-        resource.release();
-        resource.item.emit('close', 'Blah blah blah closed');
-      });
+      resource.on('acquired', function () {
+        resource.release()
+        resource._delegate('close', 'Blah blah blah closed')
+      })
 
       resource.once('released', function () {
-        done();
-      });
-    });
+        done()
+      })
+    })
 
     it('should emit acquiring once (no retries)', function () {
-      acquiring.should.equal(1);
-    });
+      acquiring.should.equal(1)
+    })
 
     it('should capture that resource was closed', function () {
-      should.not.exist(closeReason);
-    });
+      should.not.exist(closeReason)
+    })
 
     it('should end in released state', function () {
-      resource.currentState.should.equal('released');
-    });
+      resource.currentState.should.equal('released')
+    })
 
     it('should not retain handle to resource', function () {
-      should.not.exist(resource.item);
-    });
+      should.not.exist(resource.item)
+    })
 
     after(function () {
-      acquiredHandle.off();
-      acquiringHandle.off();
-    });
-  });
+      resource.cleanup()
+    })
+  })
 
   describe('when operating against a released resource', function () {
-    var resource;
-    var acquiring = 0;
-    var acquiredHandle, acquiringHandle;
+    let resource
+    let acquiring = 0
     before(function (done) {
-      var factory = function () {
+      const factory = function () {
         return new Promise(function (resolve) {
           process.nextTick(function () {
-            resolve(new Resource());
-          });
-        });
-      };
+            resolve(new Resource())
+          })
+        })
+      }
 
       resource = Monad({ name: 'released' }, 'resource', factory, Resource, (x) => {
-        x.close();
-        x.emit('close', 'closed');
-      });
+        x.close()
+        x.emit('close', 'closed')
+      })
 
-      acquiringHandle = resource.on('acquiring', function () {
-        acquiring++;
-      });
+      resource.on('acquiring', function () {
+        acquiring++
+      })
 
-      acquiredHandle = resource.on('acquired', function () {
+      resource.on('acquired', function () {
         if (acquiring === 1) {
-          resource.release();
+          resource.release()
         }
-      });
+      })
 
       resource.once('releasing', function () {
-        resource.item.emit('close', 'user closed closefully');
-      });
+        resource._delegate('close', 'user closed closefully')
+      })
 
       resource.once('released', function () {
-        done();
-      });
-    });
+        done()
+      })
+    })
 
     it('should not re-acquire on operation', function () {
-      acquiring.should.equal(1);
-    });
+      acquiring.should.equal(1)
+    })
 
     it('should not resolve operation after release', function () {
-      return resource.sayHi().should.be.rejectedWith("Cannot invoke operation 'sayHi' on released resource 'test'");
-    });
+      return resource.sayHi().should.be.rejectedWith("Cannot invoke operation 'sayHi' on released resource 'released'")
+    })
 
     it('should end in a released state', function () {
-      resource.currentState.should.equal('released');
-    });
+      resource.currentState.should.equal('released')
+    })
 
     it('should not retain handle to resource', function () {
-      should.not.exist(resource.item);
-    });
+      should.not.exist(resource.item)
+    })
 
     after(function () {
-      acquiredHandle.off();
-      acquiringHandle.off();
-    });
-  });
+      resource.cleanup()
+    })
+  })
 
   describe('when operating against a closed resource', function () {
-    var resource, opResult;
-    var acquiring = 0;
-    var acquiredHandle, acquiringHandle;
+    let resource, opResult
+    let acquiring = 0
     before(function (done) {
-      var factory = function () {
+      const factory = function () {
         return new Promise(function (resolve) {
           process.nextTick(function () {
-            resolve(new Resource());
-          });
-        });
-      };
+            resolve(new Resource())
+          })
+        })
+      }
 
       resource = Monad({ name: 'closed' }, 'resource', factory, Resource, (x) => {
-        x.close();
-        x.emit('close', 'you did this');
-      });
+        x.close()
+        x.emit('close', 'you did this')
+      })
 
-      acquiringHandle = resource.on('acquiring', function () {
-        acquiring++;
-      });
+      resource.on('acquiring', function () {
+        acquiring++
+      })
 
-      acquiredHandle = resource.on('acquired', function () {
+      resource.on('acquired', function () {
         if (acquiring === 1) {
-          resource.item.emit('close', 'RabbitMQ is sleepy now');
+          resource._delegate('close', 'RabbitMQ is sleepy now')
         }
-      });
+      })
 
       resource.once('closed', function () {
         opResult = resource.sayHi()
           .then(
             (result) => {
-              opResult = result;
-              resource.release();
-            });
-      });
+              opResult = result
+              resource.release()
+            })
+      })
 
       resource.once('released', function () {
-        done();
-      });
-    });
+        done()
+      })
+    })
 
     it('should re-acquire on operation', function () {
-      acquiring.should.equal(2);
-    });
+      acquiring.should.equal(2)
+    })
 
     it('should resolve operation after close', function () {
-      opResult.should.equal('hello');
-    });
+      opResult.should.equal('hello')
+    })
 
     it('should end in a released state', function () {
-      resource.currentState.should.equal('released');
-    });
+      resource.currentState.should.equal('released')
+    })
 
     it('should not retain handle to resource', function () {
-      should.not.exist(resource.item);
-    });
+      should.not.exist(resource.item)
+    })
 
     after(function () {
-      acquiredHandle.off();
-      acquiringHandle.off();
-    });
-  });
+      resource.cleanup()
+    })
+  })
 
   describe('when custom wait options are defined', function () {
-    var resource, releasedHandle;
-    var options = {
+    let resource
+    const options = {
       name: 'test',
       waitMin: 1000,
       waitMax: 30000,
       waitIncrement: 1000
-    };
+    }
     before(function (done) {
-      var factory = function () {
-        return Promise.resolve(new Resource());
-      };
+      const factory = function () {
+        return Promise.resolve(new Resource())
+      }
 
       resource = Monad(options, 'custom', factory, Resource, (x) => {
-        x.close();
-        x.emit('released');
-      });
+        x.close()
+        x.emit('released')
+      })
 
       resource.once('acquired', function () {
         resource.sayHi()
           .then((result) => {
-            resource.release();
-            resource.item.emit('close', 'closed');
-          });
-      });
+            resource.release()
+            resource._delegate('close', 'closed')
+          })
+      })
 
-      releasedHandle = resource.on('released', function () {
-        done();
-      });
-    });
+      resource.on('released', function () {
+        done()
+      })
+    })
 
     it('should have parameters set by options', function () {
-      resource.name.should.equal(options.name);
-      resource.waitMin.should.equal(options.waitMin);
-      resource.waitMax.should.equal(options.waitMax);
-      resource.waitIncrement.should.equal(options.waitIncrement);
-    });
+      resource.name.should.equal(options.name)
+      resource.waitMin.should.equal(options.waitMin)
+      resource.waitMax.should.equal(options.waitMax)
+      resource.waitIncrement.should.equal(options.waitIncrement)
+    })
 
     it('should have waitInterval equal to waitMin', function () {
-      resource.waitInterval.should.equal(options.waitMin);
-    });
+      resource.waitInterval.should.equal(options.waitMin)
+    })
 
     after(function () {
-      releasedHandle.off();
-    });
-  });
-});
+      resource.cleanup()
+    })
+  })
+})

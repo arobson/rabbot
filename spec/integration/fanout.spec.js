@@ -1,9 +1,9 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
 describe('Fanout Exchange With Multiple Subscribed Queues', function () {
-  var harness;
+  let harness
 
   before(function (done) {
     rabbit.configure({
@@ -41,26 +41,26 @@ describe('Fanout Exchange With Multiple Subscribed Queues', function () {
         }
       ]
     }).then(() => {
-      rabbit.publish('rabbot-ex.fanout', { type: 'fanned', routingKey: 'this.is.ignored', body: 'hello, everyone' });
-    });
+      rabbit.publish('rabbot-ex.fanout', { type: 'fanned', routingKey: 'this.is.ignored', body: 'hello, everyone' })
+    })
 
-    harness = harnessFactory(rabbit, done, 2);
-    harness.handle('fanned');
-  });
+    harness = harnessFactory(rabbit, done, 2)
+    harness.handle('fanned')
+  })
 
   it('should handle messages on all subscribed queues', function () {
     const results = harness.received.map((m) => ({
       body: m.body,
       key: m.fields.routingKey
-    }));
+    }))
     sortBy(results, 'body').should.eql(
       [
         { body: 'hello, everyone', key: 'this.is.ignored' },
         { body: 'hello, everyone', key: 'this.is.ignored' }
-      ]);
-  });
+      ])
+  })
 
   after(function () {
-    return harness.clean('default');
-  });
-});
+    return harness.clean('default')
+  })
+})

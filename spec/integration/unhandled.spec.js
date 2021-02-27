@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
 describe('Unhandled Strategies', function () {
   /*
@@ -18,7 +18,7 @@ describe('Unhandled Strategies', function () {
   */
 
   describe('Custom Strategy - Capturing Messages With No Handler', function () {
-    var harness;
+    let harness
 
     before(function (done) {
       rabbit.configure({
@@ -45,29 +45,29 @@ describe('Unhandled Strategies', function () {
           }
         ]
       }).then(() => {
-        rabbit.publish('rabbot-ex.direct', { type: 'junk', routingKey: '', body: 'uh oh' });
-        rabbit.publish('rabbot-ex.direct', { type: 'garbage', routingKey: '', body: 'uh oh' });
-      });
+        rabbit.publish('rabbot-ex.direct', { type: 'junk', routingKey: '', body: 'uh oh' })
+        rabbit.publish('rabbot-ex.direct', { type: 'garbage', routingKey: '', body: 'uh oh' })
+      })
 
-      harness = harnessFactory(rabbit, done, 2);
-    });
+      harness = harnessFactory(rabbit, done, 2)
+    })
 
     it('should capture all unhandled messages via custom unhandled message strategy', function () {
-      var results = harness.unhandled.map((m) => ({
+      const results = harness.unhandled.map((m) => ({
         body: m.body,
         type: m.type
-      }));
+      }))
       sortBy(results, 'type').should.eql(
         [
           { body: 'uh oh', type: 'garbage' },
           { body: 'uh oh', type: 'junk' }
-        ]);
-    });
+        ])
+    })
 
     after(function () {
-      return harness.clean('default');
-    });
-  });
+      return harness.clean('default')
+    })
+  })
 
   /*
   This spec uses the `rejectUnhandled` strategy and demonstrates
@@ -75,7 +75,7 @@ describe('Unhandled Strategies', function () {
   via deadlettering for logging or processing.
   */
   describe('Rejecting Unhandled Messages To A Deadletter', function () {
-    var harness;
+    let harness
 
     before(function (done) {
       rabbit.configure({
@@ -119,9 +119,9 @@ describe('Unhandled Strategies', function () {
           }
         ]
       }).then(() => {
-        harness = harnessFactory(rabbit, done, 1);
-        rabbit.rejectUnhandled();
-        harness.handle({ queue: 'rabbot-q-deadletter' });
+        harness = harnessFactory(rabbit, done, 1)
+        rabbit.rejectUnhandled()
+        harness.handle({ queue: 'rabbot-q-deadletter' })
         rabbit.publish(
           'rabbot-ex.topic',
           {
@@ -129,9 +129,9 @@ describe('Unhandled Strategies', function () {
             routingKey: 'this.is.rejection',
             body: 'haters gonna hate'
           }
-        );
-      });
-    });
+        )
+      })
+    })
 
     it('should reject and then receive the message from dead-letter queue', function () {
       const results = harness.received.map((m) =>
@@ -140,15 +140,15 @@ describe('Unhandled Strategies', function () {
           key: m.fields.routingKey,
           exchange: m.fields.exchange
         })
-      );
+      )
       results.should.eql(
         [
           { body: 'haters gonna hate', key: 'this.is.rejection', exchange: 'rabbot-ex.deadletter' }
-        ]);
-    });
+        ])
+    })
 
     after(function () {
-      return harness.clean('default');
-    });
-  });
-});
+      return harness.clean('default')
+    })
+  })
+})

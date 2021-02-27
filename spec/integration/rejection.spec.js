@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
 /*
 This spec demonstrates how a rejected message flows from
@@ -11,7 +11,7 @@ You can easily break this by removing the binding between
 the deadletter exchange and deadletter queue (for example)
 */
 describe('Rejecting Messages To A Deadletter', function () {
-  var harness;
+  let harness
 
   before(function (done) {
     rabbit.configure({
@@ -55,17 +55,17 @@ describe('Rejecting Messages To A Deadletter', function () {
         }
       ]
     }).then(() => {
-      harness = harnessFactory(rabbit, done, 2);
+      harness = harnessFactory(rabbit, done, 2)
       harness.handlers.push(
         rabbit.handle('reject', (env) => {
           if (harness.received.length < 2) {
-            env.reject();
+            env.reject()
           } else {
-            env.ack();
+            env.ack()
           }
-          harness.add(env);
+          harness.add(env)
         })
-      );
+      )
       rabbit.publish(
         'rabbot-ex.topic',
         {
@@ -73,9 +73,9 @@ describe('Rejecting Messages To A Deadletter', function () {
           routingKey: 'this.is.rejection',
           body: 'haters gonna hate'
         }
-      );
-    });
-  });
+      )
+    })
+  })
 
   it('should receive the message from bound queue and dead-letter queue', function () {
     const results = harness.received.map((m) =>
@@ -84,15 +84,15 @@ describe('Rejecting Messages To A Deadletter', function () {
         key: m.fields.routingKey,
         exchange: m.fields.exchange
       })
-    );
+    )
     results.should.eql(
       [
         { body: 'haters gonna hate', key: 'this.is.rejection', exchange: 'rabbot-ex.topic' },
         { body: 'haters gonna hate', key: 'this.is.rejection', exchange: 'rabbot-ex.deadletter' }
-      ]);
-  });
+      ])
+  })
 
   after(function () {
-    return harness.clean('default');
-  });
-});
+    return harness.clean('default')
+  })
+})

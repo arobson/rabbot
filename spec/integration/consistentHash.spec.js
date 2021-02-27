@@ -1,10 +1,10 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+require('../setup')
+const rabbit = require('../../src/index.js')
+const config = require('./configuration')
 
 describe('Consistent Hash Exchange', function () {
-  var limit;
-  var harness;
+  let limit
+  let harness
 
   before(function (done) {
     rabbit.configure({
@@ -64,9 +64,9 @@ describe('Consistent Hash Exchange', function () {
         }
       ]
     }).then(() => {
-      limit = 1000;
-      harness = harnessFactory(rabbit, done, limit);
-      harness.handle('balanced');
+      limit = 1000
+      harness = harnessFactory(rabbit, done, limit)
+      harness.handle('balanced')
       for (let i = 0; i < limit; i++) {
         rabbit.publish(
           'rabbot-ex.consistent-hash',
@@ -75,33 +75,33 @@ describe('Consistent Hash Exchange', function () {
             correlationId: (i + i).toString(),
             body: 'message ' + i
           }
-        );
+        )
       }
-    });
-  });
+    })
+  })
 
   it('should distribute messages across queues within margin for error', function () {
     const consumers = harness.received.reduce((acc, m) => {
-      const key = m.fields.consumerTag;
-      if (acc[ key ]) {
-        acc[ key ]++;
+      const key = m.fields.consumerTag
+      if (acc[key]) {
+        acc[key]++
       } else {
-        acc[ key ] = 1;
+        acc[key] = 1
       }
-      return acc;
-    }, {});
+      return acc
+    }, {})
 
-    const quarter = limit / 4;
-    const margin = quarter / 4;
-    const counts = Object.keys(consumers).map((k) => consumers[ k ]);
+    const quarter = limit / 4
+    const margin = quarter / 4
+    const counts = Object.keys(consumers).map((k) => consumers[k])
     counts.forEach((count) => {
-      count.should.be.closeTo(quarter, margin);
-    });
+      count.should.be.closeTo(quarter, margin)
+    })
     counts.reduce((acc, x) => acc + x, 0)
-      .should.equal(limit);
-  });
+      .should.equal(limit)
+  })
 
   after(function () {
-    return harness.clean('default');
-  });
-});
+    return harness.clean('default')
+  })
+})
