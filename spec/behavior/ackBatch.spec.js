@@ -1,6 +1,5 @@
 require('../setup.js')
-const postal = require('postal')
-const signal = postal.channel('rabbit.ack')
+const signal = require('../../src/dispatch').signal
 const AckBatch = require('../../src/ackBatch.js')
 const noOp = function () {}
 
@@ -60,7 +59,7 @@ describe('Ack Batching', function () {
       }
       batch = new AckBatch('test-queue', 'test-connection', resolver)
       batch.listenForSignal()
-      signal.publish('go', {})
+      signal.emit('go', {})
     })
 
     it("should resolve with 'waiting'", function () {
@@ -91,7 +90,7 @@ describe('Ack Batching', function () {
       batch.addMessage({ tag: 103, status: 'pending' })
       batch.addMessage({ tag: 104, status: 'pending' })
       batch.listenForSignal()
-      signal.publish('go', {})
+      signal.emit('go', {})
     })
 
     it("should resolve with 'waiting'", function () {
@@ -132,7 +131,7 @@ describe('Ack Batching', function () {
       batch.addMessage({ tag: 104, status: 'nack' })
       batch.addMessage({ tag: 105, status: 'reject' })
       batch.listenForSignal()
-      signal.publish('go', {})
+      signal.emit('go', {})
     })
 
     it("should resolve with 'waiting'", function () {
@@ -169,7 +168,7 @@ describe('Ack Batching', function () {
         return Promise.resolve(true)
       }
       batch = new AckBatch('test-queue', 'test-connection', resolver)
-      batch.on('empty', function () {
+      batch.once('empty', function () {
         done()
       })
 
@@ -180,7 +179,7 @@ describe('Ack Batching', function () {
       batch.addMessage({ tag: 104, status: 'ack' })
       batch.addMessage({ tag: 105, status: 'ack' })
       batch.firstAck = 101
-      signal.publish('go', {})
+      signal.emit('go', {})
     })
 
     it("should resolve with 'ack'", function () {
@@ -220,7 +219,7 @@ describe('Ack Batching', function () {
         return Promise.resolve(true)
       }
       batch = new AckBatch('test-queue', 'test-connection', resolver)
-      batch.on('empty', function () {
+      batch.once('empty', function () {
         done()
       })
 
@@ -231,7 +230,7 @@ describe('Ack Batching', function () {
       batch.addMessage({ tag: 105, status: 'nack' })
       batch.firstNack = 101
       batch.listenForSignal()
-      signal.publish('go', {})
+      signal.emit('go', {})
     })
 
     it("should resolve with 'nack'", function () {
@@ -271,7 +270,7 @@ describe('Ack Batching', function () {
         return Promise.resolve(true)
       }
       batch = new AckBatch('test-queue', 'test-connection', resolver)
-      batch.on('empty', function () {
+      batch.once('empty', function () {
         done()
       })
 
@@ -282,7 +281,7 @@ describe('Ack Batching', function () {
       batch.addMessage({ tag: 105, status: 'reject' })
       batch.firstReject = 101
       batch.listenForSignal()
-      signal.publish('go', {})
+      signal.emit('go', {})
     })
 
     it("should resolve with 'reject'", function () {
@@ -346,9 +345,9 @@ describe('Ack Batching', function () {
       messages[5].reject()
 
       batch.listenForSignal()
-      signal.publish('go', {})
-      signal.publish('go', {})
-      signal.publish('go', {})
+      signal.emit('go', {})
+      signal.emit('go', {})
+      signal.emit('go', {})
     })
 
     it('should resolve operations in expected order with correct arguments', function () {

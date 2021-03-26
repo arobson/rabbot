@@ -350,7 +350,6 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
     }
   })
 
-  Monologue.mixInto(Fsm)
   const fsm = new Fsm()
   connection.addExchange(fsm)
   return fsm

@@ -1,7 +1,6 @@
-const postal = require('postal')
-const Monologue = require('monologue.js')
-const signal = postal.channel('rabbit.ack')
 const log = require('./log.js')('rabbot.acknack')
+const Dispatch = require('topic-dispatch')
+const signal = require('./dispatch').signal
 
 /* log
   * `rabbot.acknack`
@@ -245,13 +244,14 @@ class TrackedMessage {
 
 AckBatch.prototype.ignoreSignal = function () {
   if (this.signalSubscription) {
-    this.signalSubscription.unsubscribe()
+    this.signalSubscription.remove()
+    this.signalSubscription = null
   }
 }
 
 AckBatch.prototype.listenForSignal = function () {
   if (!this.signalSubscription) {
-    this.signalSubscription = signal.subscribe('#', () => {
+    this.signalSubscription = signal.on('#', () => {
       this._processBatch()
     })
   }
@@ -268,6 +268,5 @@ AckBatch.prototype.reset = function () {
   this.receivedCount = 0
 }
 
-Monologue.mixInto(AckBatch)
-
+Object.assign(AckBatch.prototype, Dispatch())
 module.exports = AckBatch

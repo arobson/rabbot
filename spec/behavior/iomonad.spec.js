@@ -16,6 +16,7 @@ Resource.prototype.sayHi = function () {
 
 Resource.prototype.close = function () {
   this.closed = true
+  return Promise.resolve(true)
 }
 
 describe('IO Monad', function () {
@@ -28,7 +29,7 @@ describe('IO Monad', function () {
 
       resource = Monad({ name: 'acq-success' }, 'resource', factory, Resource, (x) => {
         x.close()
-        x.emit('released')
+        return Promise.resolve()
       })
 
       resource.once('acquiring', function () {
@@ -78,6 +79,7 @@ describe('IO Monad', function () {
       resource = Monad({ name: 'unavailable' }, 'resource', factory, Resource, (x) => {
         x.close()
         x.raise('closed', '')
+        return Promise.resolve()
       })
 
       resource.on('acquiring', function () {
@@ -127,7 +129,7 @@ describe('IO Monad', function () {
 
       resource = Monad({ name: 'error-emitter' }, 'resource', factory, Resource, (x) => {
         x.close()
-        x.emit('released')
+        return Promise.resolve()
       })
 
       resource.on('acquiring', function () {
@@ -187,6 +189,7 @@ describe('IO Monad', function () {
 
       resource = Monad({ name: 'remote-close' }, 'resource', factory, Resource, (x) => {
         x.close()
+        return Promise.resolve()
       })
 
       resource.on('acquiring', function () {
@@ -202,7 +205,6 @@ describe('IO Monad', function () {
       })
 
       resource.once('closed', function (ev, reason) {
-        console.log(arguments)
         closeReason = reason
         done()
       })
@@ -243,7 +245,7 @@ describe('IO Monad', function () {
 
       resource = Monad({ name: 'local-release' }, 'resource', factory, Resource, (x) => {
         x.close()
-        x.emit('released')
+        return Promise.resolve()
       })
 
       resource.on('acquiring', function () {
@@ -295,7 +297,7 @@ describe('IO Monad', function () {
 
       resource = Monad({ name: 'released' }, 'resource', factory, Resource, (x) => {
         x.close()
-        x.emit('close', 'closed')
+        return Promise.resolve()
       })
 
       resource.on('acquiring', function () {
@@ -352,7 +354,7 @@ describe('IO Monad', function () {
 
       resource = Monad({ name: 'closed' }, 'resource', factory, Resource, (x) => {
         x.close()
-        x.emit('close', 'you did this')
+        return Promise.resolve()
       })
 
       resource.on('acquiring', function () {
@@ -415,7 +417,7 @@ describe('IO Monad', function () {
 
       resource = Monad(options, 'custom', factory, Resource, (x) => {
         x.close()
-        x.emit('released')
+        return Promise.resolve()
       })
 
       resource.once('acquired', function () {

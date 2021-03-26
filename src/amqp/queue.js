@@ -1,13 +1,12 @@
 const AckBatch = require('../ackBatch.js')
-const postal = require('postal')
-const dispatch = postal.channel('rabbit.dispatch')
-const responses = postal.channel('rabbit.responses')
 const info = require('../info')
 const log = require('../log')('rabbot.queue')
 const format = require('util').format
 const topLog = require('../log')('rabbot.topology')
 const unhandledLog = require('../log')('rabbot.unhandled')
 const noOp = function () {}
+const dispatch = require('../dispatch').received
+const responses = require('../dispatch').replies
 
 /* log
   * `rabbot.amqp-queue`
@@ -425,7 +424,7 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
         onPublish
       )
     } else {
-      dispatch.publish({
+      dispatch.emit(topic, {
         topic: topic,
         headers: {
           resolverNoCache: !shouldCacheKeys
@@ -456,9 +455,28 @@ module.exports = function (options, topology, serializers) {
   const channelName = ['queue', options.uniqueName].join(':')
   return topology.connection.getChannel(channelName, false, 'queue channel for ' + options.name)
     .then(function (channel) {
-      const messages = new AckBatch(options.name, topology.connection.name, resolveTags(channel, options.name, topology.connection.name))
-      const subscriber = subscribe.bind(undefined, options.uniqueName, channel, topology, serializers, messages, options)
-      const definer = define.bind(undefined, channel, options, subscriber, topology.connection.name)
+      const messages = new AckBatch(
+        options.name,
+        topology.connection.name,
+        resolveTags(channel, options.name, topology.connection.name),
+        signal
+      )
+      const subscriber = subscribe.bind(
+        undefined,
+        options.uniqueName,
+        channel,
+        topology,
+        serializers,
+        messages,
+        options
+      )
+      const definer = define.bind(
+        undefined,
+        channel,
+        options,
+        subscriber,
+        topology.connection.name
+      )
       return {
         channel: channel,
         messages: messages,

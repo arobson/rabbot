@@ -156,20 +156,20 @@ Adapter.prototype.connect = function () {
     let attempt
     attempt = function () {
       const nextUri = this.getNextUri()
-      log.info("Attempting connection to '%s' (%s)", this.name, nextUri)
+      log.info(`Attempting connection to '${this.name}' (${nextUri})`)
       function onConnection (connection) {
         connection.uri = nextUri
-        log.info("Connected to '%s' (%s)", this.name, nextUri)
+        log.info(`Connected to '${this.name}' (${nextUri})`)
         resolve(connection)
       }
       function onConnectionError (err) {
-        log.info("Failed to connect to '%s' (%s) with, '%s'", this.name, nextUri, err)
+        log.info(`Failed to connect to '${this.name}' (${nextUri}) with '${err}'`)
         attempted.push(nextUri)
         this.bumpIndex()
         if (attempted.length < this.limit) {
           attempt(err)
         } else {
-          log.info('Cannot connect to `%s` - all endpoints failed', this.name)
+          log.info(`Cannot connect to '${this.name}' - all endpoints failed`)
           reject('No endpoints could be reached')
         }
       }
@@ -177,7 +177,7 @@ Adapter.prototype.connect = function () {
         amqp.connect(nextUri, Object.assign({ servername: url.parse(nextUri).hostname }, this.options))
           .then(onConnection.bind(this), onConnectionError.bind(this))
       } else {
-        log.info('Cannot connect to `%s` - all endpoints failed', this.name)
+        log.info(`Cannot connect to '${this.name}' - all endpoints failed`)
         reject('No endpoints could be reached')
       }
     }.bind(this)
@@ -210,8 +210,8 @@ Adapter.prototype.getNext = function (list) {
 
 module.exports = function (options) {
   const close = function (connection) {
-    connection.close()
-      .then(null, function (err) {
+    return connection.close()
+      .catch(err => {
         // for some reason calling close always gets a rejected promise
         // I can't imagine a good reason for this, so I'm basically
         // only showing this at the debug level

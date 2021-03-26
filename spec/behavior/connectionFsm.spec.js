@@ -3,7 +3,9 @@ const connectionFn = require('../../src/connectionFsm.js')
 const noOp = function () {}
 const EventEmitter = require('events')
 
-/* globals expect */
+function closer () {
+  this.raise('released')
+}
 
 const connectionMonadFn = function () {
   let handlers = {}
@@ -20,7 +22,6 @@ const connectionMonadFn = function () {
 
   function reset () {
     handlers = {}
-    this.close = noOp
     this.createChannel = noOp
     this.createConfirmChannel = noOp
     this.release = noOp
@@ -32,14 +33,16 @@ const connectionMonadFn = function () {
       return Promise.resolve()
     },
     item: { uri: '' },
-    close: noOp,
+    close: closer,
     createChannel: noOp,
     createConfirmChannel: noOp,
     on: on,
+    emit: this.raise,
     raise: raise,
     release: noOp,
     reset: reset
   }
+  instance.close.bind(instance)
   setTimeout(instance.acquire.bind(instance), 0)
   return instance
 }
@@ -71,7 +74,7 @@ describe('Connection FSM', function () {
       let connection, monad
       before(function (done) {
         monad = connectionMonadFn()
-        connection = connectionFn({ name: 'failure' }, function () {
+        connection = connectionFn({ name: 'failure', failAfter: .05 }, function () {
           return monad
         })
         monad.release = function () {
@@ -86,7 +89,7 @@ describe('Connection FSM', function () {
       })
 
       it('should transition to failed status', function () {
-        connection.state.should.equal('failed')
+        connection.currentState.should.equal('failed')
       })
 
       describe('implicitly (due to operation)', function () {
@@ -98,8 +101,8 @@ describe('Connection FSM', function () {
           connection.once('connecting', function () {
             monad.raise('failed', new Error('connection failed'))
           })
-          connection.once('failed', function (err) {
-            error = err
+          connection.once('failed', function (err, msg) {
+            error = msg
             done()
           })
           connection.getChannel()
@@ -111,24 +114,28 @@ describe('Connection FSM', function () {
         })
 
         it('should transition to failed status', function () {
-          connection.state.should.equal('failed')
+          connection.currentState.should.equal('failed')
         })
       })
 
       describe('explicitly', function () {
         before(function (done) {
-          connection.on('failed', function () {
+          connection.once('failed', function () {
             done()
-          }).once()
-          connection.on('connecting', function () {
+          })
+          connection.once('connecting', function () {
             monad.raise('failed', new Error('bummer'))
           })
           connection.connect()
         })
 
         it('should transition to failed status', function () {
-          connection.state.should.equal('failed')
+          connection.currentState.should.equal('failed')
         })
+      })
+
+      after(function() {
+        connection.removeAllListeners()
       })
     })
   })
@@ -151,7 +158,7 @@ describe('Connection FSM', function () {
           return monad
         })
         connection.once('connected', function () {
-          onAcquiring.unsubscribe()
+          onAcquiring.off()
           done()
         })
         connection.once('reconnected', function () {
@@ -171,7 +178,7 @@ describe('Connection FSM', function () {
       })
 
       it('should transition to connected status', function () {
-        connection.state.should.equal('connected')
+        connection.currentState.should.equal('connected')
       })
 
       it('should not emit reconnected', function () {
@@ -181,7 +188,7 @@ describe('Connection FSM', function () {
 
     describe('when connecting (with failed initial attempt)', function () {
       let connection, monad, badEvent, onAcquiring, channel
-      before(function (done) {
+      before(function () {
         // this nightmare of a test setup causes the FSM to get a failed
         // event from the connection monad.
         // on the failed event, connect is called which triggers a 'connecting'
@@ -196,8 +203,7 @@ describe('Connection FSM', function () {
           return monad
         })
         connection.once('connected', function () {
-          onAcquiring.unsubscribe()
-          done()
+          onAcquiring.off()
         })
         connection.once('reconnected', function () {
           badEvent = true
@@ -209,14 +215,15 @@ describe('Connection FSM', function () {
         })
         onAcquiring = connection.on('connecting', function () {
           const ev = attempts.pop()
-          process.nextTick(function () {
+          setTimeout(() => {
             monad.raise(ev)
-          })
+          }, 10)
         })
+        return connection.after('connected').then(() => onAcquiring.off())
       })
 
       it('should transition to connected status', function () {
-        connection.state.should.equal('connected')
+        connection.currentState.should.equal('connected')
       })
 
       it('should not emit reconnected', function () {
@@ -224,21 +231,25 @@ describe('Connection FSM', function () {
       })
 
       describe('when acquiring a channel', function () {
+        const emitter = new EventEmitter()
         before(function () {
           monad.createChannel = function () {
-            return Promise.resolve(new EventEmitter())
+            return Promise.resolve(emitter)
           }
         })
 
         it('should create channel', function () {
-          return connection.getChannel('test', false, 'testing channel creation')
+          const result = connection.getChannel('test', false, 'testing channel creation')
             .then(function (x) {
               channel = x
             })
+            .catch(e => console.log(e))
+          setTimeout(() => emitter.emit('acquired'), 10)
+          return result
         })
 
         after(function () {
-          channel.release()
+          return channel.release()
         })
       })
 
@@ -270,7 +281,7 @@ describe('Connection FSM', function () {
         })
 
         after(function () {
-          monad.close = noOp
+          monad.close = closer.bind(monad)
         })
       })
 
@@ -295,6 +306,10 @@ describe('Connection FSM', function () {
         it('should not attempt to release queues', function () {
           queueMock.verify()
         })
+
+        it('should be in closed state', function () {
+          connection.currentState.should.eql('closed')
+        })
       })
 
       describe('when connection is lost', function () {
@@ -302,9 +317,6 @@ describe('Connection FSM', function () {
         before(function () {
           onAcquired = connection.on('connecting', function () {
             monad.raise('acquired')
-          })
-          connection.once('closed', function () {
-            monad.raise('acquiring')
           })
           setTimeout(function () {
             channel.emit('acquired')
@@ -325,7 +337,8 @@ describe('Connection FSM', function () {
         })
 
         after(function () {
-          onAcquired.unsubscribe()
+          onAcquired.off()
+          return connection.close()
         })
       })
     })

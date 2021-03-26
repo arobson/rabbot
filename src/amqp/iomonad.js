@@ -1,5 +1,4 @@
 // This is probably not a true monad, but it seems close based on my current understanding.
-
 const fsm = require('mfsm')
 const log = require('../log.js')('rabbot.io')
 let staticId = 0
@@ -98,7 +97,7 @@ function getDefinition (options, type, factory, close) {
           this.handle('released', info)
         })
         this.item.on('error', (err) => {
-          log.error(`Error emitted by ${type} '${this.name}' - '${err.stack}'`)
+          log.error(`Error emitted by ${type} '${this.name}' - '${err.stack || err}'`)
           this._clearEventHandlers()
           this.handle('failed', err)
         })
@@ -126,6 +125,8 @@ function getDefinition (options, type, factory, close) {
           if (close) {
             try {
               close(this.item)
+                .then(() => this.handle('released'))
+                .catch(() => this.handle('released'))
             } catch (ex) {
               log.warn(`${type} '${this.name}' threw an exception on close: ${ex}`)
               this.handle('released')
@@ -133,6 +134,8 @@ function getDefinition (options, type, factory, close) {
           } else {
             try {
               this.item.close()
+                .then(() => this.handle('released'))
+                .catch(() => this.handle('released'))
             } catch (ex) {
               log.warn(`${type} '${this.name}' threw an exception on close: ${ex}`)
               this.handle('released')
@@ -192,7 +195,7 @@ function getDefinition (options, type, factory, close) {
         acquire: { emit: 'acquired' },
         return: { emit: 'acquired' },
         blocked: { next: 'blocked' },
-        failed: { next: 'blocked' },
+        failed: { next: 'failed' },
         operate: function (call) {
           try {
             const result = this.item[call.operation].apply(this.item, call.argList)
@@ -261,7 +264,6 @@ function getDefinition (options, type, factory, close) {
           }, this.waitInterval)
         },
         acquire: function () {
-          console.trace(`called acquire from failed`)
           if (this.retry) {
             clearTimeout(this.retry)
           }

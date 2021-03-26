@@ -1,7 +1,4 @@
-const machina = require('machina')
 const format = require('util').format
-const Monologue = require('monologue.js')
-Monologue.mixInto(machina.Fsm)
 const log = require('./log.js')('rabbot.queue')
 const defer = require('./defer')
 
