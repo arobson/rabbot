@@ -52,6 +52,7 @@ describe('Connection FSM', function () {
     it('should not throw exception', function () {
       expect(function () {
         connection = connectionFn({
+          name: 'gogetter', failAfter: .05, retryLimit: 3,
           get: function (property) {
             const value = this[property]
             if (value === undefined) {
@@ -73,7 +74,7 @@ describe('Connection FSM', function () {
       let connection, monad
       before(function (done) {
         monad = connectionMonadFn()
-        connection = connectionFn({ name: 'failure', failAfter: .05 }, function () {
+        connection = connectionFn({ name: 'failure', failAfter: .05, retryLimit: 3 }, function () {
           return monad
         })
         monad.release = function () {
@@ -134,7 +135,7 @@ describe('Connection FSM', function () {
       })
 
       after(function () {
-        connection.removeAllListeners()
+        return connection.close()
       })
     })
   })
@@ -153,7 +154,7 @@ describe('Connection FSM', function () {
         // was never established
         const attempts = ['acquired', 'failed']
         monad = connectionMonadFn()
-        connection = connectionFn({ name: 'success' }, function () {
+        connection = connectionFn({ name: 'success', failAfter: .05, retryLimit: 3 }, function () {
           return monad
         })
         connection.once('connected', function () {
@@ -198,7 +199,7 @@ describe('Connection FSM', function () {
         // was never established
         const attempts = ['acquired', 'failed']
         monad = connectionMonadFn()
-        connection = connectionFn({ name: 'success' }, function () {
+        connection = connectionFn({ name: 'success', failAfter: .05, retryLimit: 3 }, function () {
           return monad
         })
         connection.once('connected', function () {
@@ -342,7 +343,7 @@ describe('Connection FSM', function () {
       })
 
       after(function() {
-        connection.removeAllListeners()
+        return connection.close()
       })
     })
   })
