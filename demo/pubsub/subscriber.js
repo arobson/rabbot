@@ -19,13 +19,13 @@ rabbit.handle('publisher.message', function (msg) {
   }
   if ((++counts.received) >= counts.expected - 1) {
     const diff = Date.now() - counts.started
-    console.log('Received', counts.received, 'messages after', diff, 'milliseconds')
+    console.log(`Received ${counts.received} messages after ${diff} milliseconds`)
   }
 })
 
 function report () {
   const diff = Date.now() - counts.started
-  console.log('Received', counts.received, 'messages after', diff, 'milliseconds')
+  console.log(`Received ${counts.received} messages after ${diff} milliseconds`)
 }
 
 // it can make a lot of sense to share topology definition across

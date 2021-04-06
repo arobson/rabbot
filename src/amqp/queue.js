@@ -1,12 +1,10 @@
 const AckBatch = require('../ackBatch.js')
 const info = require('../info')
 const log = require('../log')('rabbot.queue')
-const format = require('util').format
 const topLog = require('../log')('rabbot.topology')
 const unhandledLog = require('../log')('rabbot.unhandled')
 const noOp = function () {}
-const dispatch = require('../dispatch').received
-const responses = require('../dispatch').replies
+const {received, replies, signal} = require('../dispatch')
 
 /* log
   * `rabbot.amqp-queue`
@@ -45,8 +43,9 @@ function define (channel, options, subscriber, connectionName) {
     deadLetter: 'deadLetterExchange',
     deadLetterRoutingKey: 'deadLetterRoutingKey'
   }, 'subscribe', 'limit', 'noBatch', 'unique')
-  topLog.info("Declaring queue '%s' on connection '%s' with the options: %s",
-    options.uniqueName, connectionName, JSON.stringify(options))
+  topLog.info(
+    `Declaring queue '${options.uniqueName}' on connection '${connectionName}' with the options: ${JSON.stringify(options)}`
+  )
   return channel.assertQueue(options.uniqueName, valid)
     .then(function (q) {
       if (options.limit) {
@@ -90,22 +89,32 @@ function getNoBatchOps (channel, raw, messages, noAck) {
   if (noAck) {
     ack = noOp
     nack = function () {
-      log.error("Tag %d on '%s' - '%s' cannot be nacked in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName)
+      log.error(
+        `Tag ${raw.fields.deliveryTag} on '${messages.name}' - '${messages.connectionName}' cannot be nacked in noAck mode - message will be lost!`
+      )
     }
     reject = function () {
-      log.error("Tag %d on '%s' - '%s' cannot be rejected in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName)
+      log.error(
+        `Tag ${raw.fields.deliveryTag} on '${messages.name}' - '${messages.connectionName}' cannot be rejected in noAck mode - message will be lost!`
+      )
     }
   } else {
     ack = function () {
-      log.debug("Acking tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName)
+      log.debug(
+        `Acking tag ${raw.fields.deliveryTag} on '${messages.name}' - '${messages.connectionName}'`
+      )
       channel.ack({ fields: { deliveryTag: raw.fields.deliveryTag } }, false)
     }
     nack = function () {
-      log.debug("Nacking tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName)
+      log.debug(
+        `Nacking tag ${raw.fields.deliveryTag} on '${messages.name}' - '${messages.connectionName}'`
+      )
       channel.nack({ fields: { deliveryTag: raw.fields.deliveryTag } }, false)
     }
     reject = function () {
-      log.debug("Rejecting tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName)
+      log.debug(
+        `Rejecting tag ${raw.fields.deliveryTag} on '${messages.name}' - '${messages.connectionName}'`
+      )
       channel.reject({ fields: { deliveryTag: raw.fields.deliveryTag } }, false, false)
     }
   }
@@ -125,7 +134,8 @@ function getReply (channel, serializers, raw, replyQueue, connectionName) {
     const contentType = getContentType(reply, options)
     const serializer = serializers[contentType]
     if (!serializer) {
-      const message = format('Failed to publish message with contentType %s - no serializer defined', contentType)
+      const message =
+        `Failed to publish message with contentType ${contentType} - no serializer defined`
       log.error(message)
       return Promise.reject(new Error(message))
     }
@@ -148,11 +158,9 @@ function getReply (channel, serializers, raw, replyQueue, connectionName) {
       } else {
         publishOptions.headers.sequence_end = true // jshint ignore:line
       }
-      log.debug("Replying to message %s on '%s' - '%s' with type '%s'",
-        raw.properties.messageId,
-        replyTo,
-        connectionName,
-        publishOptions.type)
+      log.debug(
+        `Replying to message ${raw.properties.messageId} on '${replyTo}' - '${connectionName}' with type '${publishOptions.type}'`
+      )
       if (raw.properties.headers && raw.properties.headers['direct-reply-to']) {
         return channel.publish(
           '',
@@ -190,10 +198,14 @@ function getUntrackedOps (channel, raw, messages) {
   return {
     ack: noOp,
     nack: function () {
-      log.error("Tag %d on '%s' - '%s' cannot be nacked in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName)
+      log.error(
+        `Tag ${raw.fields.deliveryTag} on '${messages.name}' - '${messages.connectionName}' cannot be nacked in noAck mode - message will be lost!`
+      )
     },
     reject: function () {
-      log.error("Tag %d on '%s' - '%s' cannot be rejected in noAck mode - message will be lost!", raw.fields.deliveryTag, messages.name, messages.connectionName)
+      log.error(
+        `Tag ${raw.fields.deliveryTag} on '${messages.name}' - '${messages.connectionName}' cannot be rejected in noAck mode - message will be lost!`
+      )
     }
   }
 }
@@ -304,13 +316,13 @@ function resolveTags (channel, queue, connection) {
   return function (op, data) {
     switch (op) {
       case 'ack':
-        log.debug("Acking tag %d on '%s' - '%s'", data.tag, queue, connection)
+        log.debug(`Acking tag ${data.tag} on '${queue}' - '${connection}'`)
         return channel.ack({ fields: { deliveryTag: data.tag } }, data.inclusive)
       case 'nack':
-        log.debug("Nacking tag %d on '%s' - '%s'", data.tag, queue, connection)
+        log.debug(`Nacking tag ${data.tag} on '${queue}' - '${connection}'`)
         return channel.nack({ fields: { deliveryTag: data.tag } }, data.inclusive)
       case 'reject':
-        log.debug("Rejecting tag %d on '%s' - '%s'", data.tag, queue, connection)
+        log.debug(`Rejecting tag ${data.tag} on '${queue}' - '${connection}'`)
         return channel.nack({ fields: { deliveryTag: data.tag } }, data.inclusive, false)
       default:
         return Promise.resolve(true)
@@ -330,14 +342,14 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
 
   options.consumerTag = info.createTag(channelName)
   if (Object.keys(channel.item.consumers).length > 0) {
-    log.info('Duplicate subscription to queue %s ignored', channelName)
+    log.info(`Duplicate subscription to queue '${channelName}' ignored`)
     return Promise.resolve(options.consumerTag)
   }
-  log.info("Starting subscription to queue '%s' on '%s'", channelName, topology.connection.name)
+  log.info(`Starting subscription to queue '${channelName}' on '${topology.connection.name}'`)
   return channel.consume(channelName, function (raw) {
     if (!raw) {
       // this happens when the consumer has been cancelled
-      log.warn("Queue '%s' was sent a consumer cancel notification")
+      log.warn(`Queue '${channelName}' was sent a consumer cancel notification`)
       throw new Error('Broker cancelled the consumer remotely')
     }
     const correlationId = raw.properties.correlationId
@@ -371,8 +383,9 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
         raw.quarantined = true
         topic = `${topic}.quarantined`
       } else {
-        log.error("Could not deserialize message id %s on queue '%s', connection '%s' - no serializer defined",
-          raw.properties.messageId, channelName, topology.connection.name)
+        log.error(
+          `Could not deserialize message id '${raw.properties.messageId}' on queue '${channelName}', connection '${topology.connection.name}' - no serializer defined`
+        )
         track()
         ops.reject()
         return
@@ -403,17 +416,15 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
       track()
 
       if (!handled) {
-        unhandledLog.warn("Message of %s on queue '%s', connection '%s' was not processed by any registered handlers",
-          raw.type,
-          channelName,
-          topology.connection.name
+        unhandledLog.warn(
+          `Message of ${raw.type} on queue '${channelName}', connection '${topology.connection.name}' was not processed by any registered handlers`
         )
         topology.onUnhandled(raw)
       }
     }
 
     if (raw.fields.routingKey === topology.replyQueue.name) {
-      responses.publish(
+      replies.emit(
         {
           topic: correlationId,
           headers: {
@@ -424,7 +435,7 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
         onPublish
       )
     } else {
-      dispatch.emit(topic, {
+      received.emit(topic, {
         topic: topic,
         headers: {
           resolverNoCache: !shouldCacheKeys
@@ -444,7 +455,9 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
 
 function unsubscribe (channel, options) {
   if (channel.tag) {
-    log.info("Unsubscribing from queue '%s' with tag %s", options.name, channel.tag)
+    log.info(
+      `Unsubscribing from queue '${options.name}' with tag ${channel.tag}`
+    )
     return channel.cancel(channel.tag)
   } else {
     return Promise.resolve()

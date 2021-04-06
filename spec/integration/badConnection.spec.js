@@ -6,7 +6,7 @@ describe('Bad Connection', function () {
   describe('when attempting a connection', function () {
     let error
     before((done) => {
-      rabbit.once('#.connection.failed', (err) => {
+      rabbit.once('#.connection.failed', (ev, err, c) => {
         error = err
         done()
       })

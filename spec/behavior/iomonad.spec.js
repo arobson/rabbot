@@ -73,7 +73,7 @@ describe('IO Monad', function () {
     let acquiring = 0
     before(function (done) {
       const factory = function () {
-        return Promise.reject(new Error('because no one likes you'))
+        return Promise.reject(new Error('just to be silly'))
       }
 
       resource = Monad({ name: 'unavailable' }, 'resource', factory, Resource, (x) => {
@@ -111,7 +111,7 @@ describe('IO Monad', function () {
     })
 
     it('should have called resource rejection handler', function () {
-      error.should.match(/^Error: because no one likes you$/)
+      error.should.match(/^Error: just to be silly$/)
     })
 
     after(function () {
@@ -141,7 +141,7 @@ describe('IO Monad', function () {
           resource.release()
           resource._delegate('close', 'closed')
         } else {
-          resource._delegate('error', 'E_TOO_MUCH_BUNNIES - the rabbits caught fire')
+          resource._delegate('error', 'E_TOO_MUCH_BUNNIES - there are too many')
         }
       })
 
@@ -163,7 +163,7 @@ describe('IO Monad', function () {
     })
 
     it('should have called resource rejection handler', function () {
-      error.should.match(/^E_TOO_MUCH_BUNNIES - the rabbits caught fire$/)
+      error.should.match(/^E_TOO_MUCH_BUNNIES - there are too many$/)
     })
 
     it('should not retain handle to resource', function () {
@@ -200,7 +200,7 @@ describe('IO Monad', function () {
         if (acquiring > 1) {
           resource._delegate('close', 'RabbitMQ hates your face')
         } else {
-          resource._delegate('error', new Error('you didda dum ting'))
+          resource._delegate('error', new Error('this does not work'))
         }
       })
 

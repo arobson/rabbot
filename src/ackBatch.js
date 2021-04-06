@@ -131,19 +131,18 @@ AckBatch.prototype._resolveAll = function (status, first, last) {
   }.bind(this)
   if (this.messages.length > 0) {
     const lastTag = this._lastByStatus(status).tag
-    log.debug('%s ALL (%d) tags on %s up to %d - %s.',
-      status,
-      this.messages.length,
-      this.name,
-      lastTag,
-      this.connectionName)
+    log.debug(
+      `${status} ALL (${this.messages.length}) tags on ${this.name} up to ${lastTag} - ${this.connectionName}.`
+    )
     this.resolver(status, { tag: lastTag, inclusive: true })
       .then(function () {
         this[last] = lastTag
         this._removeByStatus(status)
         this[first] = undefined
         if (count > 0 && this.messages.length === 0) {
-          log.debug('No pending tags remaining on queue %s - %s', this.name, this.connectionName)
+          log.debug(
+            `No pending tags remaining on queue ${this.name} - ${this.connectionName}`
+          )
           // The following setTimeout is the only thing between an insideous heisenbug and your sanity:
           // The promise for ack/nack will resolve on the channel before the server has processed it.
           // Without the setTimeout, if there is a pending cleanup/shutdown on the channel from the queueFsm,
@@ -167,15 +166,9 @@ AckBatch.prototype._resolveTag = function (tag, operation, inclusive) {
   this.firstAck = nextAck ? nextAck.tag : undefined
   this.firstNack = nextNack ? nextNack.tag : undefined
   this.firstReject = nextReject ? nextReject.tag : undefined
-  log.debug('%s %d tags (%s) on %s - %s. (Next ack: %d, Next nack: %d, Next reject: %d)',
-    operation,
-    removed.length,
-    inclusive ? 'inclusive' : 'individual',
-    this.name,
-    this.connectionName,
-    this.firstAck || 0,
-    this.firstNack || 0,
-    this.firstReject || 0)
+  log.debug(
+    `${operation} ${removed.length} tags (${inclusive ? 'inclusive' : 'individual'}) on ${this.name} - ${this.connectionName}. (Next ack: ${this.firstAck || 0}, Next nack: ${this.firstNack || 0}, Next reject: ${this.firstReject || 0})`
+  )
   this.resolver(operation, { tag: tag, inclusive: inclusive })
 }
 
@@ -205,7 +198,7 @@ AckBatch.prototype.addMessage = function (message) {
   this.receivedCount++
   const status = message
   this.messages.push(status)
-  log.debug('New pending tag %d on queue %s - %s', status.tag, this.name, this.connectionName)
+  log.debug(`New pending tag ${status.tag} on queue ${this.name} - ${this.connectionName}`)
 }
 
 AckBatch.prototype.changeName = function (name) {
@@ -226,19 +219,19 @@ class TrackedMessage {
   ack () {
     this.status = 'ack'
     this.batch.firstAck = this.batch.firstAck || this.tag
-    log.debug("Marking tag %d as %s'd on queue %s - %s", this.tag, this.status, this.batch.name, this.batch.connectionName)
+    log.debug(`Marking tag ${this.tag} as ${this.status}'d on queue ${this.batch.name} - ${this.batch.connectionName}`)
   }
 
   nack () {
     this.status = 'nack'
     this.batch.firstNack = this.batch.firstNack || this.tag
-    log.debug("Marking tag %d as %s'd on queue %s - %s", this.tag, this.status, this.batch.name, this.batch.connectionName)
+    log.debug(`Marking tag ${this.tag} as ${this.status}'d on queue ${this.batch.name} - ${this.batch.connectionName}`)
   }
 
   reject () {
     this.status = 'reject'
     this.batch.firstReject = this.batch.firstReject || this.tag
-    log.debug('Marking tag %d as %sed on queue %s - %s', this.tag, this.status, this.batch.name, this.batch.connectionName)
+    log.debug(`Marking tag ${this.tag} as ${this.status}'d on queue ${this.batch.name} - ${this.batch.connectionName}`)
   }
 }
 

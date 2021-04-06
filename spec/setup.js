@@ -41,6 +41,7 @@ global.harnessFactory = function (rabbit, cb, expected) {
 
   function clean (connectionName) {
     handlers.forEach((handle) => {
+      console.log(handle)
       handle.remove()
     })
     handlers = []

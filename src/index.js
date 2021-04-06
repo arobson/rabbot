@@ -1,11 +1,9 @@
-const Monologue = require('monologue.js')
+const _ = require('fauxdash')
+const Dispatcher = require('topic-dispatch')
 const connectionFn = require('./connectionFsm.js')
 const topologyFn = require('./topology.js')
-const postal = require('postal')
 const uuid = require('uuid')
-const dispatch = postal.channel('rabbit.dispatch')
-const responses = postal.channel('rabbit.responses')
-const signal = postal.channel('rabbit.ack')
+const { signal, received, replies } = require('./dispatch')
 const log = require('./log')
 
 const DEFAULT = 'default'
@@ -102,10 +100,10 @@ Broker.prototype.addConnection = function (opts) {
         reject(new Error('connection closed'))
       })
 
-      connection.on('failed', (err) => {
+      connection.on('failed', (a, b, c) => {
         self.emit('failed', connection)
-        self.emit(name + '.connection.failed', err)
-        reject(err)
+        self.emit(name + '.connection.failed', b)
+        reject(b)
       })
 
       connection.on('unreachable', () => {
@@ -115,7 +113,7 @@ Broker.prototype.addConnection = function (opts) {
         reject(new Error('connection unreachable'))
       })
 
-      connection.on('return', (raw) => {
+      connection.on('return', (ev, raw) => {
         self.emit('return', raw)
       })
       self.connections[name] = topology
@@ -157,7 +155,7 @@ Broker.prototype.addSerializer = function (contentType, serializer) {
 }
 
 Broker.prototype.batchAck = function () {
-  signal.publish('ack', {})
+  signal.emit('ack', {})
 }
 
 Broker.prototype.bindExchange = function (source, target, keys, connectionName = DEFAULT) {
@@ -301,14 +299,13 @@ Broker.prototype.handle = function (messageType, handler, queueName, context) {
   }
 
   const target = parts.join('.')
-  const subscription = dispatch.subscribe(target, options.handler.bind(options.context))
+  const subscription = received.on(target, options.handler.bind(options.context))
   if (options.autoNack) {
     subscription.catch(function (err, msg) {
       console.log("Handler for '" + target + "' failed with:", err.stack)
       msg.nack()
     })
   }
-  subscription.remove = subscription.unsubscribe
   return subscription
 }
 
@@ -463,7 +460,7 @@ Broker.prototype.request = function (exchangeName, options = {}, notify, connect
         }, replyTimeout)
         const scatter = options.expect
         let remaining = options.expect
-        const subscription = responses.subscribe(requestId, message => {
+        const subscription = replies.on(requestId, (ev, message) => {
           const end = scatter
             ? --remaining <= 0
             : message.properties.headers.sequence_end
@@ -517,7 +514,7 @@ Broker.prototype.startSubscription = function (queueName, exclusive = false, con
   }
   const queue = this.getQueue(queueName, connectionName)
   if (queue) {
-    return queue.subscribe(exclusive)
+    return queue.on(exclusive)
   } else {
     throw new Error("No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed.")
   }
@@ -546,8 +543,5 @@ Broker.prototype.unbindQueue = function (source, target, keys, connectionName = 
 
 require('./config.js')(Broker)
 
-Monologue.mixInto(Broker)
-
 const broker = new Broker()
-
-module.exports = broker
+module.exports = _.melter(broker, Dispatcher())

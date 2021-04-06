@@ -46,10 +46,10 @@ describe('Queue FSM', function () {
         .returns(Promise.reject(new Error('nope')))
 
       queue = queueFsm(options, connection, topology, {}, ch.factory)
-      queue.on('failed', function (err) {
+      queue.once('failed', function (ev, err) {
         error = err
         done()
-      }).once()
+      })
     })
 
     it('should have failed with an error', function () {
@@ -57,7 +57,7 @@ describe('Queue FSM', function () {
     })
 
     it('should be in failed state', function () {
-      queue.state.should.equal('failed')
+      queue.currentState.should.equal('failed')
     })
 
     describe('when subscribing in failed state', function () {
@@ -99,10 +99,10 @@ describe('Queue FSM', function () {
       queue.once('failed', function (err) {
         error = err
         done()
-      }).once()
+      })
       queue.once('defined', function () {
         done()
-      }).once()
+      })
     })
 
     it('should not have failed', function () {
@@ -110,7 +110,7 @@ describe('Queue FSM', function () {
     })
 
     it('should be in ready state', function () {
-      queue.state.should.equal('ready')
+      queue.currentState.should.equal('ready')
     })
 
     describe('when subscribing in ready state', function () {
@@ -122,7 +122,6 @@ describe('Queue FSM', function () {
       })
 
       it('should resolve subscribe without error', function () {
-        queue.subscribe()
         return queue.subscribe().should.be.fulfilled
       })
 
@@ -131,7 +130,7 @@ describe('Queue FSM', function () {
       })
 
       it('should be in subscribed state', function () {
-        queue.state.should.equal('subscribed')
+        queue.currentState.should.equal('subscribed')
       })
     })
 
@@ -150,7 +149,7 @@ describe('Queue FSM', function () {
 
       it('should resolve purge without error and resubscribe', function (done) {
         queue.on('subscribed', function () {
-          queue.state.should.equal('subscribed')
+          queue.currentState.should.equal('subscribed')
           done()
         })
         queue.purge().should.eventually.equal(10)
@@ -159,7 +158,7 @@ describe('Queue FSM', function () {
 
     describe('when checking after subscribed state', function () {
       it('should be in subscribed state', function () {
-        return queue.state.should.equal('subscribed')
+        return queue.currentState.should.equal('subscribed')
       })
 
       it('should resolve check without error', function () {
@@ -202,7 +201,7 @@ describe('Queue FSM', function () {
 
         ch.factory().then(function (q) {
           channel = q.channel
-          q.channel.raise('closed')
+          q.channel.emit('closed')
         })
       })
 
@@ -211,7 +210,7 @@ describe('Queue FSM', function () {
       })
 
       it('should be in a ready state', function () {
-        queue.state.should.equal('ready')
+        queue.currentState.should.equal('ready')
       })
 
       it('should not duplicate subscriptions to channel events', function () {
@@ -242,7 +241,7 @@ describe('Queue FSM', function () {
 
       describe('when checking a released queue', function () {
         it('should be released', function () {
-          return queue.state.should.equal('released')
+          return queue.currentState.should.equal('released')
         })
 
         it('should reject check', function () {

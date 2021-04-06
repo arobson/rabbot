@@ -15,7 +15,9 @@ function close (name, channel) {
         // since calling close on channel could reject the promise
         // (see connection close's comment) this catches and logs it
         // for debug level
-        log.debug('Error was reported during close of connection `%s` - `%s`', name, err)
+        log.debug(
+          `Error was reported during close of connection '${name}' - '${err}'`
+        )
       })
   } else {
     return Promise.resolve()

@@ -1,6 +1,7 @@
-const Monologue = require('monologue.js')
+const _ = require('fauxdash')
 const log = require('./log')('rabbot.topology')
 const info = require('./info')
+const Dispatcher = require('topic-dispatch')
 let Exchange, Queue
 let replyId
 
@@ -73,8 +74,8 @@ const Topology = function (connection, options, serializers, unhandledStrategies
   this.options = options
   this.replyQueue = { name: false }
   this.serializers = serializers
-  this.onUnhandled = (message) => unhandledStrategies.onUnhandled(message)
-  this.onReturned = (message) => returnedStrategies.onReturned(message)
+  this.onUnhandled = (ev, message) => unhandledStrategies.onUnhandled(message)
+  this.onReturned = (ev, message) => returnedStrategies.onReturned(message)
   let replyQueueName = ''
 
   if (has(options, 'replyQueue')) {
@@ -104,7 +105,7 @@ const Topology = function (connection, options, serializers, unhandledStrategies
 Topology.prototype.completeRebuild = function () {
   return this.configureBindings(this.definitions.bindings, true)
     .then(() => {
-      log.info("Topology rebuilt for connection '%s'", this.connection.name)
+      log.info(`Topology rebuilt for connection '${this.connection.name}'`)
       this.emit('bindings.completed', this.definitions)
       this.emit(this.connection.name + '.connection.configured', this.connection)
     })
@@ -174,8 +175,9 @@ Topology.prototype.createBinding = function (options) {
     }
     this.promises[id] = promise = this.connection.getChannel('control', false, 'control channel for bindings')
       .then((channel) => {
-        log.info("Binding %s '%s' to '%s' on '%s' with keys: %s",
-          (options.queue ? 'queue' : 'exchange'), target, source, this.connection.name, JSON.stringify(keys))
+        log.info(
+          `Binding ${options.queue ? 'queue' : 'exchange'} '${target}' to '${source}' on '${this.connection.name}' with keys: ${JSON.stringify(keys)}`,
+        )
         return Promise.all(
           keys.map((key) => channel[call](target, source, key))
         )
@@ -185,11 +187,11 @@ Topology.prototype.createBinding = function (options) {
 }
 
 Topology.prototype.createPrimitive = function (Primitive, primitiveType, options) {
-  const errorFn = function (err) {
-    return new Error('Failed to create ' + primitiveType + " '" + options.name +
-      "' on connection '" + this.connection.name +
-      "' with '" + (err ? (err.stack || err) : 'N/A') + "'")
-  }.bind(this)
+  const errorFn = (err) => {
+    return new Error(
+      `Failed to create ${primitiveType} '${options.name}' on connection '${this.connection.name}' with ${err ? (err.stack || err) : 'N/A'}`
+    )
+  }
   const definitions = primitiveType === 'exchange' ? this.definitions.exchanges : this.definitions.queues
   const channelName = `${primitiveType}:${options.name}`
   let promise = this.promises[channelName]
@@ -207,11 +209,11 @@ Topology.prototype.createPrimitive = function (Primitive, primitiveType, options
           onConnectionFailed(err)
         })
         primitive.once('defined', function () {
-          onFailed.unsubscribe()
+          onFailed.remove()
           resolve(primitive)
         })
       }
-      primitive.once('failed', function (err) {
+      primitive.once('failed', function (ev, err) {
         delete definitions[options.name]
         delete this.channels[channelName]
         delete this.promises[channelName]
@@ -264,7 +266,9 @@ Topology.prototype.deleteExchange = function (name) {
     channel.release()
     delete this.channels[key]
     delete this.promises[key]
-    log.info("Deleting %s exchange '%s' on connection '%s'", channel.type, name, this.connection.name)
+    log.info(
+      `Deleting ${channel.type} exchange '${name}' on connection '${this.connection.name}'`
+    )
   }
   return this.connection.getChannel('control', false, 'control channel for bindings')
     .then(function (channel) {
@@ -279,7 +283,7 @@ Topology.prototype.deleteQueue = function (name) {
     channel.release()
     delete this.channels[key]
     delete this.promises[key]
-    log.info("Deleting queue '%s' on connection '%s'", name, this.connection.name)
+    log.info(`Deleting queue '${name}' on connection '${this.connection.name}'`)
   }
   return this.connection.getChannel('control', false, 'control channel for bindings')
     .then(function (channel) {
@@ -304,8 +308,9 @@ Topology.prototype.handleReturned = function (raw) {
   const contentType = raw.properties.contentType || 'application/octet-stream'
   const serializer = this.serializers[contentType]
   if (!serializer) {
-    log.error("Could not deserialize message id %s, connection '%s' - no serializer defined",
-      raw.properties.messageId, this.connection.name)
+    log.error(
+      `Could not deserialize message id ${raw.properties.messageId}, connection '${this.connection.name}' - no serializer defined`
+    )
   } else {
     try {
       raw.body = serializer.deserialize(raw.content, raw.properties.contentEncoding)
@@ -317,7 +322,7 @@ Topology.prototype.handleReturned = function (raw) {
 }
 
 Topology.prototype.onReconnect = function () {
-  log.info("Reconnection to '%s' established - rebuilding topology", this.name)
+  log.info(`Reconnection to '${this.name}' established - rebuilding topology`)
   this.promises = {}
 
   this.createReplyQueue().then(null, this.onReplyQueueFailed)
@@ -396,13 +401,12 @@ Topology.prototype.removeBinding = function (options) {
   return promise
 }
 
-Monologue.mixInto(Topology)
-
 module.exports = function (connection, options, serializers, unhandledStrategies, returnedStrategies, exchangeFsm, queueFsm, defaultId) {
   // allows us to optionally provide mocks and control the default queue name
   Exchange = exchangeFsm || require('./exchangeFsm.js')
   Queue = queueFsm || require('./queueFsm.js')
   replyId = defaultId || info.id
 
-  return new Topology(connection, options, serializers, unhandledStrategies, returnedStrategies)
+  const topology = new Topology(connection, options, serializers, unhandledStrategies, returnedStrategies)
+  return _.melter(topology, Dispatcher())
 }

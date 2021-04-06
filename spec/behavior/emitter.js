@@ -1,9 +1,9 @@
 module.exports = (name) => {
   let handlers = {}
 
-  function raise (ev) {
+  function emit (ev) {
     if (handlers[ev]) {
-      const args = Array.prototype.slice.call(arguments, 1)
+      const args = Array.prototype.slice.call(arguments, 0)
       handlers[ev].forEach(function (handler) {
         if (handler) {
           handler.apply(undefined, args)
@@ -19,7 +19,7 @@ module.exports = (name) => {
       handlers[ev] = [handle]
     }
     return {
-      unsubscribe: function (h) {
+      remove: function (h) {
         handlers[ev].splice(handlers[ev].indexOf(h || handle)) // jshint ignore:line
       }
     }
@@ -34,7 +34,7 @@ module.exports = (name) => {
     handlers: handlers,
     on: on,
     once: on,
-    raise: raise,
+    emit: emit,
     reset: reset
   }
 }

@@ -8,7 +8,7 @@ const info = require('../../src/info')
 function connectionFn () {
   let handlers = {}
 
-  function raise (ev) {
+  function emit (ev) {
     if (handlers[ev]) {
       const args = Array.prototype.slice.call(arguments, 1)
       _.each(handlers[ev], function (handler) {
@@ -26,7 +26,7 @@ function connectionFn () {
       handlers[ev] = [handle]
     }
     return {
-      unsubscribe: function (h) {
+      remove: function (h) {
         handlers[ev].splice(_.indexOf(handlers[ev], h))
       }
     }
@@ -41,7 +41,7 @@ function connectionFn () {
     fail: function (err) {
       this.state = 'failed'
       this.lastErr = err
-      this.raise('failed', err)
+      this.emit('failed', err)
     },
     getChannel: noOp,
     handlers: handlers,
@@ -51,7 +51,7 @@ function connectionFn () {
     },
     on: on,
     once: on,
-    raise: raise,
+    emit: emit,
     resetHandlers: reset,
     reset: noOp,
     state: ''
@@ -73,7 +73,7 @@ describe('Topology', function () {
       ex = emitter()
       q = emitter()
       q.check = function () {
-        q.raise('defined')
+        q.emit('defined')
         return Promise.resolve()
       }
       const Exchange = function () {
@@ -106,13 +106,13 @@ describe('Topology', function () {
       ]).then(function () {
         topology.configureBindings({ exchange: 'top-ex', target: 'top-q' })
       })
-      topology.once('replyQueue.ready', function (queue) {
+      topology.once('replyQueue.ready', function (ev, queue) {
         replyQueue = queue
         done()
       })
       process.nextTick(function () {
-        q.raise('defined')
-        ex.raise('defined')
+        q.emit('defined')
+        ex.emit('defined')
       })
     })
 
@@ -155,13 +155,13 @@ describe('Topology', function () {
           .once()
           .resolves(control)
 
-        topology.once('replyQueue.ready', function (queue) {
+        topology.once('replyQueue.ready', function (ev, queue) {
           replyQueue = queue
         })
-        topology.once('bindings.completed', function (bindings) {
+        topology.once('bindings.completed', function (ev, bindings) {
           done()
         })
-        conn.instance.raise('reconnected')
+        conn.instance.emit('reconnected')
       })
 
       it('should recreate default reply queue', function () {
@@ -188,7 +188,7 @@ describe('Topology', function () {
       ex = emitter()
       q = emitter()
       q.check = function () {
-        q.raise('defined')
+        q.emit('defined')
         return Promise.resolve()
       }
       const Exchange = function () {
@@ -207,12 +207,12 @@ describe('Topology', function () {
         }
       }
       topology = topologyFn(conn.instance, options, {}, undefined, undefined, Exchange, Queue, 'test')
-      topology.once('replyQueue.ready', function (queue) {
+      topology.once('replyQueue.ready', function (ev, queue) {
         replyQueue = queue
         done()
       })
       process.nextTick(function () {
-        q.raise('defined')
+        q.emit('defined')
       })
     })
 
@@ -230,11 +230,11 @@ describe('Topology', function () {
     describe('when recovering from disconnection', function () {
       before(function (done) {
         replyQueue = undefined
-        topology.once('replyQueue.ready', function (queue) {
+        topology.once('replyQueue.ready', function (ev, queue) {
           replyQueue = queue
           done()
         })
-        conn.instance.raise('reconnected')
+        conn.instance.emit('reconnected')
       })
 
       it('should recreate custom reply queue', function () {
@@ -257,7 +257,7 @@ describe('Topology', function () {
       ex = emitter()
       q = emitter()
       q.check = function () {
-        q.raise('defined')
+        q.emit('defined')
         return Promise.resolve()
       }
       const Exchange = function () {
@@ -271,12 +271,12 @@ describe('Topology', function () {
         replyQueue: false
       }
       topology = topologyFn(conn.instance, options, {}, undefined, undefined, Exchange, Queue)
-      topology.once('replyQueue.ready', function (queue) {
+      topology.once('replyQueue.ready', function (ev, queue) {
         replyQueue = queue
         done()
       })
       process.nextTick(function () {
-        q.raise('defined')
+        q.emit('defined')
       })
       setTimeout(function () {
         done()
@@ -296,7 +296,7 @@ describe('Topology', function () {
       ex = emitter()
       q = emitter()
       ex.check = function () {
-        ex.raise('defined')
+        ex.emit('defined')
         return Promise.resolve()
       }
       const Exchange = function () {
@@ -313,7 +313,7 @@ describe('Topology', function () {
           done()
         })
       process.nextTick(function () {
-        ex.raise('defined')
+        ex.emit('defined')
       })
     })
 
@@ -334,7 +334,7 @@ describe('Topology', function () {
       ex = emitter()
       q = emitter()
       ex.check = function () {
-        ex.raise('defined')
+        ex.emit('defined')
         return Promise.resolve()
       }
       const Exchange = function () {
@@ -353,7 +353,7 @@ describe('Topology', function () {
           done()
         })
       process.nextTick(function () {
-        ex.raise('defined')
+        ex.emit('defined')
       })
     })
 
@@ -393,12 +393,12 @@ describe('Topology', function () {
           done()
         })
       process.nextTick(function () {
-        ex.raise('failed', new Error("ain't nobody got time fodat"))
+        ex.emit('failed', new Error('time limit exceeded'))
       })
     })
 
     it('should reject with error', function () {
-      error.toString().should.contain("Error: Failed to create exchange 'badtimes' on connection 'default' with 'Error: ain't nobody got time fodat")
+      error.toString().should.contain(`Error: Failed to create exchange 'badtimes' on connection 'default' with Error: time limit exceeded`)
     })
 
     it('should not add invalid exchanges to channels', function () {
@@ -429,12 +429,12 @@ describe('Topology', function () {
           done()
         })
       process.nextTick(function () {
-        q.raise('failed', new Error("ain't got time fodat"))
+        q.emit('failed', new Error('time limit exceeded'))
       })
     })
 
     it('should reject with error', function () {
-      error.toString().should.contain("Error: Failed to create queue 'badtimes' on connection 'default' with 'Error: ain't got time fodat")
+      error.toString().should.contain(`Error: Failed to create queue 'badtimes' on connection 'default' with Error: time limit exceeded`)
     })
 
     it('should not add invalid queues to channels', function () {
@@ -478,7 +478,7 @@ describe('Topology', function () {
             })
         })
       process.nextTick(function () {
-        ex.raise('defined')
+        ex.emit('defined')
       })
     })
 
@@ -520,7 +520,7 @@ describe('Topology', function () {
       topology = topologyFn(conn.instance, { replyQueue: false }, {}, undefined, undefined, Exchange, Queue)
 
       process.nextTick(function () {
-        q.raise('defined')
+        q.emit('defined')
       })
 
       return topology.createQueue({ name: 'noice' })
@@ -815,7 +815,7 @@ describe('Topology', function () {
 
       it('should reject exchange promise with connection error', function () {
         error.toString().should.contain(
-          "Error: Failed to create exchange 'delayed.ex' on connection 'default' with 'Error: no such server!")
+          `Error: Failed to create exchange 'delayed.ex' on connection 'default' with Error: no such server!`)
       })
 
       it('should keep exchange definition', function () {
@@ -848,7 +848,7 @@ describe('Topology', function () {
 
       it('should reject queue promise with connection error', function () {
         error.toString().should.contain(
-          "Error: Failed to create queue 'delayed.q' on connection 'default' with 'Error: no such server!")
+          `Error: Failed to create queue 'delayed.q' on connection 'default' with Error: no such server!`)
       })
 
       it('should keep queue definition', function () {

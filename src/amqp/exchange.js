@@ -2,7 +2,6 @@ const defer = require('../defer')
 const info = require('../info')
 const exLog = require('../log.js')('rabbot.exchange')
 const topLog = require('../log.js')('rabbot.topology')
-const format = require('util').format
 
 /* log
   * `rabbot.exchange`
@@ -34,11 +33,8 @@ function define (channel, options, connectionName) {
   const valid = aliasOptions(options, {
     alternate: 'alternateExchange'
   }, 'limit', 'persistent', 'publishTimeout')
-  topLog.info("Declaring %s exchange '%s' on connection '%s' with the options: %s",
-    options.type,
-    options.name,
-    connectionName,
-    JSON.stringify(valid)
+  topLog.info(
+    `Declaring ${options.type} exchange '${options.name}' on connection '${connectionName}' with the options: ${JSON.stringify(valid)}`
   )
   if (options.name === '') {
     return Promise.resolve(true)
@@ -71,7 +67,8 @@ function publish (channel, options, topology, log, serializers, message) {
   const contentType = getContentType(message)
   const serializer = serializers[contentType]
   if (!serializer) {
-    const errMessage = format("Failed to publish message with contentType '%s' - no serializer defined", contentType)
+    const errMessage =
+      `Failed to publish message with contentType '${contentType}' - no serializer defined`
     exLog.error(errMessage)
     return Promise.reject(new Error(errMessage))
   }
@@ -100,16 +97,9 @@ function publish (channel, options, topology, log, serializers, message) {
   }
 
   const effectiveKey = message.routingKey === '' ? '' : message.routingKey || publishOptions.type
-  exLog.debug("Publishing message ( type: '%s' topic: '%s', sequence: '%s', correlation: '%s', replyTo: '%s' ) to %s exchange '%s' on connection '%s'",
-    publishOptions.type,
-    effectiveKey,
-    message.sequenceNo,
-    publishOptions.correlationId,
-    JSON.stringify(publishOptions),
-    type,
-    channelName,
-    topology.connection.name)
-
+  exLog.debug(
+    `Publishing message ( type: '${publishOptions.type}' topic: '${effectiveKey}', sequence: '${message.sequenceNo}', correlation: '${publishOptions.correlationId}', replyTo: '${JSON.stringify(publishOptions)}' ) to ${type} exchange '${channelName}' on connection '${topology.connection.name}'`
+  )
   function onRejected (err) {
     log.remove(message)
     throw err

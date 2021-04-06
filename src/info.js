@@ -1,6 +1,5 @@
 const crypto = require('crypto')
 const os = require('os')
-const format = require('util').format
 const self = require('../package.json')
 
 const host = os.hostname()
@@ -8,15 +7,15 @@ const platform = os.platform()
 const architecture = os.arch()
 const title = process.title
 const pid = process.pid
-const consumerId = format('%s.%s.%s', host, title, pid)
-const consistentId = format('%s.%s', host, title)
+const consumerId = `${host}.${title}.${pid}`
+const consistentId = `host.title`
 const toBE = os.endianness() === 'BE'
 
 function createConsumerTag (queueName) {
   if (queueName.indexOf(consumerId) === 0) {
     return queueName
   } else {
-    return format('%s.%s', consumerId, queueName)
+    return `${consumerId}.${queueName}`
   }
 }
 
@@ -36,15 +35,15 @@ function createConsistentHash () {
 }
 
 function getHostInfo () {
-  return format('%s (%s %s)', host, platform, architecture)
+  return `${host} (${platform} ${architecture})`
 }
 
 function getProcessInfo () {
-  return format('%s (pid: %d)', title, pid)
+  return `${title} (pid: ${pid})`
 }
 
 function getLibInfo () {
-  return format('rabbot - %s', self.version)
+  return `rabbot - ${self.version}`
 }
 
 module.exports = {

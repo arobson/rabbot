@@ -72,12 +72,12 @@ function getDefinition(options, connectionFn, channelFn) {
       },
 
       _onChannel: function (name, context, channel) {
-        log.debug("Acquired channel '%s' on '%s' successfully for '%s'", name, this.name, context)
+        log.debug(`Acquired channel '${name}' on '${this.name}' successfully for '${context}'`)
         return channel
       },
 
       _onChannelFailure: function (name, context, error) {
-        log.error("Failed to create channel '%s' on '%s' for '%s' with %s", name, this.name, error)
+        log.error(`Failed to create channel '${name}' on '${this.name}' for '${context}' with ${error}`)
         return Promise.reject(error)
       },
 
@@ -99,7 +99,7 @@ function getDefinition(options, connectionFn, channelFn) {
 
         function reacquireFailed (err) {
           log.error(`Could not complete reconnection of '${this.name}' due to ${err}`)
-          this.forward('failed', err)
+          this.forward('failed', 'failed', err)
         }
 
         Promise.all(reacquisitions)
@@ -110,8 +110,8 @@ function getDefinition(options, connectionFn, channelFn) {
       },
 
       _replay: function (ev) {
-        return function (x) {
-          this.handle(ev, x)
+        return function (data) {
+          this.handle(ev, data)
         }.bind(this)
       },
 
@@ -187,9 +187,8 @@ function getDefinition(options, connectionFn, channelFn) {
         acquiring: { next: 'connecting' },
         acquired: { next: 'connected' },
         channel: { after: 'connected' },
-        close: { forward: 'connected' },
+        close: { forward: 'closed' },
         connect: { next: 'connecting', after: 'connected' },
-        connect: { forward: 'connecting' },
         failed: { next: 'connecting', after: '*' }
       },
       connecting: {
@@ -223,7 +222,7 @@ function getDefinition(options, connectionFn, channelFn) {
               request.deferred.reject
             )
         },
-        close: { deferUntil: 'closed', next: 'closing' },
+        close: { after: 'closed', next: 'closing' },
         connect: function (deferred) {
           deferred.resolve()
           this.emit('already-connected', connection)
@@ -267,7 +266,7 @@ function getDefinition(options, connectionFn, channelFn) {
           }
         },
         channel: function (request) {
-          log.warn("Channel '${request.name}' was requested for '${this.name}' during user initiated close. Request will be rejected.")
+          log.warn(`Channel '${request.name}' was requested for '${this.name}' during user initiated close. Request will be rejected.`)
           request.deferred.reject(new Error(
             `Illegal request for channel '${request.name}' during close of connection '${this.name}' initiated by user`,
           ))
@@ -287,7 +286,7 @@ function getDefinition(options, connectionFn, channelFn) {
             this.next('unreachable')
           }
         },
-        failed: function (err) {
+        failed: function (ev, err) {
           this.emit('failed', err)
         },
         acquiring: { next: 'connecting' },

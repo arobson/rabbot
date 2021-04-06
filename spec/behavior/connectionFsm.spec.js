@@ -4,13 +4,13 @@ const noOp = function () {}
 const EventEmitter = require('events')
 
 function closer () {
-  this.raise('released')
+  this.emit('released')
 }
 
 const connectionMonadFn = function () {
   let handlers = {}
 
-  function raise (ev) {
+  function emit (ev) {
     if (handlers[ev]) {
       handlers[ev].apply(undefined, Array.prototype.slice.call(arguments, 1))
     }
@@ -29,7 +29,7 @@ const connectionMonadFn = function () {
 
   const instance = {
     acquire: function () {
-      this.raise('acquiring')
+      emit('acquiring')
       return Promise.resolve()
     },
     item: { uri: '' },
@@ -37,8 +37,7 @@ const connectionMonadFn = function () {
     createChannel: noOp,
     createConfirmChannel: noOp,
     on: on,
-    emit: this.raise,
-    raise: raise,
+    emit: emit,
     release: noOp,
     reset: reset
   }
@@ -65,7 +64,7 @@ describe('Connection FSM', function () {
     })
 
     after(function () {
-      connection.close()
+      return connection.close()
     })
   })
 
@@ -81,7 +80,7 @@ describe('Connection FSM', function () {
           return Promise.resolve()
         }
         connection.once('connecting', function () {
-          monad.raise('failed', new Error('bummer'))
+          monad.emit('failed', new Error('bummer'))
         })
         connection.once('failed', function () {
           done()
@@ -99,14 +98,14 @@ describe('Connection FSM', function () {
             return Promise.reject(new Error(':( no can do'))
           }
           connection.once('connecting', function () {
-            monad.raise('failed', new Error('connection failed'))
+            monad.emit('failed', new Error('connection failed'))
           })
           connection.once('failed', function (err, msg) {
             error = msg
             done()
           })
           connection.getChannel()
-          monad.raise('acquiring')
+          monad.emit('acquiring')
         })
 
         it('should fail to create channel', function () {
@@ -124,7 +123,7 @@ describe('Connection FSM', function () {
             done()
           })
           connection.once('connecting', function () {
-            monad.raise('failed', new Error('bummer'))
+            monad.emit('failed', new Error('bummer'))
           })
           connection.connect()
         })
@@ -134,7 +133,7 @@ describe('Connection FSM', function () {
         })
       })
 
-      after(function() {
+      after(function () {
         connection.removeAllListeners()
       })
     })
@@ -172,7 +171,7 @@ describe('Connection FSM', function () {
         onAcquiring = connection.on('connecting', function () {
           const ev = attempts.pop()
           process.nextTick(function () {
-            monad.raise(ev)
+            monad.emit(ev)
           })
         })
       })
@@ -216,7 +215,7 @@ describe('Connection FSM', function () {
         onAcquiring = connection.on('connecting', function () {
           const ev = attempts.pop()
           setTimeout(() => {
-            monad.raise(ev)
+            monad.emit(ev)
           }, 10)
         })
         return connection.after('connected').then(() => onAcquiring.off())
@@ -268,7 +267,7 @@ describe('Connection FSM', function () {
           monad.close = function () {
             // prevents the promise from being returned if the queues haven't all resolved
             queueMock.verify()
-            monad.raise('released')
+            monad.emit('released')
             return Promise.resolve(true)
           }
 
@@ -297,7 +296,7 @@ describe('Connection FSM', function () {
           connection.addQueue(queue)
           connection.addQueue(queue)
 
-          monad.raise('released')
+          monad.emit('released')
 
           return connection
             .close()
@@ -316,7 +315,7 @@ describe('Connection FSM', function () {
         let onAcquired
         before(function () {
           onAcquired = connection.on('connecting', function () {
-            monad.raise('acquired')
+            monad.emit('acquired')
           })
           setTimeout(function () {
             channel.emit('acquired')
@@ -333,13 +332,17 @@ describe('Connection FSM', function () {
           connection.once('reconnected', function () {
             done()
           })
-          monad.raise('closed')
+          monad.emit('closed')
         })
 
         after(function () {
           onAcquired.off()
           return connection.close()
         })
+      })
+
+      after(function() {
+        connection.removeAllListeners()
       })
     })
   })

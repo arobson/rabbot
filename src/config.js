@@ -13,17 +13,17 @@ module.exports = function (Broker) {
     this.configurations[configName] = config
     this.configuring[configName] = new Promise(function (resolve, reject) {
       function onExchangeError (connection, err) {
-        log.error('Configuration of %s failed due to an error in one or more exchange settings: %s', connection.name, err)
+        log.error(`Configuration of ${connection.name} failed due to an error in one or more exchange settings: ${err}`)
         reject(err)
       }
 
       function onQueueError (connection, err) {
-        log.error('Configuration of %s failed due to an error in one or more queue settings: %s', connection.name, err.stack)
+        log.error(`Configuration of ${connection.name} failed due to an error in one or more queue settings: ${err.stack}`)
         reject(err)
       }
 
       function onBindingError (connection, err) {
-        log.error('Configuration of %s failed due to an error in one or more bindings: %s', connection.name, err.stack)
+        log.error(`Configuration of ${connection.name} failed due to an error in one or more bindings: ${err.stack}`)
         reject(err)
       }
 
