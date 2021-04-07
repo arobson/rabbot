@@ -189,10 +189,10 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
             reject(err)
           }
           _handlers = [
-            this.once('released', cleanResolve),
-            this.once('failed', cleanReject),
-            this.once('unreachable', cleanReject),
-            this.once('noqueue', cleanResolve)
+            this.once('released', cleanResolve.bind(this)),
+            this.once('failed', cleanReject.bind(this)),
+            this.once('unreachable', cleanReject.bind(this)),
+            this.once('noqueue', cleanResolve.bind(this))
           ]
           this.handle('release')
         }.bind(this))

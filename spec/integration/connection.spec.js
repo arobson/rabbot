@@ -6,7 +6,7 @@ describe('Connection', function () {
   describe('on connection', function () {
     let connected
     before(function (done) {
-      rabbit.once('connected', (c) => {
+      rabbit.once('connected', (ev, c) => {
         connected = c
         done()
       })
@@ -18,7 +18,7 @@ describe('Connection', function () {
     })
 
     after(function () {
-      return rabbit.close('default')
+      return rabbit.shutdown()
     })
   })
 })

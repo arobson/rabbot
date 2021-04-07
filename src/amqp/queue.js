@@ -162,6 +162,7 @@ function getReply (channel, serializers, raw, replyQueue, connectionName) {
         `Replying to message ${raw.properties.messageId} on '${replyTo}' - '${connectionName}' with type '${publishOptions.type}'`
       )
       if (raw.properties.headers && raw.properties.headers['direct-reply-to']) {
+        console.log(`direct reply: ${replyTo}`)
         return channel.publish(
           '',
           replyTo,
@@ -169,6 +170,7 @@ function getReply (channel, serializers, raw, replyQueue, connectionName) {
           publishOptions
         )
       } else {
+        console.log(`indirect reply`)
         return channel.sendToQueue(replyTo, payload, publishOptions)
       }
     } else {

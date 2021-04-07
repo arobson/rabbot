@@ -14,7 +14,7 @@ function next (state) {
 }
 
 function getEmptyPromise (state) {
-  if (state.count) {
+  if (state.count && state.count > 0) {
     const deferred = defer()
     state.waiting = deferred
     return deferred.promise

@@ -110,7 +110,7 @@ function getDefinition(options, connectionFn, channelFn) {
       },
 
       _replay: function (ev) {
-        return function (data) {
+        return function (ev2, data) {
           this.handle(ev, data)
         }.bind(this)
       },
@@ -202,7 +202,9 @@ function getDefinition(options, connectionFn, channelFn) {
         channel: { after: 'connected' },
         close: { after: '*' },
         connect: { after: 'connected' },
-        failed: { forward: 'failed' }
+        failed: function (data) {
+          this.forward('failed', 'failed', data)
+        }
       },
       connected: {
         onEntry: function () {
@@ -214,7 +216,7 @@ function getDefinition(options, connectionFn, channelFn) {
           }
           this.connected = true
         },
-        acquired: { after: 'connecting' },
+        // acquired: { deferUntil: 'connecting' },
         channel: function (request) {
           this._getChannel(request.name, request.confirm, request.context)
             .then(
@@ -227,7 +229,9 @@ function getDefinition(options, connectionFn, channelFn) {
           deferred.resolve()
           this.emit('already-connected', connection)
         },
-        failed: { forward: 'failed' },
+        failed: function (data) {
+          this.forward('failed', 'failed', data)
+        },
         closed: { next: 'connecting' }
       },
       closed: {
@@ -246,18 +250,21 @@ function getDefinition(options, connectionFn, channelFn) {
           this.emit('closed')
         },
         connect: { deferUntil: 'connected', next: 'connecting' },
-        failed: { forward: 'failed' }
+        failed: function (data) {
+          this.forward('failed', 'failed', data)
+        }
       },
       closing: {
         onEntry: function () {
           const closeList = queues.concat(exchanges)
           if (closeList.length) {
             Promise
-              .all(closeList.map((channel) =>
-                channel.release ?
+              .all(closeList.map((channel) => {
+                const promy = channel.release ?
                   channel.release() :
                   Promise.resolve(true)
-              ))
+                return promy
+              }))
               .then(() => {
                 this._closer()
               })
@@ -307,6 +314,11 @@ function getDefinition(options, connectionFn, channelFn) {
         connect: function () {
           this.consecutiveFailures = 0
           this.next('connecting')
+        },
+        close: function (deferred) {
+          deferred.resolve()
+          connection.release()
+          this.emit('closed')
         }
       }
     }

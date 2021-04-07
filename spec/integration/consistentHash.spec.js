@@ -82,7 +82,7 @@ describe('Consistent Hash Exchange', function () {
 
   it('should distribute messages across queues within margin for error', function () {
     const consumers = harness.received.reduce((acc, m) => {
-      const key = m.fields.consumerTag
+      const key = m.data.fields.consumerTag
       if (acc[key]) {
         acc[key]++
       } else {
@@ -103,5 +103,8 @@ describe('Consistent Hash Exchange', function () {
 
   after(function () {
     return harness.clean('default')
+      .then(() => {
+        rabbit.shutdown()
+      })
   })
 })

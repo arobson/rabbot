@@ -17,12 +17,12 @@ global.harnessFactory = function (rabbit, cb, expected) {
     }
   }
 
-  function defaultHandle (message) {
-    message.ack()
+  function defaultHandle (msg) {
+    msg.data.ack()
   }
 
   function wrap (handle) {
-    return (message) => {
+    return (queue, message) => {
       handle(message)
       received.push(message)
       check()
@@ -41,7 +41,6 @@ global.harnessFactory = function (rabbit, cb, expected) {
 
   function clean (connectionName) {
     handlers.forEach((handle) => {
-      console.log(handle)
       handle.remove()
     })
     handlers = []
@@ -53,7 +52,7 @@ global.harnessFactory = function (rabbit, cb, expected) {
 
   rabbit.onUnhandled((message) => {
     unhandled.push(message)
-    message.ack()
+    message.data.ack()
     check()
   })
 

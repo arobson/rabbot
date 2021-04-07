@@ -100,7 +100,7 @@ describe('Bulk Publish', function () {
 
   it('should bulk publish all messages successfully', function () {
     const results = harness.received.map((m) => (
-      parseInt(m.body)
+      parseInt(m.data.body)
     ))
     results.sort((a, b) => a - b).should.eql(
       [
@@ -126,6 +126,7 @@ describe('Bulk Publish', function () {
   })
 
   after(function () {
+    this.timeout(10000)
     return harness.clean('default')
   })
 })

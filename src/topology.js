@@ -60,7 +60,7 @@ function toArray (x, list) {
 
 const Topology = function (connection, options, serializers, unhandledStrategies, returnedStrategies) {
   const autoReplyTo = { name: `${replyId}.response.queue`, autoDelete: true, subscribe: true }
-  const rabbitReplyTo = { name: 'amq.rabbitmq.reply-to', subscribe: true, noAck: true }
+  const rabbitReplyTo = { name: DIRECT_REPLY_TO, subscribe: true, noAck: true }
   const userReplyTo = isObject(options.replyQueue) ? options.replyQueue : { name: options.replyQueue, autoDelete: true, subscribe: true }
   this.name = options.name
   this.connection = connection
@@ -85,7 +85,6 @@ const Topology = function (connection, options, serializers, unhandledStrategies
     } else if (replyQueueName) {
       this.replyQueue = userReplyTo
     } else if (/^rabbit(mq)?$/i.test(replyQueueName) || replyQueueName === undefined) {
-      this.replyQueue.name = DIRECT_REPLY_TO
       this.replyQueue = rabbitReplyTo
     }
   } else {
@@ -196,29 +195,31 @@ Topology.prototype.createPrimitive = function (Primitive, primitiveType, options
   const channelName = `${primitiveType}:${options.name}`
   let promise = this.promises[channelName]
   if (!promise) {
-    this.promises[channelName] = promise = new Promise((resolve, reject) => {
-      definitions[options.name] = options
-      const primitive = this.channels[channelName] = new Primitive(options, this.connection, this, this.serializers)
-      const onConnectionFailed = function (connectionError) {
-        reject(errorFn(connectionError))
-      }
-      if (this.connection.state === 'failed') {
-        onConnectionFailed(this.connection.lastError())
-      } else {
-        const onFailed = this.connection.on('failed', function (err) {
-          onConnectionFailed(err)
-        })
-        primitive.once('defined', function () {
-          onFailed.remove()
-          resolve(primitive)
-        })
-      }
-      primitive.once('failed', function (ev, err) {
-        delete definitions[options.name]
-        delete this.channels[channelName]
-        delete this.promises[channelName]
-        reject(errorFn(err))
-      }.bind(this))
+    const future = _.future()
+    promise = future.promise
+    this.promises[channelName] = future.promise
+    definitions[options.name] = options
+
+    const primitive = this.channels[channelName] = new Primitive(options, this.connection, this, this.serializers)
+    const onConnectionFailed = function (connectionError) {
+      future.reject(errorFn(connectionError))
+    }
+    if (this.connection.state === 'failed') {
+      onConnectionFailed(this.connection.lastError())
+    } else {
+      const onFailed = this.connection.on('failed', function (err) {
+        onConnectionFailed(err)
+      })
+      primitive.once('defined', () => {
+        onFailed.remove()
+        future.resolve(primitive)
+      })
+    }
+    primitive.once('failed', (ev, err) => {
+      delete definitions[options.name]
+      delete this.channels[channelName]
+      delete this.promises[channelName]
+      future.reject(errorFn(err))
     })
   }
   return promise
@@ -238,6 +239,7 @@ Topology.prototype.createQueue = function (options) {
 }
 
 Topology.prototype.createReplyQueue = function () {
+  console.log('reply queue', this.replyQueue)
   if (this.replyQueue.name === false) {
     return Promise.resolve()
   }
@@ -323,6 +325,7 @@ Topology.prototype.handleReturned = function (raw) {
 
 Topology.prototype.onReconnect = function () {
   log.info(`Reconnection to '${this.name}' established - rebuilding topology`)
+  console.trace('FUDGEY FUDGEY')
   this.promises = {}
 
   this.createReplyQueue().then(null, this.onReplyQueueFailed)

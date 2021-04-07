@@ -88,6 +88,7 @@ function publish (channel, options, topology, log, serializers, message) {
   }
   if (publishOptions.replyTo === DIRECT_REPLY_TO || DIRECT_REGEX.test(publishOptions.replyTo)) {
     publishOptions.headers['direct-reply-to'] = 'true'
+    publishOptions.replyTo = DIRECT_REPLY_TO
   }
   if (!options.noConfirm && !message.sequenceNo) {
     log.add(message)

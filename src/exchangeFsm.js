@@ -1,6 +1,6 @@
 const fsm = require('mfsm')
 const publishLog = require('./publishLog')
-const exLog = require('./log.js')('rabbot.exchange')
+const log = require('./log.js')('rabbot.exchange')
 const format = require('util').format
 const defer = require('./defer')
 
@@ -16,9 +16,11 @@ const defer = require('./defer')
  */
 
 function unhandle (handlers) {
-  handlers.forEach((handle) =>
-    handle.remove()
-  )
+  handlers.forEach((handle) => {
+    if (handle) {
+      handle.remove()
+    }
+  })
 }
 
 function getDefinition(options, connection, topology, serializers, exchangeFn) {
@@ -80,7 +82,7 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
         function onCleanupError () {
           const count = this.published.count()
           if (count > 0) {
-            exLog.warn(`${this.type} exchange '${this.name}', connection '${connection.name}' was released with ${count} messages unconfirmed`)
+            log.warn(`${this.type} exchange '${this.name}', connection '${connection.name}' was released with ${count} messages unconfirmed`)
           }
           cleanup.bind(this)()
         }
@@ -100,7 +102,7 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
       },
 
       _onClose: function () {
-        exLog.info(`Rejecting ${this.published.count()} published messages`)
+        log.info(`Rejecting ${this.published.count()} published messages`)
         this.published.reset()
       },
 
@@ -141,7 +143,7 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
       },
 
       release: function () {
-        exLog.debug(`Release called on exchange ${this.name} - ${connection.name} (${this.published.count()} messages pending)`)
+        log.debug(`Release called on exchange ${this.name} - ${connection.name} (${this.published.count()} messages pending)`)
         return new Promise(function (resolve) {
           this.once('released', function () {
             resolve()
@@ -152,7 +154,7 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
 
       publish: function (message) {
         if (this.currentState !== 'ready' && this.published.count() >= this.limit) {
-          exLog.warn(`Exchange '${this.name}' has reached the limit of ${this.limit} messages waiting on a connection`)
+          log.warn(`Exchange '${this.name}' has reached the limit of ${this.limit} messages waiting on a connection`)
           return Promise.reject(new Error('Exchange has reached the limit of messages waiting on a connection'))
         }
         const publishTimeout = message.timeout || options.publishTimeout || message.connectionPublishTimeout || 0
@@ -289,7 +291,7 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
           this.emit('released')
         },
         publish: function (op) {
-          exLog.warn(`Publish called on exchange '${this.name}' after connection was released intentionally. Released connections must be re-established explicitly.`)
+          log.warn(`Publish called on exchange '${this.name}' after connection was released intentionally. Released connections must be re-established explicitly.`)
           op(new Error(format(`Cannot publish to exchange '${this.name}' after intentionally closing its connection`)))
         }
       },

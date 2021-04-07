@@ -6,7 +6,7 @@ describe('Bad Connection', function () {
   describe('when attempting a connection', function () {
     let error
     before((done) => {
-      rabbit.once('#.connection.failed', (ev, err, c) => {
+      rabbit.once('#.connection.failed', (ev, err) => {
         error = err
         done()
       })
@@ -15,7 +15,9 @@ describe('Bad Connection', function () {
         name: 'silly',
         server: 'shfifty-five.gov',
         publishTimeout: 50,
-        timeout: 100
+        timeout: 100,
+        failAfter: .3,
+        retryLimit: 2
       }).catch(noop)
 
       rabbit.addExchange({ name: 'silly-ex' }, 'silly').then(null, noop)
@@ -40,7 +42,9 @@ describe('Bad Connection', function () {
         connection: {
           name: 'silly2',
           server: 'this-is-not-a-real-thing-at-all.org',
-          timeout: 100
+          timeout: 100,
+          failAfter: .05,
+          retryLimit: 2
         },
         exchanges: [
           {

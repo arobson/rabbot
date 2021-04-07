@@ -1,6 +1,7 @@
 require('../setup.js')
 const connectionFn = require('../../src/connectionFsm.js')
 const noOp = function () {}
+const Dispatcher = require('topic-dispatch')
 const EventEmitter = require('events')
 
 function closer () {
@@ -8,20 +9,18 @@ function closer () {
 }
 
 const connectionMonadFn = function () {
-  let handlers = {}
+  let dispatch = Dispatcher()
 
-  function emit (ev) {
-    if (handlers[ev]) {
-      handlers[ev].apply(undefined, Array.prototype.slice.call(arguments, 1))
-    }
+  function emit (ev, data) {
+    return dispatch.emit(ev, data)
   }
 
   function on (ev, handle) {
-    handlers[ev] = handle
+    return dispatch.on(ev, handle)
   }
 
   function reset () {
-    handlers = {}
+    dispatch.removeAllListeners()
     this.createChannel = noOp
     this.createConfirmChannel = noOp
     this.release = noOp
@@ -101,7 +100,7 @@ describe('Connection FSM', function () {
           connection.once('connecting', function () {
             monad.emit('failed', new Error('connection failed'))
           })
-          connection.once('failed', function (err, msg) {
+          connection.once('failed', function (ev, msg) {
             error = msg
             done()
           })
@@ -243,7 +242,6 @@ describe('Connection FSM', function () {
             .then(function (x) {
               channel = x
             })
-            .catch(e => console.log(e))
           setTimeout(() => emitter.emit('acquired'), 10)
           return result
         })

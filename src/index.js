@@ -100,17 +100,18 @@ Broker.prototype.addConnection = function (opts) {
         reject(new Error('connection closed'))
       })
 
-      connection.on('failed', (a, b, c) => {
-        self.emit('failed', connection)
-        self.emit(name + '.connection.failed', b)
-        reject(b)
+      connection.on('failed', (ev, data) => {
+        self.emit('failed', connection)        
+        self.emit(name + '.connection.failed', data)
+        reject(data)
       })
 
-      connection.on('unreachable', () => {
+      connection.on('unreachable', (ev) => {
         self.emit('unreachable', connection)
-        self.emit(name + '.connection.unreachable')
+        const err = new Error('connection unreachable')
+        self.emit(name + '.connection.unreachable', err)
         self.clearAckInterval()
-        reject(new Error('connection unreachable'))
+        reject(err)
       })
 
       connection.on('return', (ev, raw) => {
@@ -187,9 +188,12 @@ Broker.prototype.bulkPublish = function (set, connectionName = DEFAULT) {
       options.body = options.body.toString()
     }
     return exchange.publish(options)
-      .then(
-        () => options,
-        err => { return { err, message: options } }
+      .then(() => options)
+      .catch(
+        err => { 
+
+          return { err, message: options }
+        }
       )
   }
 
@@ -352,11 +356,12 @@ Broker.prototype.onExchanges = function (exchanges, connectionName = DEFAULT) {
   return Promise.all(connectionPromises)
     .then(
       () => {
-        const exchangePromises = exchanges.map(exchangeName =>
-          this.connections[connectionName].promises[`exchange:${exchangeName}`]
+        const exchangePromises = exchanges.map(exchangeName => {
+          return this.connections[connectionName].promises[`exchange:${exchangeName}`]
             .then(() => {
               return { name: exchangeName, exchange: true }
             })
+          }
         )
         return Promise.all(exchangePromises)
       }
@@ -455,7 +460,7 @@ Broker.prototype.request = function (exchangeName, options = {}, notify, connect
 
       return new Promise((resolve, reject) => {
         const timeout = setTimeout(function () {
-          subscription.unsubscribe()
+          subscription.remove()
           reject(new Error('No reply received within the configured timeout of ' + replyTimeout + ' ms'))
         }, replyTimeout)
         const scatter = options.expect
