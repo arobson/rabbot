@@ -213,10 +213,13 @@ function getDefinition(options, connectionFn, channelFn) {
           this.consecutiveFailures = 0
           if (this.connected) {
             this._reconnect()
+          } else {
+            this.connected = true
           }
-          this.connected = true
         },
         // acquired: { deferUntil: 'connecting' },
+        acquired: function () {
+        },
         channel: function (request) {
           this._getChannel(request.name, request.confirm, request.context)
             .then(

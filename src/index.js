@@ -4,7 +4,7 @@ const connectionFn = require('./connectionFsm.js')
 const topologyFn = require('./topology.js')
 const uuid = require('uuid')
 const { signal, received, replies } = require('./dispatch')
-const log = require('./log')
+const log = require('./log')('rabbot')
 
 const DEFAULT = 'default'
 
@@ -88,25 +88,32 @@ Broker.prototype.addConnection = function (opts) {
       const topology = topologyFn(connection, options, serializers, unhandledStrategies, returnedStrategies)
 
       connection.on('connected', () => {
+        log.debug(`connection ${name} was established`)
         self.emit('connected', connection)
         self.emit(connection.name + '.connection.opened', connection)
         self.setAckInterval(500)
-        resolve(topology)
+        topology.then(t => {
+          self.connections[name] = t
+          resolve(t)
+        })
       })
 
       connection.on('closed', () => {
+        log.debug(`connection ${name} was closed`)
         self.emit('closed', connection)
         self.emit(connection.name + '.connection.closed', connection)
         reject(new Error('connection closed'))
       })
 
       connection.on('failed', (ev, data) => {
-        self.emit('failed', connection)        
+        log.debug(`connection ${name} failed`)
+        self.emit('failed', connection)
         self.emit(name + '.connection.failed', data)
         reject(data)
       })
 
       connection.on('unreachable', (ev) => {
+        log.debug(`connection ${name} is unreachable`)
         self.emit('unreachable', connection)
         const err = new Error('connection unreachable')
         self.emit(name + '.connection.unreachable', err)
@@ -190,7 +197,7 @@ Broker.prototype.bulkPublish = function (set, connectionName = DEFAULT) {
     return exchange.publish(options)
       .then(() => options)
       .catch(
-        err => { 
+        err => {
 
           return { err, message: options }
         }

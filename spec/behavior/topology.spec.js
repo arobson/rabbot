@@ -1,9 +1,13 @@
 require('../setup.js')
-const _ = require('lodash')
+const _ = require('fauxdash')
 const topologyFn = require('../../src/topology')
 const noOp = function () {}
 const emitter = require('./emitter')
 const info = require('../../src/info')
+const connection = require('../../src/amqp/connection.js')
+const topology = require('../../src/topology')
+
+process.on('unhandledRejection', e => console.log('heh', e))
 
 function connectionFn () {
   let handlers = {}
@@ -27,7 +31,7 @@ function connectionFn () {
     }
     return {
       remove: function (h) {
-        handlers[ev].splice(_.indexOf(handlers[ev], h))
+        handlers[ev].splice(handlers[ev].indexOf(h))
       }
     }
   }
@@ -65,59 +69,118 @@ function connectionFn () {
   }
 }
 
+function delayedPromise () {
+  const {promise, resolve} = _.future()
+  setTimeout(() => resolve(), 20)
+  return promise
+}
+
+function initContext (options, name) {
+  const connection = connectionFn()
+  const Exchange = function () {
+    return ex
+  }
+  const Queue = function () {
+    return q
+  }
+  Exchange.type = 'exchange'
+  Queue.type = 'queue'
+  const ex = emitter()
+  const q = emitter()
+  ex.check = function () {
+    return Promise.resolve()
+  }
+  q.check = function () {
+    q.emit('defined')
+    return Promise.resolve()
+  }
+  ex.reconnect = delayedPromise
+  ex.release = delayedPromise
+  q.reconnect = delayedPromise
+  q.release = delayedPromise
+
+  const control = {
+    define: noOp,
+    bindQueue: noOp,
+    bindExchange: noOp,
+    deleteExchange: noOp,
+    deleteQueue: noOp,
+    unbindExchange: noOp,
+    unbindQueue: noOp
+  }
+  controlMock = sinon.mock(control)
+  const uniqueQueueName = 'top-q-' + info.createHash()
+
+  const ctx = {
+    connection,
+    control,
+    controlMock,
+    createTopology: () => {
+      return topologyFn(connection.instance, options || {}, {}, undefined, undefined, Exchange, Queue, name || 'test')
+        .then(t => {
+          ctx.topology = t
+          return t
+        })
+    },
+    emitDefined: (delay = 0) => {
+      setTimeout(function () {
+        q.emit('defined')
+      }, 0 + delay)
+      setTimeout(function () {
+        ex.emit('defined')
+      }, 20 + delay)
+    },
+    emitFailure: (delay = 0) => {
+      setTimeout(function () {
+        connection.instance.fail(new Error('no such server!'))
+      }, delay)
+    },
+    ex,
+    Exchange,
+    expectSuccess: () => {
+      connection.mock
+        .expects('getChannel')
+        .atLeast(1)
+        .resolves(control)
+    },
+    q,
+    Queue,
+    reconnect: () => {
+      connection.instance.emit('reconnected')
+    },
+    uniqueQueueName
+  }
+  return ctx
+}
+
 describe('Topology', function () {
   describe('when initializing with default reply queue', function () {
-    let topology, conn, replyQueue, ex, q, controlMock
-
+    let ctx
     before(function (done) {
-      ex = emitter()
-      q = emitter()
-      q.check = function () {
-        q.emit('defined')
-        return Promise.resolve()
-      }
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
-
-      const control = {
-        bindQueue: noOp
-      }
-      controlMock = sinon.mock(control)
-
-      const uniqueQueueName = 'top-q-' + info.createHash()
+      ctx = initContext({})
+      ctx.expectSuccess()
       controlMock
         .expects('bindQueue')
         .once()
-        .withArgs(uniqueQueueName, 'top-ex')
+        .withArgs(ctx.uniqueQueueName, 'top-ex')
         .returns(Promise.resolve())
-      conn.mock.expects('getChannel')
-        .once()
-        .resolves(control)
-
-      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue, 'test')
-      Promise.all([
-        topology.createExchange({ name: 'top-ex', type: 'topic' }),
-        topology.createQueue({ name: 'top-q', unique: 'hash' })
-      ]).then(function () {
-        topology.configureBindings({ exchange: 'top-ex', target: 'top-q' })
-      })
-      topology.once('replyQueue.ready', function (ev, queue) {
-        replyQueue = queue
-        done()
-      })
-      process.nextTick(function () {
-        q.emit('defined')
-        ex.emit('defined')
-      })
+      ctx.createTopology()
+        .then(topology => {
+          Promise.all([
+            topology.createExchange({ name: 'top-ex', type: 'topic' }),
+            topology.createQueue({ name: 'top-q', unique: 'hash' })
+          ]).then(function () {
+            return topology.configureBindings({ exchange: 'top-ex', target: 'top-q' })
+          }).then(function () {
+            done()
+          })
+          ctx.emitDefined()
+        })
+        ctx.emitDefined()
     })
 
     it('should create default reply queue', function () {
-      replyQueue.should.eql(
+      ctx.topology.replyQueue.should.eql(
         {
           name: 'test.response.queue',
           uniqueName: 'test.response.queue',
@@ -128,44 +191,35 @@ describe('Topology', function () {
     })
 
     it('should bind queue', function () {
-      controlMock.verify()
+      ctx.controlMock.verify()
+    })
+
+    after(function() {
+      ctx.connection.mock.verify()
     })
 
     describe('when recovering from disconnection', function () {
-      let controlMock
       before(function (done) {
-        replyQueue = undefined
-
-        const control = {
-          bindExchange: noOp,
-          bindQueue: noOp
-        }
-        controlMock = sinon.mock(control)
-
-        const uniqueQueueName = 'top-q-' + info.createHash()
-        controlMock
-          .expects('bindExchange')
-          .never()
-        controlMock
+        ctx.controlMock = sinon.mock(ctx.control)
+        ctx.expectSuccess()
+        ctx.controlMock
           .expects('bindQueue')
           .once()
-          .withArgs(uniqueQueueName, 'top-ex')
+          .withArgs(ctx.uniqueQueueName, 'top-ex')
           .returns(Promise.resolve())
-        conn.mock.expects('getChannel')
-          .once()
-          .resolves(control)
+        ctx.controlMock
+          .expects('bindExchange')
+          .never()
 
-        topology.once('replyQueue.ready', function (ev, queue) {
-          replyQueue = queue
-        })
-        topology.once('bindings.completed', function (ev, bindings) {
+        ctx.topology.connection.once('bindings.completed', () => {
           done()
         })
-        conn.instance.emit('reconnected')
+        ctx.reconnect()
+        ctx.emitDefined()
       })
 
       it('should recreate default reply queue', function () {
-        replyQueue.should.eql(
+        ctx.topology.replyQueue.should.eql(
           {
             name: 'test.response.queue',
             uniqueName: 'test.response.queue',
@@ -176,28 +230,15 @@ describe('Topology', function () {
       })
 
       it('should bindQueue', function () {
-        controlMock.verify()
+        ctx.controlMock.verify()
       })
     })
   })
 
   describe('when initializing with custom reply queue', function () {
-    let topology, conn, replyQueue, ex, q
+    let ctx
 
     before(function (done) {
-      ex = emitter()
-      q = emitter()
-      q.check = function () {
-        q.emit('defined')
-        return Promise.resolve()
-      }
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
       const options = {
         replyQueue: {
           name: 'mine',
@@ -206,18 +247,16 @@ describe('Topology', function () {
           subscribe: true
         }
       }
-      topology = topologyFn(conn.instance, options, {}, undefined, undefined, Exchange, Queue, 'test')
-      topology.once('replyQueue.ready', function (ev, queue) {
-        replyQueue = queue
-        done()
-      })
-      process.nextTick(function () {
-        q.emit('defined')
-      })
+      ctx = initContext(options)
+      ctx.createTopology()
+        .then(topology => {
+          done()
+        })
+      ctx.emitDefined()
     })
 
     it('should create custom reply queue', function () {
-      replyQueue.should.eql(
+      ctx.topology.replyQueue.should.eql(
         {
           name: 'mine',
           uniqueName: 'mine',
@@ -229,16 +268,14 @@ describe('Topology', function () {
 
     describe('when recovering from disconnection', function () {
       before(function (done) {
-        replyQueue = undefined
-        topology.once('replyQueue.ready', function (ev, queue) {
-          replyQueue = queue
+        ctx.topology.connection.once('bindings.completed', function (ev, bindings) {
           done()
         })
-        conn.instance.emit('reconnected')
+        ctx.reconnect()
       })
 
       it('should recreate custom reply queue', function () {
-        replyQueue.should.eql(
+        ctx.topology.replyQueue.should.eql(
           {
             name: 'mine',
             uniqueName: 'mine',
@@ -251,150 +288,91 @@ describe('Topology', function () {
   })
 
   describe('when initializing with no reply queue', function () {
-    let topology, conn, replyQueue, ex, q
-
+    let ctx
     before(function (done) {
-      ex = emitter()
-      q = emitter()
-      q.check = function () {
-        q.emit('defined')
-        return Promise.resolve()
-      }
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
       const options = {
         replyQueue: false
       }
-      topology = topologyFn(conn.instance, options, {}, undefined, undefined, Exchange, Queue)
-      topology.once('replyQueue.ready', function (ev, queue) {
-        replyQueue = queue
-        done()
-      })
-      process.nextTick(function () {
-        q.emit('defined')
-      })
-      setTimeout(function () {
-        done()
-      }, 200)
+      ctx = initContext(options)
+      ctx.createTopology()
+        .then(() => {
+          done()
+        })
+      ctx.emitDefined()
     })
 
     it('should not create reply queue', function () {
-      should.not.exist(replyQueue)
-      topology.definitions.queues.should.eql({})
+      ctx.topology.definitions.queues.should.eql({})
     })
   })
 
   describe('when creating valid exchange', function () {
-    let topology, conn, exchange, ex, q
-
+    let ctx
     before(function (done) {
-      ex = emitter()
-      q = emitter()
-      ex.check = function () {
-        ex.emit('defined')
-        return Promise.resolve()
-      }
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
-      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue)
-      topology.createExchange({ name: 'noice' })
-        .then(function (created) {
-          exchange = created
-          done()
+      ctx = initContext()
+      ctx.createTopology()
+        .then(topology => {
+          topology.createExchange({ name: 'noice' })
+            .then(function (created) {
+              exchange = created
+              done()
+            })
+          ctx.emitDefined()
         })
-      process.nextTick(function () {
-        ex.emit('defined')
-      })
+      ctx.emitDefined()
     })
 
     it('should create exchange', function () {
-      exchange.should.eql(ex)
+      exchange.should.eql(ctx.ex)
     })
 
     it('should add exchange to channels', function () {
-      should.exist(topology.channels['exchange:noice'])
+      should.exist(ctx.topology.primitives['exchange:noice'])
     })
   })
 
   describe('when creating a duplicate exchange', function () {
-    let topology, conn, exchange, ex, q
-    let calls = 0
-
+    let ctx
     before(function (done) {
-      ex = emitter()
-      q = emitter()
-      ex.check = function () {
-        ex.emit('defined')
-        return Promise.resolve()
-      }
-      const Exchange = function () {
-        calls++
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
-      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue)
-      topology.createExchange({ name: 'noice' })
-      topology.createExchange({ name: 'noice' })
-        .then(function (created) {
-          exchange = created
-          done()
+      ctx = initContext()
+      ctx.createTopology()
+        .then(topology => {
+          topology.createExchange({ name: 'noice' })
+          topology.createExchange({ name: 'noice' })
+            .then(created => {
+              exchange = created
+              done()
+            })
+          ctx.emitDefined()
         })
-      process.nextTick(function () {
-        ex.emit('defined')
-      })
+      ctx.emitDefined()
     })
 
     it('should create exchange', function () {
-      exchange.should.eql(ex)
-    })
-
-    it('should not create duplicate exchanges', function () {
-      calls.should.equal(2)
+      exchange.should.eql(ctx.ex)
     })
 
     it('should add exchange to channels', function () {
-      should.exist(topology.channels['exchange:noice'])
+      should.exist(ctx.topology.primitives['exchange:noice'])
     })
   })
 
   describe('when creating invalid exchange', function () {
-    let topology, conn, error, ex, q
-
+    let ctx
     before(function (done) {
-      ex = emitter()
-      q = emitter()
-      ex.check = function () {
-        return Promise.resolve()
-      }
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
-      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue)
-      topology.createExchange({ name: 'badtimes' })
-        .then(null, function (err) {
-          error = err
-          done()
+      ctx = initContext()
+      ctx.createTopology()
+        .then(topology => {
+          topology.createExchange({ name: 'badtimes' })
+            .catch(err => {
+              error = err
+              done()
+            })
+          process.nextTick(() => {
+            ctx.ex.emit('failed', new Error('time limit exceeded'))
+          })
         })
-      process.nextTick(function () {
-        ex.emit('failed', new Error('time limit exceeded'))
-      })
+      ctx.emitDefined()
     })
 
     it('should reject with error', function () {
@@ -402,35 +380,26 @@ describe('Topology', function () {
     })
 
     it('should not add invalid exchanges to channels', function () {
-      should.not.exist(topology.channels['exchange:badtimes'])
+      should.not.exist(ctx.topology.primitives['exchange:badtimes'])
     })
   })
 
   describe('when creating invalid queue', function () {
-    let topology, conn, error, ex, q
-
+    let ctx
     before(function (done) {
-      ex = emitter()
-      q = emitter()
-      ex.check = function () {
-        return Promise.resolve()
-      }
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
-      topology = topologyFn(conn.instance, { replyQueue: false }, {}, undefined, undefined, Exchange, Queue)
-      topology.createQueue({ name: 'badtimes' })
-        .then(null, function (err) {
-          error = err
-          done()
+      ctx = initContext({ replyQueue: false })
+      ctx.createTopology()
+        .then(topology => {
+          topology.createQueue({ name: 'badtimes' })
+            .catch(err => {
+              error = err
+              done()
+            })
+          process.nextTick(() =>
+            ctx.q.emit('failed', new Error('time limit exceeded'))
+          )
         })
-      process.nextTick(function () {
-        q.emit('failed', new Error('time limit exceeded'))
-      })
+      ctx.emitDefined()
     })
 
     it('should reject with error', function () {
@@ -438,245 +407,161 @@ describe('Topology', function () {
     })
 
     it('should not add invalid queues to channels', function () {
-      should.not.exist(topology.channels['queue:badtimes'])
+      should.not.exist(ctx.topology.primitives['queue:badtimes'])
     })
   })
 
   describe('when deleting an existing exchange', function () {
-    let topology, conn, exchange, ex, q
-
+    let ctx
     before(function (done) {
-      ex = emitter()
-      q = emitter()
-      ex.release = noOp
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
-      const control = {
-        deleteExchange: noOp
-      }
-      const controlMock = sinon.mock(control)
-      controlMock
+      ctx = initContext()
+      ctx.controlMock
         .expects('deleteExchange')
         .once()
         .withArgs('noice')
         .returns(Promise.resolve())
-      conn.mock.expects('getChannel')
-        .once()
-        .resolves(control)
-      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue)
-      topology.createExchange({ name: 'noice' })
-        .then(function (created) {
-          exchange = created
-          topology.deleteExchange('noice')
-            .then(function () {
-              done()
+      ctx.expectSuccess()
+      ctx.createTopology()
+        .then(topology => {
+          topology.createExchange({ name: 'noice' })
+            .then(function (created) {
+              exchange = created
+              topology.deleteExchange('noice')
+                .then(function () {
+                  done()
+                })
             })
+            ctx.emitDefined()
         })
-      process.nextTick(function () {
-        ex.emit('defined')
-      })
+        ctx.emitDefined()
     })
 
-    it('should create exchange', function () {
-      exchange.should.eql(ex)
+    it('should have created exchange', function () {
+      exchange.should.eql(ctx.ex)
     })
 
-    it('should add exchange to channels', function () {
-      should.not.exist(topology.channels['exchange:noice'])
+    it('should remove exchange from channels', function () {
+      should.not.exist(ctx.topology.primitives['exchange:noice'])
     })
   })
 
   describe('when deleting an existing queue', function () {
-    let topology, conn, queue, ex, q
-
-    before(function () {
-      ex = emitter()
-      q = emitter()
-      q.release = noOp
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
-      const control = {
-        deleteQueue: noOp
-      }
-      const controlMock = sinon.mock(control)
-      controlMock
+    let ctx
+    before(function (done) {
+      ctx = initContext()
+      ctx.controlMock
         .expects('deleteQueue')
         .once()
         .withArgs('noice')
         .returns(Promise.resolve())
-      conn.mock.expects('getChannel')
-        .once()
-        .resolves(control)
-      topology = topologyFn(conn.instance, { replyQueue: false }, {}, undefined, undefined, Exchange, Queue)
-
-      process.nextTick(function () {
-        q.emit('defined')
-      })
-
-      return topology.createQueue({ name: 'noice' })
-        .then(function (created) {
-          queue = created
-          return topology.deleteQueue('noice')
+      ctx.expectSuccess()
+      ctx.createTopology()
+        .then(topology => {
+          topology.createQueue({ name: 'noice' })
+            .then(function (created) {
+              queue = created
+              topology.deleteQueue('noice')
+                .then(function () {
+                  done()
+                })
+            })
+            ctx.emitDefined()
         })
+      ctx.emitDefined()
     })
 
-    it('should create queue', function () {
-      queue.should.eql(q)
+    it('should have created queue', function () {
+      queue.should.eql(ctx.q)
     })
 
-    it('should add queue to channels', function () {
-      should.not.exist(topology.channels['queue:noice'])
+    it('should remove queue from channels', function () {
+      should.not.exist(ctx.topology.primitives['queue:noice'])
     })
   })
 
   describe('when creating an exchange to exchange binding with no keys', function () {
-    let topology, conn, ex, q
-
+    let ctx
     before(function () {
-      ex = emitter()
-      q = emitter()
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
-      const control = {
-        bindExchange: noOp,
-        bindQueue: noOp
-      }
-      const controlMock = sinon.mock(control)
-      controlMock
+      ctx = initContext()
+      ctx.controlMock
         .expects('bindExchange')
         .once()
         .withArgs('to', 'from', '')
         .returns(Promise.resolve())
-      conn.mock.expects('getChannel')
-        .once()
-        .resolves(control)
-      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue)
-      return topology.createBinding({ source: 'from', target: 'to' })
+      ctx.expectSuccess()
+      const promise = ctx.createTopology()
+        .then(topology => {
+          return topology.createBinding({ source: 'from', target: 'to' })
+        })
+      ctx.emitDefined()
+      return promise
     })
 
     it('should add binding to definitions', function () {
-      topology.definitions.bindings['from->to'].should.eql({ source: 'from', target: 'to' })
+      ctx.topology.definitions.bindings['from->to'].should.eql({ source: 'from', target: 'to' })
     })
   })
 
   describe('when removing an exchange to exchange binding with no keys', function () {
-    let topology, conn, ex, q
-
+    let ctx
     before(function () {
-      ex = emitter()
-      q = emitter()
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
-      const control = {
-        bindExchange: noOp,
-        bindQueue: noOp,
-        unbindQueue: noOp,
-        unbindExchange: noOp
-      }
-      const controlMock = sinon.mock(control)
-      controlMock
+      ctx = initContext()
+      ctx.controlMock
         .expects('bindExchange')
         .once()
         .withArgs('to', 'from', '')
         .returns(Promise.resolve())
-      controlMock
+      ctx.controlMock
         .expects('unbindExchange')
         .once()
         .withArgs('to', 'from', '')
         .returns(Promise.resolve())
-      conn.mock.expects('getChannel')
-        .twice()
-        .resolves(control)
-      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue)
-      return topology.createBinding({ source: 'from', target: 'to' })
-        .then(topology.removeBinding({ source: 'from', target: 'to' }))
+      ctx.expectSuccess()
+      const promise = ctx.createTopology()
+        .then(topology => {
+          return topology.createBinding({ source: 'from', target: 'to' })
+            .then(topology.removeBinding({ source: 'from', target: 'to' }))
+        })
+      ctx.emitDefined()
+      return promise
     })
 
     it('should remove binding from definitions', function () {
-      should.not.exist(topology.definitions.bindings['from->to'])
+      should.not.exist(ctx.topology.definitions.bindings['from->to'])
     })
   })
 
   describe('when creating an exchange to queue binding with no keys', function () {
-    let topology, conn, ex, q
-
+    let ctx
     before(function () {
-      ex = emitter()
-      q = emitter()
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
-      const control = {
-        bindExchange: noOp,
-        bindQueue: noOp
-      }
-      const controlMock = sinon.mock(control)
-      controlMock.expects('bindQueue')
+      ctx = initContext()
+      ctx.controlMock.expects('bindQueue')
         .withArgs('to', 'from', 'a.*')
         .returns(Promise.resolve())
-      controlMock.expects('bindQueue')
+        ctx.controlMock.expects('bindQueue')
         .withArgs('to', 'from', 'b.*')
         .returns(Promise.resolve())
-
-      conn.mock.expects('getChannel')
-        .once()
-        .resolves(control)
-      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue)
-      topology.createBinding({ source: 'from', target: 'to', keys: undefined, queue: true })
-        .catch(_.noop)
+      ctx.expectSuccess()
+      const promise = ctx.createTopology()
+        .then(topology => {
+          return topology.createBinding({ source: 'from', target: 'to', keys: undefined, queue: true })
+            .catch(_.noop)
+        })
+      ctx.emitDefined()
+      return promise
     })
 
     it('should add binding to definitions', function () {
-      topology.definitions.bindings['from->to'].should.eql(
+      ctx.topology.definitions.bindings['from->to'].should.eql(
         { source: 'from', target: 'to', keys: undefined, queue: true }
       )
     })
   })
 
   describe('when removing an exchange to queue binding with no keys', function () {
-    let topology, conn, ex, q
-
+    let ctx
     before(function () {
-      ex = emitter()
-      q = emitter()
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
-      const control = {
-        bindExchange: noOp,
-        bindQueue: noOp,
-        unbindExchange: noOp,
-        unbindQueue: noOp
-      }
-      const controlMock = sinon.mock(control)
+      ctx = initContext()
       controlMock.expects('bindQueue')
         .withArgs('to', 'from', 'a.*')
         .returns(Promise.resolve())
@@ -689,171 +574,95 @@ describe('Topology', function () {
       controlMock.expects('unbindQueue')
         .withArgs('to', 'from', 'b.*')
         .returns(Promise.resolve())
-
-      conn.mock.expects('getChannel')
-        .twice()
-        .resolves(control)
-      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue)
-      topology.createBinding({ source: 'from', target: 'to', keys: undefined, queue: true })
-        .catch(_.noop)
-        .then(topology.removeBinding({ source: 'from', target: 'to' }))
+      ctx.expectSuccess()
+      const promise = ctx.createTopology()
+        .then(topology => {
+          return topology.createBinding({ source: 'from', target: 'to', keys: undefined, queue: true })
+            .catch(_.noop)
+            .then(topology.removeBinding({ source: 'from', target: 'to' }))
+        })
+      ctx.emitDefined()
+      return promise
     })
 
     it('should remove binding from definitions', function () {
-      should.not.exist(topology.definitions.bindings['from->to'])
+      should.not.exist(ctx.topology.definitions.bindings['from->to'])
     })
   })
 
   describe('when creating an exchange to queue binding with keys', function () {
-    let topology, conn, ex, q
-
+    let ctx
     before(function () {
-      ex = emitter()
-      q = emitter()
-      const Exchange = function () {
-        return ex
-      }
-      const Queue = function () {
-        return q
-      }
-      conn = connectionFn()
-      const control = {
-        bindExchange: noOp,
-        bindQueue: noOp
-      }
-      const controlMock = sinon.mock(control)
-      controlMock.expects('bindQueue')
+      ctx = initContext()
+      ctx.controlMock.expects('bindQueue')
         .withArgs('to', 'from', 'a.*')
         .returns(Promise.resolve())
-      controlMock.expects('bindQueue')
+      ctx.controlMock.expects('bindQueue')
         .withArgs('to', 'from', 'b.*')
         .returns(Promise.resolve())
-
-      conn.mock.expects('getChannel')
-        .once()
-        .resolves(control)
-      topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue)
-      topology.createBinding({ source: 'from', target: 'to', keys: ['a.*', 'b.*'], queue: true })
+      ctx.expectSuccess()
+      const promise = ctx.createTopology()
+        .then(topology => {
+          return topology.createBinding({ source: 'from', target: 'to', keys: ['a.*', 'b.*'], queue: true })
+        })
+      ctx.emitDefined()
+      return promise
     })
 
     it('should add binding to definitions', function () {
-      topology.definitions.bindings['from->to:a.*:b.*'].should.eql(
+      ctx.topology.definitions.bindings['from->to:a.*:b.*'].should.eql(
         { source: 'from', target: 'to', keys: ['a.*', 'b.*'], queue: true }
       )
     })
+  })
 
-    describe('when removing an exchange to queue binding with keys', function () {
-      let topology, conn, ex, q
+  describe('when removing an exchange to queue binding with keys', function () {
+    let ctx
+    before(function () {
+      ctx = initContext()
+      ctx.controlMock.expects('bindQueue')
+        .withArgs('to', 'from', 'a.*')
+        .returns(Promise.resolve())
+      ctx.controlMock.expects('bindQueue')
+        .withArgs('to', 'from', 'b.*')
+        .returns(Promise.resolve())
+      ctx.controlMock.expects('unbindQueue')
+        .withArgs('to', 'from', 'a.*')
+        .returns(Promise.resolve())
+      ctx.controlMock.expects('unbindQueue')
+        .withArgs('to', 'from', 'b.*')
+        .returns(Promise.resolve())
+      ctx.expectSuccess()
+      const promise = ctx.createTopology()
+        .then(topology => {
+          return topology.createBinding({ source: 'from', target: 'to', keys: ['a.*', 'b.*'], queue: true })
+            .then(topology.removeBinding({ source: 'from', target: 'to' }))
+        })
+      ctx.emitDefined()
+      return promise
+    })
 
-      before(function () {
-        ex = emitter()
-        q = emitter()
-        const Exchange = function () {
-          return ex
-        }
-        const Queue = function () {
-          return q
-        }
-        conn = connectionFn()
-        const control = {
-          bindExchange: noOp,
-          bindQueue: noOp,
-          unbindExchange: noOp,
-          unbindQueue: noOp
-        }
-        const controlMock = sinon.mock(control)
-        controlMock.expects('bindQueue')
-          .withArgs('to', 'from', 'a.*')
-          .returns(Promise.resolve())
-        controlMock.expects('bindQueue')
-          .withArgs('to', 'from', 'b.*')
-          .returns(Promise.resolve())
-        controlMock.expects('unbindQueue')
-          .withArgs('to', 'from', 'a.*')
-          .returns(Promise.resolve())
-        controlMock.expects('unbindQueue')
-          .withArgs('to', 'from', 'b.*')
-          .returns(Promise.resolve())
-
-        conn.mock.expects('getChannel')
-          .twice()
-          .resolves(control)
-        topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue)
-        topology.createBinding({ source: 'from', target: 'to', keys: ['a.*', 'b.*'], queue: true })
-          .then(topology.removeBinding({ source: 'from', target: 'to' }))
-      })
-
-      it('should remove binding from definitions', function () {
-        should.not.exist(topology.definitions.bindings['from->to'])
-      })
+    it('should remove binding from definitions', function () {
+      should.not.exist(ctx.topology.definitions.bindings['from->to'])
     })
   })
 
   describe('when a connection to rabbit cannot be established', function () {
-    describe('when attempting to create an exchange', function () {
-      let topology, conn, error, ex, q
-
-      before(function () {
-        ex = emitter()
-        q = emitter()
-        const Exchange = function () {
-          return ex
-        }
-        const Queue = function () {
-          return q
-        }
-        conn = connectionFn()
-        topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue)
-        process.nextTick(function () {
-          conn.instance.fail(new Error('no such server!'))
+    let ctx
+    before(function () {
+      ctx = initContext()
+      ctx.exp
+      const promise = ctx.createTopology()
+        .catch(err => {
+          error = err
         })
-        return topology.createExchange({ name: 'delayed.ex' })
-          .then(null, function (err) {
-            error = err
-          })
-      })
-
-      it('should reject exchange promise with connection error', function () {
-        error.toString().should.contain(
-          `Error: Failed to create exchange 'delayed.ex' on connection 'default' with Error: no such server!`)
-      })
-
-      it('should keep exchange definition', function () {
-        should.exist(topology.channels['exchange:delayed.ex'])
-      })
+      ctx.emitFailure()
+      return promise
     })
 
-    describe('when attempting to create a queue', function () {
-      let topology, conn, error, ex, q
-
-      before(function () {
-        ex = emitter()
-        q = emitter()
-        const Exchange = function () {
-          return ex
-        }
-        const Queue = function () {
-          return q
-        }
-        conn = connectionFn()
-        topology = topologyFn(conn.instance, {}, {}, undefined, undefined, Exchange, Queue)
-        process.nextTick(function () {
-          conn.instance.fail(new Error('no such server!'))
-        })
-        return topology.createQueue({ name: 'delayed.q' })
-          .then(null, function (err) {
-            error = err
-          })
-      })
-
-      it('should reject queue promise with connection error', function () {
-        error.toString().should.contain(
-          `Error: Failed to create queue 'delayed.q' on connection 'default' with Error: no such server!`)
-      })
-
-      it('should keep queue definition', function () {
-        should.exist(topology.channels['queue:delayed.q'])
-      })
+    it('should reject topology promise with connection error', function () {
+      error.toString().should.contain(
+        `Error: Failed to create exchange '\' on connection 'default' with Error: no such server!`)
     })
   })
 })

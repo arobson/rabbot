@@ -325,4 +325,6 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
   return exchange
 }
 
+Factory.type = 'exchange'
+
 module.exports = Factory
