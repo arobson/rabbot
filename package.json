@@ -79,7 +79,7 @@
     "loggin": "^3.0.2",
     "logging": "^3.3.0",
     "mfsm": "^2.0.0",
-    "topic-dispatch": "^2.0.0",
+    "topic-dispatch": "^2.1.0",
     "uuid": "^8.3.2"
   },
   "semistandard": {

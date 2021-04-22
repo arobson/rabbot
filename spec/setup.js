@@ -5,6 +5,9 @@ global.expect = chai.expect
 global.sinon = require('sinon')
 process.title = 'rabbot-test'
 
+process.on('uncaughtException', console.log)
+process.on('unhandledRejection', console.log)
+
 global.harnessFactory = function (rabbit, cb, expected) {
   let handlers = []
   let received = []
@@ -41,7 +44,9 @@ global.harnessFactory = function (rabbit, cb, expected) {
 
   function clean (connectionName) {
     handlers.forEach((handle) => {
-      handle.remove()
+      if (handle) {
+        handle.remove()
+      }
     })
     handlers = []
     received = []

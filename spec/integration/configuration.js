@@ -6,7 +6,8 @@ module.exports = {
     host: '127.0.0.1',
     port: 5672,
     vhost: '%2f',
-    replyQueue: 'customReplyQueue'
+    replyQueue: 'customReplyQueue',
+    ackInterval: 5
   },
 
   noReplyQueue: {
@@ -16,7 +17,8 @@ module.exports = {
     server: '127.0.0.1',
     port: 5672,
     vhost: '%2f',
-    replyQueue: false
+    replyQueue: false,
+    ackInterval: 5
   },
 
   directReplyQueue: {
@@ -26,6 +28,7 @@ module.exports = {
     server: '127.0.0.1',
     port: 5672,
     vhost: '%2f',
-    replyQueue: 'rabbit'
+    replyQueue: 'rabbit',
+    ackInterval: 5
   }
 }

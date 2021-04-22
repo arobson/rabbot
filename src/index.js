@@ -77,7 +77,8 @@ Broker.prototype.addConnection = function (opts) {
   const options = Object.assign({}, {
     name: DEFAULT,
     retryLimit: 3,
-    failAfter: 60
+    failAfter: 60,
+    ackInterval: 500
   }, opts)
   const name = options.name
   let connection
@@ -90,7 +91,7 @@ Broker.prototype.addConnection = function (opts) {
       connection.on('connected', () => {
         self.emit('connected', connection)
         self.emit(connection.name + '.connection.opened', connection)
-        self.setAckInterval(500)
+        self.setAckInterval(options.ackInterval)
         topology
           .then(t => {
             t.promise = connectionPromise
@@ -103,6 +104,7 @@ Broker.prototype.addConnection = function (opts) {
         log.debug(`connection ${name} was closed`)
         self.emit('closed', connection)
         self.emit(connection.name + '.connection.closed', connection)
+        self.clearAckInterval()
         reject(new Error('connection closed'))
       })
 
@@ -130,7 +132,10 @@ Broker.prototype.addConnection = function (opts) {
     } else {
       connection = self.connections[name]
       connection.connection.connect()
-      resolve(connection)
+        .then(() => {
+          console.log('reconnected!')
+          resolve(connection)
+        })
     }
   })
 
@@ -253,6 +258,7 @@ Broker.prototype.closeAll = function (reset) {
 
 Broker.prototype.close = function (connectionName = DEFAULT, reset = false) {
   const connection = this.connections[connectionName].connection
+  console.log(`-------------- CLO SING TI ----------------`)
   if (connection !== undefined && connection !== null) {
     if (reset) {
       this.connections[connectionName].reset()
@@ -487,7 +493,7 @@ Broker.prototype.request = function (exchangeName, options = {}, notify, connect
             if (!scatter || remaining === 0) {
               resolve(message)
             }
-            subscription.unsubscribe()
+            subscription.remove()
           } else if (notify) {
             notify(message)
           }
@@ -512,6 +518,7 @@ Broker.prototype.setAckInterval = function (interval) {
   if (this.ackIntervalId) {
     this.clearAckInterval()
   }
+  console.log('setting batchack interval to', interval)
   this.ackIntervalId = setInterval(this.batchAck, interval)
 }
 
@@ -532,7 +539,7 @@ Broker.prototype.startSubscription = function (queueName, exclusive = false, con
   }
   const queue = this.getQueue(queueName, connectionName)
   if (queue) {
-    return queue.on(exclusive)
+    return queue.subscribe(exclusive)
   } else {
     throw new Error("No queue named '" + queueName + "' for connection '" + connectionName + "'. Subscription failed.")
   }

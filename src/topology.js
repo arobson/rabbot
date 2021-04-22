@@ -75,8 +75,8 @@ const Topology = function (connection, options, serializers, unhandledStrategies
   this.options = options
   this.replyQueue = { name: false }
   this.serializers = serializers
-  this.onUnhandled = unhandledStrategies ? unhandledStrategies.onUnhandled : () => {}
-  this.onReturned = returnedStrategies ? returnedStrategies.onReturned : () => {}
+  this.onUnhandled = m => unhandledStrategies.onUnhandled(m)
+  this.onReturned = m => returnedStrategies.onReturned(m)
   let replyQueueName = ''
 
   if (has(options, 'replyQueue')) {

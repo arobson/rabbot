@@ -147,7 +147,7 @@ function getDefinition (options, type, factory, close) {
       },
       acquire: function () {
         this.handle('acquire')
-        return new Promise(function (resolve, reject) {
+        return new Promise((resolve, reject) => {
           this.once('acquired', () => {
             resolve(this)
           })
