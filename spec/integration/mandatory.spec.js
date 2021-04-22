@@ -11,6 +11,7 @@ describe('Undeliverable & Mandatory: true', function () {
   let harness
 
   before(function (done) {
+    harness = harnessFactory(rabbit, done, 2)
     rabbit.configure({
       connection: config.connection,
       exchanges: [
@@ -31,15 +32,14 @@ describe('Undeliverable & Mandatory: true', function () {
         {
           exchange: 'rabbot-ex.direct',
           target: 'rabbot-q.direct',
-          keys: []
+          keys: ['match']
         }
       ]
     }).then(() => {
       rabbit.publish('rabbot-ex.direct', { mandatory: true, routingKey: 'completely.un.routable.1', body: 'returned message #1' })
       rabbit.publish('rabbot-ex.direct', { mandatory: true, routingKey: 'completely.un.routable.2', body: 'returned message #2' })
     })
-
-    harness = harnessFactory(rabbit, done, 2)
+    rabbit.onReturned(harness.onReturned)
   })
 
   it('should capture all unhandled messages via custom unhandled message strategy', function () {

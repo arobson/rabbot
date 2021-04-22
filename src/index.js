@@ -88,14 +88,15 @@ Broker.prototype.addConnection = function (opts) {
       const topology = topologyFn(connection, options, serializers, unhandledStrategies, returnedStrategies)
 
       connection.on('connected', () => {
-        log.debug(`connection ${name} was established`)
         self.emit('connected', connection)
         self.emit(connection.name + '.connection.opened', connection)
         self.setAckInterval(500)
-        topology.then(t => {
-          self.connections[name] = t
-          resolve(t)
-        })
+        topology
+          .then(t => {
+            t.promise = connectionPromise
+            self.connections[name] = t
+            resolve(t)
+          })
       })
 
       connection.on('closed', () => {
@@ -124,7 +125,6 @@ Broker.prototype.addConnection = function (opts) {
       connection.on('return', (ev, raw) => {
         self.emit('return', raw)
       })
-      self.connections[name] = topology
     } else {
       connection = self.connections[name]
       connection.connection.connect()
@@ -132,9 +132,6 @@ Broker.prototype.addConnection = function (opts) {
     }
   })
 
-  if (!this.connections[name].promise) {
-    this.connections[name].promise = connectionPromise
-  }
   return connectionPromise
 }
 
@@ -198,7 +195,6 @@ Broker.prototype.bulkPublish = function (set, connectionName = DEFAULT) {
       .then(() => options)
       .catch(
         err => {
-
           return { err, message: options }
         }
       )
@@ -275,11 +271,11 @@ Broker.prototype.deleteQueue = function (name, connectionName = DEFAULT) {
 }
 
 Broker.prototype.getExchange = function (name, connectionName = DEFAULT) {
-  return this.connections[connectionName].channels[`exchange:${name}`]
+  return this.connections[connectionName].primitives[`exchange:${name}`]
 }
 
 Broker.prototype.getQueue = function (name, connectionName = DEFAULT) {
-  return this.connections[connectionName].channels[`queue:${name}`]
+  return this.connections[connectionName].primitives[`queue:${name}`]
 }
 
 Broker.prototype.handle = function (messageType, handler, queueName, context) {
@@ -342,9 +338,13 @@ Broker.prototype.rejectUnhandled = function () {
 
 Broker.prototype.onExchange = function (exchangeName, connectionName = DEFAULT) {
   const promises = [
-    this.connections[connectionName].promise,
-    this.connections[connectionName].promises[`exchange:${exchangeName}`]
+    this.connections[connectionName].promise
   ]
+  if (this.connections[connectionName].promises) {
+    promises.push(
+      this.connections[connectionName].promises[`exchange:${exchangeName}`]
+    )
+  }
   if (this.configuring[connectionName]) {
     promises.push(this.configuring[connectionName])
   }
@@ -418,7 +418,7 @@ Broker.prototype.publish = function (exchangeName, type, message, routingKey, co
   if (!this.connections[connectionName]) {
     return Promise.reject(new Error(`Publish failed - no connection ${connectionName} has been configured`))
   }
-  if (this.connections[connectionName] && this.connections[connectionName].options.publishTimeout) {
+  if (this.connections[connectionName] && this.connections[connectionName].options && this.connections[connectionName].options.publishTimeout) {
     options.connectionPublishTimeout = this.connections[connectionName].options.publishTimeout
   }
   if (typeof options.body === 'number') {
@@ -438,6 +438,9 @@ Broker.prototype.publish = function (exchangeName, type, message, routingKey, co
 Broker.prototype.purgeQueue = function (queueName, connectionName = DEFAULT) {
   if (!this.connections[connectionName]) {
     return Promise.reject(new Error(`Queue purge failed - no connection ${connectionName} has been configured`))
+  }
+  if (!this.connections[connectionName].promise) {
+    console.log('EVERYONE PANIC', this.connections[connectionName])
   }
   return this.connections[connectionName].promise
     .then(() => {

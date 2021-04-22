@@ -7,7 +7,6 @@ const rabbit = require('../../src/index.js')
 // exchanges, queues or bindings are in place
 require('./topology.js')(rabbit, null, 'default')
   .then(function () {
-    console.log('EVERYTHING IS PEACHY')
     publish(10000)
   })
 

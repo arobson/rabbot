@@ -39,7 +39,6 @@ describe('Direct Reply Queue (replyQueue: \'rabbit\')', function () {
         req.data.reply({ reply: req.data.body.message })
       })
       for (let i = 0; i < messagesToSend; i++) {
-        console.log('lets send some messages')
         rabbit.request('noreply-ex.direct', {
           connectionName: 'directReplyQueue',
           type: 'no.replyQueue',
@@ -48,7 +47,6 @@ describe('Direct Reply Queue (replyQueue: \'rabbit\')', function () {
         })
           .then(
             r => {
-              console.log(`ayo`)
               replies.push(r.data.body.reply)
               r.data.ack()
               if (replies.length >= messagesToSend) {

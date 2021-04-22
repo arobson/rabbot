@@ -73,7 +73,7 @@
     "standard-version": "^9.1.1"
   },
   "dependencies": {
-    "amqplib": "^0.6.0",
+    "amqplib": "^0.7.1",
     "debug": "^4.3.1",
     "fauxdash": "^1.7.2",
     "loggin": "^3.0.2",

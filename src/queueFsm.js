@@ -152,7 +152,7 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
       purge: function () {
         return new Promise(function (resolve, reject) {
           let _handlers
-          function cleanResolve (result) {
+          function cleanResolve (ev, result) {
             unhandle(_handlers)
             resolve(result)
           }
@@ -208,7 +208,6 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
         return new Promise(function (resolve, reject) {
           let _handlers
           function cleanResolve () {
-            console.log('subscribbled!!')
             unhandle(_handlers)
             resolve()
           }
@@ -304,9 +303,7 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
       },
       ready: {
         onEntry: function () {
-          if (!options.subscribe) {
-            this.emit('defined')
-          }
+          this.emit('defined')
         },
         check: function (deferred) {
           deferred.resolve()
@@ -429,9 +426,6 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
       },
       subscribed: {
         check: function (deferred) {
-          if (options.subscribe) {
-            this.emit('defined')
-          }
           deferred.resolve()
         },
         closed: { next: 'closed' },
@@ -445,7 +439,6 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
           this.next('initializing')
         },
         subscribed: function () {
-          console.log('subscribbled!!')
           this.subscribed = true
           this.emit('subscribed', {})
         }

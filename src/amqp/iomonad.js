@@ -45,7 +45,7 @@ function getDefinition (options, type, factory, close) {
       identifier: staticId++,
       default: 'acquiring',
       item: undefined,
-      name: options.name,
+      name: options.name + '.io',
       waitInterval: 0,
       waitMin: options.waitMin || 0,
       waitMax: options.waitMax || 5000,
@@ -191,9 +191,8 @@ function getDefinition (options, type, factory, close) {
         released: { next: 'released' }
       },
       acquired: {
-        onEntry: { emit: 'acquired' },
         acquire: { emit: 'acquired' },
-        return: { emit: 'acquired' },
+        return: { emit: 'return' },
         blocked: { next: 'blocked' },
         failed: { next: 'failed' },
         operate: function (call) {

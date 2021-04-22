@@ -172,8 +172,12 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
           function onPublished () {
             resolve()
             this._removeDeferred(reject)
-            failedSub.remove()
-            closedSub.remove()
+            if (failedSub) {
+              failedSub.off()
+            }
+            if (failedSub) {
+              closedSub.off()
+            }
           }
           function onRejected (err) {
             reject(err)

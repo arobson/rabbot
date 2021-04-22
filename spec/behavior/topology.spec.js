@@ -7,8 +7,6 @@ const info = require('../../src/info')
 const connection = require('../../src/amqp/connection.js')
 const topology = require('../../src/topology')
 
-process.on('unhandledRejection', e => console.log('heh', e))
-
 function connectionFn () {
   let handlers = {}
 

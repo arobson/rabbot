@@ -74,8 +74,8 @@ const Topology = function (connection, options, serializers, unhandledStrategies
   this.options = options
   this.replyQueue = { name: false }
   this.serializers = serializers
-  this.onUnhandled = (ev, message) => unhandledStrategies.onUnhandled(message)
-  this.onReturned = (ev, message) => returnedStrategies.onReturned(message)
+  this.onUnhandled = unhandledStrategies.onUnhandled
+  this.onReturned = returnedStrategies.onReturned
   let replyQueueName = ''
 
   if (has(options, 'replyQueue')) {
@@ -300,7 +300,7 @@ Topology.prototype.getUniqueName = function (options) {
   }
 }
 
-Topology.prototype.handleReturned = function (raw) {
+Topology.prototype.handleReturned = function (ev, raw) {
   raw.type = isEmpty(raw.properties.type) ? raw.fields.routingKey : raw.properties.type
   const contentType = raw.properties.contentType || 'application/octet-stream'
   const serializer = this.serializers[contentType]

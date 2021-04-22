@@ -1,17 +1,17 @@
 const rabbit = require('../../src/index.js')
 const fs = require('fs')
 
-rabbit.log(
-  { level: 'debug', stream: fs.createWriteStream('./debug.log'), objectMode: true }
-)
+// rabbit.log(
+//   { level: 'debug', stream: fs.createWriteStream('./debug.log'), objectMode: true }
+// )
 // always setup your message handlers first
 
 // this handler will respond to the subscriber request and trigger
 // sending a bunch of messages
-rabbit.handle('subscriber.request', function (msg) {
-  console.log('Got subscriber request')
+rabbit.handle('subscriber.request', function (ev, msg) {
+  console.log('Got subscriber request', msg)
   // replying to the message also ack's it to the queue
-  msg.reply({ getReady: 'forawesome' }, 'publisher.response')
+  msg.data.reply({ getReady: 'forawesome' }, 'publisher.response')
   setTimeout(() => publish(msg.body.batchSize, msg.body.expected), 0)
 })
 

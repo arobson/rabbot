@@ -5,22 +5,21 @@ describe('Bad Connection', function () {
   const noop = () => {}
   describe('when attempting a connection', function () {
     let error
-    before((done) => {
+    before(() => {
       rabbit.once('#.connection.failed', (ev, err) => {
         error = err
-        done()
       })
 
-      rabbit.addConnection({
+      return rabbit.addConnection({
         name: 'silly',
         server: 'shfifty-five.gov',
         publishTimeout: 50,
         timeout: 100,
         failAfter: .3,
         retryLimit: 2
+      }).then(() => {
+        return rabbit.addExchange({ name: 'silly-ex' }, 'silly')
       }).catch(noop)
-
-      rabbit.addExchange({ name: 'silly-ex' }, 'silly').then(null, noop)
     })
 
     it('should fail to connect', () =>

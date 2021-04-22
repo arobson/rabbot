@@ -53,6 +53,7 @@ describe('Purge Queue', function () {
       return rabbit.purgeQueue('rabbot-q.purged')
         .then(
           (purged) => {
+            console.log(purged)
             purged.should.equal(3)
           }
         )
@@ -60,7 +61,7 @@ describe('Purge Queue', function () {
 
     it('should not re-subscribe to queue automatically (when not already subscribed)', function () {
       rabbit.getQueue('rabbot-q.purged')
-        .state.should.equal('ready')
+        .currentState.should.equal('ready')
     })
 
     after(function () {
@@ -72,11 +73,17 @@ describe('Purge Queue', function () {
   })
 
   describe('when subcribed', function () {
-    describe('and queue is autodelete', function () {
+    describe.only('and queue is autodelete', function () {
       let purgeCount
       let harness
       let handler
       before(function (done) {
+        harness = harnessFactory(rabbit, () => {}, 1)
+        harness.handle('topic', (m) => {
+          setTimeout(() => {
+            m.ack()
+          }, 10)
+        })
         rabbit.configure({
           connection: config.connection,
           exchanges: [
@@ -124,28 +131,30 @@ describe('Purge Queue', function () {
                 )
             }
           )
-        harness = harnessFactory(rabbit, () => {}, 1)
-        harness.handle('topic', (m) => {
-          setTimeout(() => {
-            m.ack()
-          }, 100)
-        })
+        rabbit.onUnhandled(() => console.log('shit'))
       })
 
       it('should have purged some messages', function () {
         purgeCount.should.be.greaterThan(0);
         (purgeCount + harness.received.length).should.eql(3)
+        harness.clean()
       })
 
       it('should re-subscribe to queue automatically (when not already subscribed)', function (done) {
-        rabbit.getQueue('rabbot-q.purged-2')
-          .state.should.equal('subscribed')
-        harness.clean()
-        handler = rabbit.handle('topic', (m) => {
+        this.timeout(50000)
+        // rabbit.getQueue('rabbot-q.purged-2')
+        //   .currentState.should.equal('subscribed')
+        //harness.clean()
+        handler = rabbit.handle('topic2', (m) => {
+          console.log('hi')
           m.ack()
           done()
         })
-        rabbit.publish('rabbot-ex.purged-2', { type: 'topic', routingKey: 'this.is.easy', body: 'stapler' })
+        rabbit.onUn
+        rabbit.publish('rabbot-ex.purged-2', { type: 'topic2', routingKey: 'this.is.easy', body: 'stapler' })
+        rabbit.publish('rabbot-ex.purged-2', { type: 'topic2', routingKey: 'this.is.easy', body: 'stapler' })
+        rabbit.publish('rabbot-ex.purged-2', { type: 'topic2', routingKey: 'this.is.easy', body: 'stapler' })
+        rabbit.publish('rabbot-ex.purged-2', { type: 'topic2', routingKey: 'this.is.easy', body: 'stapler' })
       })
 
       after(function () {

@@ -62,7 +62,7 @@ function getDefinition(options, connectionFn, channelFn) {
               this._onChannel.bind(this, name, context)
               resolve(channel)
             })
-            channel.on('return', (raw) => {
+            channel.on('return', (ex, raw) => {
               this.emit('return', raw)
             })
           })
