@@ -8,7 +8,7 @@ const config = require('./configuration')
   of the bound fanout queue's.
 */
 describe('Queue Specific Handler', function () {
-  describe('with standard queues', function () {
+  describe.only('with standard queues', function () {
     let harness
 
     before(function (done) {
@@ -52,7 +52,7 @@ describe('Queue Specific Handler', function () {
         rabbit.publish('rabbot-ex.fanout', { type: '', routingKey: '', body: 'three' })
       })
 
-      harness = harnessFactory(rabbit, done, 6)
+      harness = harnessFactory(rabbit, done, 3)
       harness.handle('', undefined, 'rabbot-q.general1')
     })
 

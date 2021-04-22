@@ -343,7 +343,6 @@ Broker.prototype.rejectUnhandled = function () {
 }
 
 Broker.prototype.onExchange = function (exchangeName, connectionName = DEFAULT) {
-  console.log('onExchange connection promy', this.connections[connectionName].promise)
   const promises = [
     this.connections[connectionName].promise
   ]

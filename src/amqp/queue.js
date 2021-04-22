@@ -407,10 +407,9 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
       }
     }
 
-    const onPublish = function (data) {
+    const onPublish = function (activated) {
       let handled
-
-      if (data.activated) {
+      if (activated) {
         handled = true
       }
       track()

@@ -147,7 +147,6 @@ describe('Purge Queue', function () {
           m.ack()
           done()
         })
-        rabbit.onUn
         rabbit.publish('rabbot-ex.purged-2', { type: 'topic2', routingKey: 'this.is.easy', body: 'stapler' })
         rabbit.publish('rabbot-ex.purged-2', { type: 'topic2', routingKey: 'this.is.easy', body: 'stapler' })
         rabbit.publish('rabbot-ex.purged-2', { type: 'topic2', routingKey: 'this.is.easy', body: 'stapler' })

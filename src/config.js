@@ -9,7 +9,7 @@ const log = require('./log')('rabbot.configuration')
 module.exports = function (Broker) {
   Broker.prototype.configure = function (config) {
     const emit = this.emit.bind(this)
-    const configName = config.name || 'default'
+    const configName = config.name || config.connection.name
     this.configurations[configName] = config
     this.configuring[configName] = new Promise(function (resolve, reject) {
       function onExchangeError (connection, err) {
