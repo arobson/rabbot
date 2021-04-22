@@ -86,7 +86,7 @@ describe('IO Monad', function () {
         acquiring++
       })
 
-      resource.on('failed', function (e, err) {
+      resource.on('failed', function (err) {
         if (acquiring > 1) {
           error = err
           resource.release()
@@ -145,7 +145,7 @@ describe('IO Monad', function () {
         }
       })
 
-      resource.on('failed', function (ev, err) {
+      resource.on('failed', function (err) {
         error = error || err
       })
 
@@ -204,7 +204,7 @@ describe('IO Monad', function () {
         }
       })
 
-      resource.once('closed', function (ev, reason) {
+      resource.once('closed', function (reason) {
         closeReason = reason
         done()
       })
@@ -324,7 +324,7 @@ describe('IO Monad', function () {
     })
 
     it('should not resolve operation after release', function () {
-      return resource.sayHi().should.be.rejectedWith("Cannot invoke operation 'sayHi' on released resource 'released'")
+      return resource.sayHi().should.be.rejectedWith("Cannot invoke operation 'sayHi' on released resource 'released.io'")
     })
 
     it('should end in a released state', function () {
@@ -434,7 +434,7 @@ describe('IO Monad', function () {
     })
 
     it('should have parameters set by options', function () {
-      resource.name.should.equal(options.name)
+      resource.name.should.equal(options.name + '.io')
       resource.waitMin.should.equal(options.waitMin)
       resource.waitMax.should.equal(options.waitMax)
       resource.waitIncrement.should.equal(options.waitIncrement)

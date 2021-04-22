@@ -424,24 +424,17 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
     }
 
     if (raw.fields.routingKey === topology.replyQueue.name) {
-      replies.emit(
-        {
-          topic: correlationId,
-          headers: {
-            resolverNoCache: true
-          },
-          data: raw
-        },
-        onPublish
-      )
+      raw.topic = correlationId
+      raw.headers = {
+        resolverNoCache: true
+      }
+      replies.emit(raw.topic, raw, onPublish)
     } else {
-      received.emit(topic, {
-        topic: topic,
-        headers: {
-          resolverNoCache: !shouldCacheKeys
-        },
-        data: raw
-      }, onPublish)
+      raw.topic = topic
+      raw.headers = {
+        resolverNoCache: !shouldCacheKeys
+      }
+      received.emit(topic, raw, onPublish)
     }
   }, options)
     .then(function (result) {

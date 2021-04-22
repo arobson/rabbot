@@ -100,7 +100,7 @@ describe('Connection FSM', function () {
           connection.once('connecting', function () {
             monad.emit('failed', new Error('connection failed'))
           })
-          connection.once('failed', function (ev, msg) {
+          connection.once('failed', function (msg) {
             error = msg
             done()
           })

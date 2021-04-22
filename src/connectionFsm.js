@@ -1,7 +1,7 @@
 const fsm = require('mfsm')
 const format = require('util').format
 const log = require('./log.js')('rabbot.connection')
-const defer = require('./defer')
+const defer = require('fauxdash').future
 
 /* events emitted:
   'closing' - close is initiated by user
@@ -62,7 +62,7 @@ function getDefinition(options, connectionFn, channelFn) {
               this._onChannel.bind(this, name, context)
               resolve(channel)
             })
-            channel.on('return', (ex, raw) => {
+            channel.on('return', (raw) => {
               this.emit('return', raw)
             })
           })
@@ -110,7 +110,7 @@ function getDefinition(options, connectionFn, channelFn) {
       },
 
       _replay: function (ev) {
-        return function (ev2, data) {
+        return function (data) {
           this.handle(ev, data)
         }.bind(this)
       },
@@ -296,7 +296,7 @@ function getDefinition(options, connectionFn, channelFn) {
             this.next('unreachable')
           }
         },
-        failed: function (ev, err) {
+        failed: function (err) {
           this.emit('failed', err)
         },
         acquiring: { next: 'connecting' },

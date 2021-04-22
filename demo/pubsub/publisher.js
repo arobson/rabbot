@@ -8,10 +8,10 @@ const fs = require('fs')
 
 // this handler will respond to the subscriber request and trigger
 // sending a bunch of messages
-rabbit.handle('subscriber.request', function (ev, msg) {
+rabbit.handle('subscriber.request', function (msg) {
   console.log('Got subscriber request', msg)
   // replying to the message also ack's it to the queue
-  msg.data.reply({ getReady: 'forawesome' }, 'publisher.response')
+  msg.reply({ getReady: 'forawesome' }, 'publisher.response')
   setTimeout(() => publish(msg.body.batchSize, msg.body.expected), 0)
 })
 

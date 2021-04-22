@@ -6,7 +6,7 @@ describe('Connection', function () {
   describe('on connection', function () {
     let connected
     before(function (done) {
-      rabbit.once('connected', (ev, c) => {
+      rabbit.once('connected', (c) => {
         connected = c
         done()
       })

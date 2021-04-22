@@ -106,14 +106,14 @@ Broker.prototype.addConnection = function (opts) {
         reject(new Error('connection closed'))
       })
 
-      connection.on('failed', (ev, data) => {
+      connection.on('failed', (data) => {
         log.debug(`connection ${name} failed`)
         self.emit('failed', connection)
         self.emit(name + '.connection.failed', data)
         reject(data)
       })
 
-      connection.on('unreachable', (ev) => {
+      connection.on('unreachable', () => {
         log.debug(`connection ${name} is unreachable`)
         self.emit('unreachable', connection)
         const err = new Error('connection unreachable')
@@ -122,9 +122,11 @@ Broker.prototype.addConnection = function (opts) {
         reject(err)
       })
 
-      connection.on('return', (ev, raw) => {
+      connection.on('return', (raw) => {
         self.emit('return', raw)
       })
+
+      self.connections[name] = { promise: topology }
     } else {
       connection = self.connections[name]
       connection.connection.connect()
@@ -271,7 +273,11 @@ Broker.prototype.deleteQueue = function (name, connectionName = DEFAULT) {
 }
 
 Broker.prototype.getExchange = function (name, connectionName = DEFAULT) {
-  return this.connections[connectionName].primitives[`exchange:${name}`]
+  if (this.connections[connectionName].primitives) {
+    return this.connections[connectionName].primitives[`exchange:${name}`]
+  } else {
+    return Promise.reject(this.connections[connectionName])
+  }
 }
 
 Broker.prototype.getQueue = function (name, connectionName = DEFAULT) {
@@ -337,6 +343,7 @@ Broker.prototype.rejectUnhandled = function () {
 }
 
 Broker.prototype.onExchange = function (exchangeName, connectionName = DEFAULT) {
+  console.log('onExchange connection promy', this.connections[connectionName].promise)
   const promises = [
     this.connections[connectionName].promise
   ]
@@ -439,9 +446,6 @@ Broker.prototype.purgeQueue = function (queueName, connectionName = DEFAULT) {
   if (!this.connections[connectionName]) {
     return Promise.reject(new Error(`Queue purge failed - no connection ${connectionName} has been configured`))
   }
-  if (!this.connections[connectionName].promise) {
-    console.log('EVERYONE PANIC', this.connections[connectionName])
-  }
   return this.connections[connectionName].promise
     .then(() => {
       const queue = this.getQueue(queueName, connectionName)
@@ -475,7 +479,7 @@ Broker.prototype.request = function (exchangeName, options = {}, notify, connect
         }, replyTimeout)
         const scatter = options.expect
         let remaining = options.expect
-        const subscription = replies.on(requestId, (ev, message) => {
+        const subscription = replies.on(requestId, (message) => {
           const end = scatter
             ? --remaining <= 0
             : message.properties.headers.sequence_end

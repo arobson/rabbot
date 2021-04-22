@@ -1,7 +1,6 @@
 const fsm = require('mfsm')
-const format = require('util').format
 const log = require('./log.js')('rabbot.queue')
-const defer = require('./defer')
+const defer = require('fauxdash').future
 
 /* log
   * `rabbot.queue`
@@ -152,11 +151,11 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
       purge: function () {
         return new Promise(function (resolve, reject) {
           let _handlers
-          function cleanResolve (ev, result) {
+          function cleanResolve (result) {
             unhandle(_handlers)
             resolve(result)
           }
-          function cleanReject (ev, err) {
+          function cleanReject (err) {
             unhandle(_handlers)
             this.next('failed')
             reject(err)
@@ -184,7 +183,7 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
             unhandle(_handlers)
             resolve()
           }
-          function cleanReject (ev, err) {
+          function cleanReject (err) {
             unhandle(_handlers)
             reject(err)
           }
@@ -211,7 +210,7 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
             unhandle(_handlers)
             resolve()
           }
-          function cleanReject (ev, err) {
+          function cleanReject (err) {
             unhandle(_handlers)
             this.next('failed')
             reject(err)

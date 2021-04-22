@@ -2,13 +2,13 @@ require('../setup.js')
 const _ = require('lodash')
 const queueFsm = require('../../src/queueFsm')
 const noOp = function () {}
-const emitter = require('./emitter')
+const Dispatcher = require('topic-dispatch')
 
 function channelFn (options) {
   const channel = {
     name: options.name,
     type: options.type,
-    channel: emitter(),
+    channel: Dispatcher(),
     define: noOp,
     destroy: noOp,
     finalize: noOp,
@@ -34,9 +34,9 @@ describe('Queue FSM', function () {
 
     before(function (done) {
       options = { name: 'test', type: 'test' }
-      connection = emitter()
+      connection = Dispatcher()
       connection.addQueue = noOp
-      topology = emitter()
+      topology = Dispatcher()
 
       const ch = channelFn(options)
       channelMock = ch.mock
@@ -46,7 +46,7 @@ describe('Queue FSM', function () {
         .returns(Promise.reject(new Error('nope')))
 
       queue = queueFsm(options, connection, topology, {}, ch.factory)
-      queue.once('failed', function (ev, err) {
+      queue.once('failed', function (err) {
         error = err
         done()
       })
@@ -84,9 +84,9 @@ describe('Queue FSM', function () {
 
     before(function (done) {
       options = { name: 'test', type: 'test' }
-      connection = emitter()
+      connection = Dispatcher()
       connection.addQueue = noOp
-      topology = emitter()
+      topology = Dispatcher()
 
       ch = channelFn(options)
       channelMock = ch.mock
@@ -251,8 +251,8 @@ describe('Queue FSM', function () {
     })
 
     after(function () {
-      connection.reset()
-      topology.reset()
+      connection.removeAllListeners()
+      topology.removeAllListeners()
       channelMock.restore()
     })
   })

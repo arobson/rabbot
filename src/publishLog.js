@@ -1,4 +1,4 @@
-const defer = require('./defer')
+const defer = require('fauxdash').future
 
 function add (state, m) {
   if (!state.messages.sequenceNo) {

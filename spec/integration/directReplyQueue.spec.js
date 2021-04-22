@@ -36,7 +36,7 @@ describe('Direct Reply Queue (replyQueue: \'rabbit\')', function () {
     }).then(() => {
       messagesToSend = 3
       harness.handle('no.replyQueue', (req) => {
-        req.data.reply({ reply: req.data.body.message })
+        req.reply({ reply: req.body.message })
       })
       for (let i = 0; i < messagesToSend; i++) {
         rabbit.request('noreply-ex.direct', {
@@ -47,8 +47,8 @@ describe('Direct Reply Queue (replyQueue: \'rabbit\')', function () {
         })
           .then(
             r => {
-              replies.push(r.data.body.reply)
-              r.data.ack()
+              replies.push(r.body.reply)
+              r.ack()
               if (replies.length >= messagesToSend) {
                 done()
               } else {

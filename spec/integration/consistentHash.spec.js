@@ -82,7 +82,7 @@ describe('Consistent Hash Exchange', function () {
 
   it('should distribute messages across queues within margin for error', function () {
     const consumers = harness.received.reduce((acc, m) => {
-      const key = m.data.fields.consumerTag
+      const key = m.fields.consumerTag
       if (acc[key]) {
         acc[key]++
       } else {

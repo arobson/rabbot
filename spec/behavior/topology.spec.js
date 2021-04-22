@@ -2,41 +2,11 @@ require('../setup.js')
 const _ = require('fauxdash')
 const topologyFn = require('../../src/topology')
 const noOp = function () {}
-const emitter = require('./emitter')
 const info = require('../../src/info')
-const connection = require('../../src/amqp/connection.js')
-const topology = require('../../src/topology')
+const Dispatcher = require('topic-dispatch')
 
 function connectionFn () {
   let handlers = {}
-
-  function emit (ev) {
-    if (handlers[ev]) {
-      const args = Array.prototype.slice.call(arguments, 1)
-      _.each(handlers[ev], function (handler) {
-        if (handler) {
-          handler.apply(undefined, args)
-        }
-      })
-    }
-  }
-
-  function on (ev, handle) {
-    if (handlers[ev]) {
-      handlers[ev].push(handle)
-    } else {
-      handlers[ev] = [handle]
-    }
-    return {
-      remove: function (h) {
-        handlers[ev].splice(handlers[ev].indexOf(h))
-      }
-    }
-  }
-
-  function reset () {
-    handlers = {}
-  }
 
   const connection = {
     name: 'default',
@@ -51,19 +21,12 @@ function connectionFn () {
     lastError: function () {
       return this.lastErr
     },
-    on: on,
-    once: on,
-    emit: emit,
-    resetHandlers: reset,
-    reset: noOp,
     state: ''
   }
-
-  _.bindAll(connection)
-
+  const final = _.melter({}, connection, Dispatcher())
   return {
-    instance: connection,
-    mock: sinon.mock(connection)
+    instance: final,
+    mock: sinon.mock(final)
   }
 }
 
@@ -83,8 +46,8 @@ function initContext (options, name) {
   }
   Exchange.type = 'exchange'
   Queue.type = 'queue'
-  const ex = emitter()
-  const q = emitter()
+  const ex = Dispatcher()
+  const q = Dispatcher()
   ex.check = function () {
     return Promise.resolve()
   }
@@ -266,7 +229,7 @@ describe('Topology', function () {
 
     describe('when recovering from disconnection', function () {
       before(function (done) {
-        ctx.topology.connection.once('bindings.completed', function (ev, bindings) {
+        ctx.topology.connection.once('bindings.completed', function (bindings) {
           done()
         })
         ctx.reconnect()

@@ -22,7 +22,7 @@ describe('Publishing Messages', function () {
     })
   })
 
-  describe('with a connection and exchange defined', function () {
+  describe.only('with a connection and exchange defined', function () {
     it('should not error on publish calls', function () {
       rabbit.configure({
         connection: {

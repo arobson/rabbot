@@ -53,7 +53,6 @@ describe('Purge Queue', function () {
       return rabbit.purgeQueue('rabbot-q.purged')
         .then(
           (purged) => {
-            console.log(purged)
             purged.should.equal(3)
           }
         )
@@ -131,7 +130,6 @@ describe('Purge Queue', function () {
                 )
             }
           )
-        rabbit.onUnhandled(() => console.log('shit'))
       })
 
       it('should have purged some messages', function () {
@@ -146,7 +144,6 @@ describe('Purge Queue', function () {
         //   .currentState.should.equal('subscribed')
         //harness.clean()
         handler = rabbit.handle('topic2', (m) => {
-          console.log('hi')
           m.ack()
           done()
         })

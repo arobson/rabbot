@@ -2,6 +2,9 @@ require('../setup')
 const rabbit = require('../../src/index.js')
 const config = require('./configuration')
 
+process.on('uncaughtException', console.log)
+process.on('unhandledRejection', console.log)
+
 /*
  Demonstrates how bulk publish API works
  in both formats.
@@ -100,7 +103,7 @@ describe('Bulk Publish', function () {
 
   it('should bulk publish all messages successfully', function () {
     const results = harness.received.map((m) => (
-      parseInt(m.data.body)
+      parseInt(m.body)
     ))
     results.sort((a, b) => a - b).should.eql(
       [

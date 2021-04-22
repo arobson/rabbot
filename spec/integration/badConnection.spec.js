@@ -6,7 +6,7 @@ describe('Bad Connection', function () {
   describe('when attempting a connection', function () {
     let error
     before(() => {
-      rabbit.once('#.connection.failed', (ev, err) => {
+      rabbit.once('#.connection.failed', (err) => {
         error = err
       })
 
@@ -19,7 +19,7 @@ describe('Bad Connection', function () {
         retryLimit: 2
       }).then(() => {
         return rabbit.addExchange({ name: 'silly-ex' }, 'silly')
-      }).catch(noop)
+      })
     })
 
     it('should fail to connect', () =>
@@ -28,6 +28,9 @@ describe('Bad Connection', function () {
 
     it('should reject publish after timeout', () =>
       rabbit.publish('silly-ex', { body: 'test' }, 'silly')
+        .catch(e => {
+          return e
+        })
         .should.be.rejectedWith('No endpoints could be reached')
     )
 

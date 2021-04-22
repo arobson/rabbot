@@ -22,10 +22,9 @@ global.harnessFactory = function (rabbit, cb, expected) {
   }
 
   function wrap (handle) {
-    return (queue, message) => {
-      console.log('SNAUSAGE', message)
-      handle(message.data)
-      received.push(message.data)
+    return (message) => {
+      handle(message)
+      received.push(message)
       check()
     }
   }
@@ -36,7 +35,6 @@ global.harnessFactory = function (rabbit, cb, expected) {
       options.handler = wrap(options.handler || defaultHandle)
       handlers.push(rabbit.handle(options))
     } else {
-      console.log('handling type', type)
       handlers.push(rabbit.handle(type, wrap(handle || defaultHandle), queueName))
     }
   }

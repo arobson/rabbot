@@ -50,8 +50,8 @@ describe('Fanout Exchange With Multiple Subscribed Queues', function () {
 
   it('should handle messages on all subscribed queues', function () {
     const results = harness.received.map((m) => ({
-      body: m.data.body,
-      key: m.data.fields.routingKey
+      body: m.body,
+      key: m.fields.routingKey
     }))
     sortBy(results, 'body').should.eql(
       [

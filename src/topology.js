@@ -62,6 +62,7 @@ const Topology = function (connection, options, serializers, unhandledStrategies
   const autoReplyTo = { name: `${replyId}.response.queue`, autoDelete: true, subscribe: true }
   const rabbitReplyTo = { name: DIRECT_REPLY_TO, subscribe: true, noAck: true }
   const userReplyTo = isObject(options.replyQueue) ? options.replyQueue : { name: options.replyQueue, autoDelete: true, subscribe: true }
+
   this.name = options.name
   this.connection = connection
   this.primitives = {}
@@ -74,8 +75,8 @@ const Topology = function (connection, options, serializers, unhandledStrategies
   this.options = options
   this.replyQueue = { name: false }
   this.serializers = serializers
-  this.onUnhandled = unhandledStrategies.onUnhandled
-  this.onReturned = returnedStrategies.onReturned
+  this.onUnhandled = unhandledStrategies ? unhandledStrategies.onUnhandled : () => {}
+  this.onReturned = returnedStrategies ? returnedStrategies.onReturned : () => {}
   let replyQueueName = ''
 
   if (has(options, 'replyQueue')) {
@@ -211,7 +212,7 @@ Topology.prototype.createPrimitive = function (Primitive, options) {
         log.debug(`${Primitive.type} '${options.name}' created on '${this.connection.name}'`)
       })
     }
-    primitive.once('failed', (ev, err) => {
+    primitive.once('failed', (err) => {
       delete definitions[options.name]
       delete this.primitives[primitiveName]
       delete this.promises[primitiveName]
@@ -300,7 +301,7 @@ Topology.prototype.getUniqueName = function (options) {
   }
 }
 
-Topology.prototype.handleReturned = function (ev, raw) {
+Topology.prototype.handleReturned = function (raw) {
   raw.type = isEmpty(raw.properties.type) ? raw.fields.routingKey : raw.properties.type
   const contentType = raw.properties.contentType || 'application/octet-stream'
   const serializer = this.serializers[contentType]
@@ -327,7 +328,7 @@ Topology.prototype.onReconnect = function () {
 }
 
 Topology.prototype.onReplyQueueFailed = function (err) {
-  log.error(`Failed to create reply queue for connection name ' ${this.connection.name}' with ${err}`)
+  log.error(`Failed to create reply queue for connection name '${this.connection.name}' with ${err}`)
 }
 
 // retrieves a promises to ensure the re-establishment for all

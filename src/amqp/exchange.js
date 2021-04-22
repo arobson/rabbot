@@ -1,4 +1,4 @@
-const defer = require('../defer')
+const defer = require('fauxdash').future
 const info = require('../info')
 const exLog = require('../log.js')('rabbot.exchange')
 const topLog = require('../log.js')('rabbot.topology')
@@ -102,7 +102,6 @@ function publish (channel, options, topology, log, serializers, message) {
     `Publishing message ( type: '${publishOptions.type}' topic: '${effectiveKey}', sequence: '${message.sequenceNo}', correlation: '${publishOptions.correlationId}', replyTo: '${JSON.stringify(publishOptions)}' ) to ${type} exchange '${channelName}' on connection '${topology.connection.name}'`
   )
   function onRejected (err) {
-    exLog.warn(`oops`)
     log.remove(message)
     throw err
   }

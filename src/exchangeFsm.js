@@ -2,7 +2,7 @@ const fsm = require('mfsm')
 const publishLog = require('./publishLog')
 const log = require('./log.js')('rabbot.exchange')
 const format = require('util').format
-const defer = require('./defer')
+const defer = require('fauxdash').future
 
 /* log
   * `rabbot.exchange`
@@ -51,7 +51,7 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
       },
 
       _listen: function () {
-        connection.on('unreachable', function (ev, err) {
+        connection.on('unreachable', function (err) {
           if (!err || !err.message) {
             err = new Error('Could not establish a connection to any known nodes.')
           }
@@ -203,10 +203,10 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
               }
             }
           }.bind(this)
-          failedSub = this.once('failed', (ev, err) => {
+          failedSub = this.once('failed', (err) => {
             onRejected.bind(this)(err)
           })
-          closedSub = this.once('closed', (ev, err) => {
+          closedSub = this.once('closed', (err) => {
             onRejected.bind(this)(err)
           })
           this.deferred.push(reject)
