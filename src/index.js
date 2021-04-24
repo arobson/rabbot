@@ -89,13 +89,13 @@ Broker.prototype.addConnection = function (opts) {
       const topology = topologyFn(connection, options, serializers, unhandledStrategies, returnedStrategies)
 
       connection.on('connected', () => {
-        self.emit('connected', connection)
         self.emit(connection.name + '.connection.opened', connection)
         self.setAckInterval(options.ackInterval)
         topology
           .then(t => {
             t.promise = connectionPromise
             self.connections[name] = t
+            self.emit('connected', connection)
             resolve(t)
           })
       })
@@ -118,7 +118,7 @@ Broker.prototype.addConnection = function (opts) {
       connection.on('unreachable', () => {
         log.debug(`connection ${name} is unreachable`)
         self.emit('unreachable', connection)
-        const err = new Error('connection unreachable')
+        const err = new Error('No endpoints could be reached')
         self.emit(name + '.connection.unreachable', err)
         self.clearAckInterval()
         reject(err)
@@ -133,7 +133,6 @@ Broker.prototype.addConnection = function (opts) {
       connection = self.connections[name]
       connection.connection.connect()
         .then(() => {
-          console.log('reconnected!')
           resolve(connection)
         })
     }
@@ -258,13 +257,15 @@ Broker.prototype.closeAll = function (reset) {
 
 Broker.prototype.close = function (connectionName = DEFAULT, reset = false) {
   const connection = this.connections[connectionName].connection
-  console.log(`-------------- CLO SING TI ----------------`)
   if (connection !== undefined && connection !== null) {
     if (reset) {
       this.connections[connectionName].reset()
     }
     delete this.configuring[connectionName]
     return connection.close(reset)
+      .then(() => {
+        delete this.connections[connectionName]
+      })
   } else {
     return Promise.resolve(true)
   }
@@ -341,7 +342,9 @@ Broker.prototype.nackUnhandled = function () {
 }
 
 Broker.prototype.onUnhandled = function (handler) {
-  unhandledStrategies.onUnhandled = unhandledStrategies.customOnUnhandled = handler
+  if (handler) {
+    unhandledStrategies.onUnhandled = unhandledStrategies.customOnUnhandled = handler
+  }
 }
 
 Broker.prototype.rejectUnhandled = function () {
@@ -398,7 +401,9 @@ Broker.prototype.onExchanges = function (exchanges, connectionName = DEFAULT) {
 }
 
 Broker.prototype.onReturned = function (handler) {
-  returnedStrategies.onReturned = returnedStrategies.customOnReturned = handler
+  if (handler) {
+    returnedStrategies.onReturned = returnedStrategies.customOnReturned = handler
+  }
 }
 
 Broker.prototype.publish = function (exchangeName, type, message, routingKey, correlationId, connectionName, sequenceNo) {
@@ -518,7 +523,6 @@ Broker.prototype.setAckInterval = function (interval) {
   if (this.ackIntervalId) {
     this.clearAckInterval()
   }
-  console.log('setting batchack interval to', interval)
   this.ackIntervalId = setInterval(this.batchAck, interval)
 }
 

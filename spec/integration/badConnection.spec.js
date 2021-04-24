@@ -4,10 +4,10 @@ const rabbit = require('../../src/index.js')
 describe('Bad Connection', function () {
   const noop = () => {}
   describe('when attempting a connection', function () {
-    let error
+    let error1, error2, error3
     before(() => {
       rabbit.once('#.connection.failed', (err) => {
-        error = err
+        error2 = err
       })
 
       return rabbit.addConnection({
@@ -17,20 +17,19 @@ describe('Bad Connection', function () {
         timeout: 100,
         failAfter: .3,
         retryLimit: 2
-      }).then(() => {
-        return rabbit.addExchange({ name: 'silly-ex' }, 'silly')
+      })
+      .catch(e => {
+        error1 = e
       })
     })
 
-    it('should fail to connect', () =>
-      error.should.equal('No endpoints could be reached')
-    )
+    it('should fail to connect',  function () {
+      error2.should.equal('No endpoints could be reached')
+      error1.should.equal('No endpoints could be reached')
+    })
 
     it('should reject publish after timeout', () =>
       rabbit.publish('silly-ex', { body: 'test' }, 'silly')
-        .catch(e => {
-          return e
-        })
         .should.be.rejectedWith('No endpoints could be reached')
     )
 

@@ -93,11 +93,12 @@ function getDefinition(options, connectionFn, channelFn) {
           })
         )
 
-        function reacquired () {
+        const reacquired = () => {
           this.emit('reconnected')
         }
 
-        function reacquireFailed (err) {
+        const reacquireFailed = err => {
+          connection.lastError = err
           log.error(`Could not complete reconnection of '${this.name}' due to ${err}`)
           this.forward('failed', 'failed', err)
         }
@@ -180,7 +181,10 @@ function getDefinition(options, connectionFn, channelFn) {
           this.setConnectionTimeout()
           connection.on('acquiring', this._replay('acquiring'))
           connection.on('acquired', this._replay('acquired'))
-          connection.on('failed', this._replay('failed'))
+          connection.on('failed', e => {
+            connection.lastError = e
+            this._replay('failed')(e)
+          })
           connection.on('closed', this._replay('closed'))
           connection.on('released', this._replay('released'))
         },
@@ -315,6 +319,9 @@ function getDefinition(options, connectionFn, channelFn) {
             .release()
         },
         connect: function () {
+          console.log('------------------ UH OH ------------------')
+          console.log('------------------ UH OH ------------------')
+          console.log('------------------ UH OH ------------------')
           this.consecutiveFailures = 0
           this.next('connecting')
         },

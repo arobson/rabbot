@@ -2,9 +2,6 @@ require('../setup')
 const rabbit = require('../../src/index.js')
 const config = require('./configuration')
 
-process.on('uncaughtException', console.log)
-process.on('unhandledRejection', console.log)
-
 /*
  Demonstrates how bulk publish API works
  in both formats.

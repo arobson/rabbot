@@ -76,7 +76,9 @@ const Topology = function (connection, options, serializers, unhandledStrategies
   this.replyQueue = { name: false }
   this.serializers = serializers
   this.onUnhandled = m => unhandledStrategies.onUnhandled(m)
-  this.onReturned = m => returnedStrategies.onReturned(m)
+  this.onReturned = m => {
+    returnedStrategies.onReturned(m)
+  }
   let replyQueueName = ''
 
   if (has(options, 'replyQueue')) {
@@ -183,11 +185,6 @@ Topology.prototype.createBinding = function (options) {
 }
 
 Topology.prototype.createPrimitive = function (Primitive, options) {
-  const errorFn = (err) => {
-    return new Error(
-      `Failed to create ${Primitive.type} '${options.name}' on connection '${this.connection.name}' with ${err ? (err.stack || err) : 'N/A'}`
-    )
-  }
   const definitions = Primitive.type === 'exchange' ? this.definitions.exchanges : this.definitions.queues
   const primitiveName = `${Primitive.type}:${options.name}`
   let promise = this.promises[primitiveName]
@@ -197,10 +194,12 @@ Topology.prototype.createPrimitive = function (Primitive, options) {
     this.promises[primitiveName] = future.promise
     definitions[options.name] = options
     const primitive = this.primitives[primitiveName] = new Primitive(options, this.connection, this, this.serializers)
-    const onConnectionFailed = function (connectionError) {
-      future.reject(errorFn(connectionError))
+    const onConnectionFailed = err => {
+      future.reject(new Error(
+        `Failed to create ${Primitive.type} '${options.name}' on connection '${this.connection.name}' with ${err ? (err.stack || err) : 'N/A'}`
+      ))
     }
-    if (this.connection.state === 'failed') {
+    if (this.connection.currentState === 'failed' || this.connection.currentState === 'unreachable') {
       onConnectionFailed(this.connection.lastError())
     } else {
       const onFailed = this.connection.on('failed', function (err) {
@@ -212,11 +211,13 @@ Topology.prototype.createPrimitive = function (Primitive, options) {
         log.debug(`${Primitive.type} '${options.name}' created on '${this.connection.name}'`)
       })
     }
-    primitive.once('failed', (err) => {
+    primitive.once('failed', err => {
       delete definitions[options.name]
       delete this.primitives[primitiveName]
       delete this.promises[primitiveName]
-      future.reject(errorFn(err))
+      future.reject(new Error(
+        `Failed to create ${Primitive.type} '${options.name}' on connection '${this.connection.name}' with ${err ? (err.stack || err) : 'N/A'}`
+      ))
     })
   }
   return promise

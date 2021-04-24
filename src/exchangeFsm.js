@@ -62,7 +62,6 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
 
       _onAcquisition: function (nextTo, exchange) {
         const handlers = []
-
         handlers.push(exchange.channel.once('released', function () {
           this.handle('released', exchange)
         }.bind(this)))
@@ -107,8 +106,7 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
       },
 
       _onFailure: function (err) {
-        this.failedWith = err
-        this.deferred.forEach((x) => x(err))
+        this.deferred.forEach((x) => x(err.error))
         this.deferred = []
         this.published.reset()
       },
@@ -308,11 +306,11 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
       },
       unreachable: {
         onEntry: function () {
-          this.emit('failed', this.failedWith)
+          this.emit('failed', { error: this.failedWith })
         },
         check: function (deferred) {
           deferred.reject(this.failedWith)
-          this.emit('failed', this.failedWith)
+          this.emit('failed', { error: this.failedWith })
         },
         publish: function (op) {
           op(this.failedWith)

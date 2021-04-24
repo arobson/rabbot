@@ -433,7 +433,9 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
       raw.headers = {
         resolverNoCache: !shouldCacheKeys
       }
-      received.emit(topic, raw, onPublish)
+      process.nextTick(() => {
+        received.emit(topic, raw, onPublish)
+      })
     }
   }, options)
     .then(function (result) {
