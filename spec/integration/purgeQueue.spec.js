@@ -72,7 +72,7 @@ describe('Purge Queue', function () {
   })
 
   describe('when subcribed', function () {
-    describe.only('and queue is autodelete', function () {
+    describe('and queue is autodelete', function () {
       let purgeCount
       let harness
       let handler

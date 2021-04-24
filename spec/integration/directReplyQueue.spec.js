@@ -2,7 +2,7 @@ require('../setup')
 const rabbit = require('../../src/index.js')
 const config = require('./configuration')
 
-describe('Direct Reply Queue (replyQueue: \'rabbit\')', function () {
+describe.skip('Direct Reply Queue (replyQueue: \'rabbit\')', function () {
   let messagesToSend
   let harness
   const replies = []

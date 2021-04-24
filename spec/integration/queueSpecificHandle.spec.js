@@ -8,7 +8,7 @@ const config = require('./configuration')
   of the bound fanout queue's.
 */
 describe('Queue Specific Handler', function () {
-  describe.only('with standard queues', function () {
+  describe('with standard queues', function () {
     let harness
 
     before(function (done) {

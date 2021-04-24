@@ -115,8 +115,8 @@ AckBatch.prototype._processBatch = function () {
       this.acking = false
     } else {
       // nothing to do
-      this.resolver('waiting')
       this.acking = false
+      this.resolver('waiting')
     }
   }
 }
@@ -135,7 +135,7 @@ AckBatch.prototype._resolveAll = function (status, first, last) {
       `${status} ALL (${this.messages.length}) tags on ${this.name} up to ${lastTag} - ${this.connectionName}.`
     )
     this.resolver(status, { tag: lastTag, inclusive: true })
-      .then(function () {
+      .then(() => {
         this[last] = lastTag
         this._removeByStatus(status)
         this[first] = undefined
@@ -154,7 +154,7 @@ AckBatch.prototype._resolveAll = function (status, first, last) {
           emitEmpty()
         }
         this.acking = false
-      }.bind(this))
+      })
   }
 }
 
@@ -217,21 +217,27 @@ class TrackedMessage {
   }
 
   ack () {
-    this.status = 'ack'
-    this.batch.firstAck = this.batch.firstAck || this.tag
-    log.debug(`Marking tag ${this.tag} as ${this.status}'d on queue ${this.batch.name} - ${this.batch.connectionName}`)
+    if (this.status !== 'ack') {
+      this.status = 'ack'
+      this.batch.firstAck = this.batch.firstAck || this.tag
+      log.debug(`Marking tag ${this.tag} as ${this.status}'d on queue ${this.batch.name} - ${this.batch.connectionName} (first ack ${this.batch.firstAck})`)
+    }
   }
 
   nack () {
-    this.status = 'nack'
-    this.batch.firstNack = this.batch.firstNack || this.tag
-    log.debug(`Marking tag ${this.tag} as ${this.status}'d on queue ${this.batch.name} - ${this.batch.connectionName}`)
+    if (this.status !== 'nack') {
+      this.status = 'nack'
+      this.batch.firstNack = this.batch.firstNack || this.tag
+      log.debug(`Marking tag ${this.tag} as ${this.status}'d on queue ${this.batch.name} - ${this.batch.connectionName}`)
+    }
   }
 
   reject () {
-    this.status = 'reject'
-    this.batch.firstReject = this.batch.firstReject || this.tag
-    log.debug(`Marking tag ${this.tag} as ${this.status}'d on queue ${this.batch.name} - ${this.batch.connectionName}`)
+    if (this.status !== 'reject') {
+      this.status = 'reject'
+      this.batch.firstReject = this.batch.firstReject || this.tag
+      log.debug(`Marking tag ${this.tag} as ${this.status}'d on queue ${this.batch.name} - ${this.batch.connectionName}`)
+    }
   }
 }
 

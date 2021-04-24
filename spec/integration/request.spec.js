@@ -154,7 +154,7 @@ describe('Request & Response', function () {
   describe('when performing scatter-gather', function () {
     const gather = []
     before(function (done) {
-      harness = harnessFactory(rabbit, () => {}, 4)
+      harness = harnessFactory(rabbit, () => {}, 3)
       let index = 0
       harness.handle('scatter', (q) => {
         q.reply(`number: ${++index}`)
@@ -210,6 +210,7 @@ describe('Request & Response', function () {
   })
 
   after(function () {
+    this.timeout(5000)
     return harness.clean('default')
   })
 })

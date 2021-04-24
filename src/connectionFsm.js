@@ -319,9 +319,6 @@ function getDefinition(options, connectionFn, channelFn) {
             .release()
         },
         connect: function () {
-          console.log('------------------ UH OH ------------------')
-          console.log('------------------ UH OH ------------------')
-          console.log('------------------ UH OH ------------------')
           this.consecutiveFailures = 0
           this.next('connecting')
         },
