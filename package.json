@@ -4,7 +4,7 @@
   "description": "Abstractions to simplify working with the RabbitMQ",
   "main": "src/index.js",
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   },
   "repository": "https://github.com/arobson/rabbot",
   "scripts": {
@@ -62,25 +62,21 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "axios": "^0.21.1",
-    "chai": "^4.3.0",
-    "chai-as-promised": "^7.1.1",
-    "mocha": "^8.3.0",
+    "axios": "^1.6.2",
+    "chai": "^4.3.10",
+    "mocha": "^10.2.0",
     "mocha-lcov-reporter": "^1.3.0",
     "nyc": "^15.1.0",
-    "sinon": "^9.2.4",
-    "standard": "^16.0.3",
-    "standard-version": "^9.1.1"
+    "sinon": "^17.0.1",
+    "standard": "^17.1.0",
+    "standard-version": "^9.5.0"
   },
   "dependencies": {
-    "amqplib": "^0.7.1",
-    "debug": "^4.3.1",
-    "fauxdash": "^1.7.2",
-    "loggin": "^3.0.2",
-    "logging": "^3.3.0",
+    "amqplib": "^0.10.3",
+    "fauxdash": "^1.7.3",
     "mfsm": "^2.0.0",
     "topic-dispatch": "^2.1.0",
-    "uuid": "^8.3.2"
+    "uuid": "^9.0.1"
   },
   "semistandard": {
     "env": [
