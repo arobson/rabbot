@@ -55,6 +55,7 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
           if (!err || !err.message) {
             err = new Error('Could not establish a connection to any known nodes.')
           }
+          this.failedWith = err
           this._onFailure(err)
           this.next('unreachable')
         }.bind(this))
@@ -106,7 +107,13 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
       },
 
       _onFailure: function (err) {
-        this.deferred.forEach((x) => x(err.error))
+        this.deferred.forEach((x) => {
+          if (x.reject) {
+            x.reject(err)
+          } else {
+            x(err)
+          }
+        })
         this.deferred = []
         this.published.reset()
       },

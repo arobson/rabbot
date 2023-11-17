@@ -46,9 +46,9 @@ describe('Exchange FSM', function () {
         } })
 
       exchange = exchangeFsm(options, connection, topology, {}, ex.factory)
-      published = [1, 2, 3].map(() => exchange.publish({}).then(null, e => e.message))
+      published = [1, 2, 3].map(() => exchange.publish({}).catch(e => e ? e.message || e : e))
       exchange.once('failed', function (err) {
-        error = err
+        error = err.error
         done()
       })
       exchange.once('initializing', () => {
