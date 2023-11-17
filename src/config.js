@@ -6,10 +6,17 @@ const log = require('./log')('rabbot.configuration')
       * configuration failed (in exchange, queue or bindings)
 */
 
+function getName(config) {
+  if (config.connection) {
+    return config.connection.name
+  }
+  return config.name || 'default'
+}
+
 module.exports = function (Broker) {
   Broker.prototype.configure = function (config) {
     const emit = this.emit.bind(this)
-    const configName = config.name || config.connection.name
+    const configName = getName(config)
     this.configurations[configName] = config
     this.configuring[configName] = new Promise(function (resolve, reject) {
       function onExchangeError (connection, err) {
