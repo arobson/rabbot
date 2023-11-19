@@ -92,6 +92,7 @@ function initContext (options, name) {
       }, 20 + delay)
     },
     emitFailure: (delay = 0) => {
+      console.trace('emitting failure')
       setTimeout(function () {
         connection.instance.fail(new Error('no such server!'))
       }, delay)
@@ -609,16 +610,23 @@ describe('Topology', function () {
   })
 
   describe('when a connection to rabbit cannot be established', function () {
-    let ctx
-    before(function () {
+    let ctx, error
+    before(async function () {
       ctx = initContext()
       ctx.exp
-      const promise = ctx.createTopology()
-        .catch(err => {
-          error = err
-        })
-      ctx.emitFailure()
-      return promise
+      const topology = await ctx.createTopology()
+      const deferred = _.future()
+      topology.on('failed', (err) => {
+        console.log("hhhhhhhhhheeeeeeeeeeeeyyyyyyyyyyyyyyyyyyyyyy")
+        error = err
+        deferred.reject(err)
+      })
+      topology.connection.on('failed', () => {
+        console.log("hhhhhhhhhheeeeeeeeeeeeyyyyyyyyyyyyyyyyyyyyyy")
+        deferred.resolve()
+      })
+      ctx.emitFailure(200)
+      return deferred.promise
     })
 
     it('should reject topology promise with connection error', function () {

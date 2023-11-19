@@ -20,7 +20,7 @@ function createConsumerTag (queueName) {
 }
 
 function hash (id) {
-  const bytes = crypto.createHash('md4').update(id).digest()
+  const bytes = crypto.createHash('md5').update(id).digest()
   const num = toBE ? bytes.readdInt16BE() : bytes.readInt16LE()
   return num < 0 ? Math.abs(num) + 0xffffffff : num
 }

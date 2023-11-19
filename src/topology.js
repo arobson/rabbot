@@ -96,6 +96,7 @@ const Topology = function (connection, options, serializers, unhandledStrategies
 
   connection.on('reconnected', this.onReconnect.bind(this))
   connection.on('return', this.handleReturned.bind(this))
+  connection.on('failed', (e) => { this.emit('failed', e) })
 }
 
 Topology.prototype.completeRebuild = function () {
@@ -203,6 +204,7 @@ Topology.prototype.createPrimitive = function (Primitive, options) {
       onConnectionFailed(this.connection.lastError())
     } else {
       const onFailed = this.connection.on('failed', function (err) {
+        console.log('hey topology caught the failed event from the connection', err)
         onConnectionFailed(err)
       })
       primitive.once('defined', () => {
@@ -407,5 +409,11 @@ module.exports = async function (connection, options, serializers, unhandledStra
   return melt.createReplyQueue()
     .catch(melt.onReplyQueueFailed.bind(melt))
     .then(() => melt.createDefaultExchange())
-    .then(() => melt)
+    .then(() => {
+      connection.on("failed", (err) => {
+        console.log("connection failed, emitting failed from topology")
+        // melt.emit("failed", err)
+      })
+      return melt
+    })
 }
