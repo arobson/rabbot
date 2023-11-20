@@ -170,12 +170,12 @@ Broker.prototype.batchAck = function () {
 }
 
 Broker.prototype.bindExchange = function (source, target, keys, connectionName = DEFAULT) {
-  return this.connections[connectionName].createBinding({ source: source, target: target, keys: keys })
+  return this.connections[connectionName].createBinding({ source, target, keys })
 }
 
 Broker.prototype.bindQueue = function (source, target, keys, connectionName = DEFAULT) {
   return this.connections[connectionName].createBinding(
-    { source: source, target: target, keys: keys, queue: true },
+    { source, target, keys, queue: true },
     connectionName
   )
 }
@@ -208,11 +208,11 @@ Broker.prototype.bulkPublish = function (set, connectionName = DEFAULT) {
 
   const exchangeNames = Array.isArray(set)
     ? set.reduce((acc, m) => {
-        if (acc.indexOf(m.exchange) < 0) {
-          acc.push(m.exchange)
-        }
-        return acc
-      }, [])
+      if (acc.indexOf(m.exchange) < 0) {
+        acc.push(m.exchange)
+      }
+      return acc
+    }, [])
     : Object.keys(set)
 
   return this.onExchanges(exchangeNames, connectionName)
@@ -298,9 +298,9 @@ Broker.prototype.handle = function (messageType, handler, queueName, context) {
     options = {
       type: messageType,
       queue: queueName || '*',
-      context: context,
+      context,
       autoNack: this.autoNack,
-      handler: handler
+      handler
     }
   } else {
     options = messageType
@@ -383,13 +383,13 @@ Broker.prototype.onExchanges = function (exchanges, connectionName = DEFAULT) {
             .then(() => {
               return { name: exchangeName, exchange: true }
             })
-          }
+        }
         )
         return Promise.all(exchangePromises)
       }
     ).then(
       list => {
-        list.map(item => {
+        list.forEach(item => {
           if (item && item.exchange) {
             const exchange = this.getExchange(item.name, connectionName)
             set[item.name] = exchange
@@ -414,22 +414,22 @@ Broker.prototype.publish = function (exchangeName, type, message, routingKey, co
     connectionName = message || DEFAULT
     options = Object.assign({
       appId: this.appId,
-      timestamp: timestamp,
-      connectionName: connectionName
+      timestamp,
+      connectionName
     }, options)
     connectionName = options.connectionName
   } else {
     connectionName = connectionName || message.connectionName || DEFAULT
     options = {
       appId: this.appId,
-      type: type,
+      type,
       body: message,
-      routingKey: routingKey,
-      correlationId: correlationId,
-      sequenceNo: sequenceNo,
-      timestamp: timestamp,
+      routingKey,
+      correlationId,
+      sequenceNo,
+      timestamp,
       headers: {},
-      connectionName: connectionName
+      connectionName
     }
   }
   if (!this.connections[connectionName]) {
@@ -560,12 +560,12 @@ Broker.prototype.stopSubscription = function (queueName, connectionName = DEFAUL
 }
 
 Broker.prototype.unbindExchange = function (source, target, keys, connectionName = DEFAULT) {
-  return this.connections[connectionName].removeBinding({ source: source, target: target, keys: keys })
+  return this.connections[connectionName].removeBinding({ source, target, keys })
 }
 
 Broker.prototype.unbindQueue = function (source, target, keys, connectionName = DEFAULT) {
   return this.connections[connectionName].removeBinding(
-    { source: source, target: target, keys: keys, queue: true },
+    { source, target, keys, queue: true },
     connectionName
   )
 }

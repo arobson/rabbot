@@ -6,7 +6,7 @@ const info = require('../../src/info')
 const Dispatcher = require('topic-dispatch')
 
 function connectionFn () {
-  let handlers = {}
+  const handlers = {}
 
   const connection = {
     name: 'default',
@@ -16,7 +16,7 @@ function connectionFn () {
       this.emit('failed', err)
     },
     getChannel: noOp,
-    handlers: handlers,
+    handlers,
     lastErr: '',
     lastError: function () {
       return this.lastErr
@@ -31,7 +31,7 @@ function connectionFn () {
 }
 
 function delayedPromise () {
-  const {promise, resolve} = _.future()
+  const { promise, resolve } = _.future()
   setTimeout(() => resolve(), 20)
   return promise
 }
@@ -69,7 +69,7 @@ function initContext (options, name) {
     unbindExchange: noOp,
     unbindQueue: noOp
   }
-  controlMock = sinon.mock(control)
+  const controlMock = sinon.mock(control)
   const uniqueQueueName = 'top-q-' + info.createHash()
 
   const ctx = {
@@ -121,7 +121,7 @@ describe('Topology', function () {
     before(function (done) {
       ctx = initContext({})
       ctx.expectSuccess()
-      controlMock
+      ctx.controlMock
         .expects('bindQueue')
         .once()
         .withArgs(ctx.uniqueQueueName, 'top-ex')
@@ -138,7 +138,7 @@ describe('Topology', function () {
           })
           ctx.emitDefined()
         })
-        ctx.emitDefined()
+      ctx.emitDefined()
     })
 
     it('should create default reply queue', function () {
@@ -156,7 +156,7 @@ describe('Topology', function () {
       ctx.controlMock.verify()
     })
 
-    after(function() {
+    after(function () {
       ctx.connection.mock.verify()
     })
 
@@ -269,7 +269,7 @@ describe('Topology', function () {
   })
 
   describe('when creating valid exchange', function () {
-    let ctx
+    let ctx, exchange
     before(function (done) {
       ctx = initContext()
       ctx.createTopology()
@@ -294,7 +294,7 @@ describe('Topology', function () {
   })
 
   describe('when creating a duplicate exchange', function () {
-    let ctx
+    let ctx, exchange
     before(function (done) {
       ctx = initContext()
       ctx.createTopology()
@@ -320,7 +320,7 @@ describe('Topology', function () {
   })
 
   describe('when creating invalid exchange', function () {
-    let ctx
+    let ctx, error
     before(function (done) {
       ctx = initContext()
       ctx.createTopology()
@@ -338,7 +338,7 @@ describe('Topology', function () {
     })
 
     it('should reject with error', function () {
-      error.toString().should.contain(`Error: Failed to create exchange 'badtimes' on connection 'default' with Error: time limit exceeded`)
+      error.toString().should.contain('Error: Failed to create exchange \'badtimes\' on connection \'default\' with Error: time limit exceeded')
     })
 
     it('should not add invalid exchanges to channels', function () {
@@ -347,7 +347,7 @@ describe('Topology', function () {
   })
 
   describe('when creating invalid queue', function () {
-    let ctx
+    let ctx, error
     before(function (done) {
       ctx = initContext({ replyQueue: false })
       ctx.createTopology()
@@ -365,7 +365,7 @@ describe('Topology', function () {
     })
 
     it('should reject with error', function () {
-      error.toString().should.contain(`Error: Failed to create queue 'badtimes' on connection 'default' with Error: time limit exceeded`)
+      error.toString().should.contain('Error: Failed to create queue \'badtimes\' on connection \'default\' with Error: time limit exceeded')
     })
 
     it('should not add invalid queues to channels', function () {
@@ -374,7 +374,7 @@ describe('Topology', function () {
   })
 
   describe('when deleting an existing exchange', function () {
-    let ctx
+    let ctx, exchange
     before(function (done) {
       ctx = initContext()
       ctx.controlMock
@@ -393,9 +393,9 @@ describe('Topology', function () {
                   done()
                 })
             })
-            ctx.emitDefined()
+          ctx.emitDefined()
         })
-        ctx.emitDefined()
+      ctx.emitDefined()
     })
 
     it('should have created exchange', function () {
@@ -408,7 +408,7 @@ describe('Topology', function () {
   })
 
   describe('when deleting an existing queue', function () {
-    let ctx
+    let ctx, queue
     before(function (done) {
       ctx = initContext()
       ctx.controlMock
@@ -427,7 +427,7 @@ describe('Topology', function () {
                   done()
                 })
             })
-            ctx.emitDefined()
+          ctx.emitDefined()
         })
       ctx.emitDefined()
     })
@@ -500,7 +500,7 @@ describe('Topology', function () {
       ctx.controlMock.expects('bindQueue')
         .withArgs('to', 'from', 'a.*')
         .returns(Promise.resolve())
-        ctx.controlMock.expects('bindQueue')
+      ctx.controlMock.expects('bindQueue')
         .withArgs('to', 'from', 'b.*')
         .returns(Promise.resolve())
       ctx.expectSuccess()
@@ -524,16 +524,16 @@ describe('Topology', function () {
     let ctx
     before(function () {
       ctx = initContext()
-      controlMock.expects('bindQueue')
+      ctx.controlMock.expects('bindQueue')
         .withArgs('to', 'from', 'a.*')
         .returns(Promise.resolve())
-      controlMock.expects('bindQueue')
+      ctx.controlMock.expects('bindQueue')
         .withArgs('to', 'from', 'b.*')
         .returns(Promise.resolve())
-      controlMock.expects('unbindQueue')
+      ctx.controlMock.expects('unbindQueue')
         .withArgs('to', 'from', 'a.*')
         .returns(Promise.resolve())
-      controlMock.expects('unbindQueue')
+      ctx.controlMock.expects('unbindQueue')
         .withArgs('to', 'from', 'b.*')
         .returns(Promise.resolve())
       ctx.expectSuccess()
@@ -613,16 +613,15 @@ describe('Topology', function () {
     let ctx, error
     before(async function () {
       ctx = initContext()
-      ctx.exp
       const topology = await ctx.createTopology()
       const deferred = _.future()
       topology.on('failed', (err) => {
-        console.log("hhhhhhhhhheeeeeeeeeeeeyyyyyyyyyyyyyyyyyyyyyy")
+        console.log('hhhhhhhhhheeeeeeeeeeeeyyyyyyyyyyyyyyyyyyyyyy')
         error = err
         deferred.reject(err)
       })
       topology.connection.on('failed', () => {
-        console.log("hhhhhhhhhheeeeeeeeeeeeyyyyyyyyyyyyyyyyyyyyyy")
+        console.log('hhhhhhhhhheeeeeeeeeeeeyyyyyyyyyyyyyyyyyyyyyy')
         deferred.resolve()
       })
       ctx.emitFailure(200)
@@ -631,7 +630,7 @@ describe('Topology', function () {
 
     it('should reject topology promise with connection error', function () {
       error.toString().should.contain(
-        `Error: Failed to create exchange '\' on connection 'default' with Error: no such server!`)
+        'Error: Failed to create exchange \'\' on connection \'default\' with Error: no such server!')
     })
   })
 })

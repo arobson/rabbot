@@ -21,7 +21,7 @@ function unhandle (handlers) {
   })
 }
 
-function getDefinition(options, connection, topology, serializers, queueFn) {
+function getDefinition (options, connection, topology, serializers, queueFn) {
   return {
     init: {
       name: options.name,
@@ -150,7 +150,11 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
 
       purge: function () {
         return new Promise(function (resolve, reject) {
-          let _handlers
+          const _handlers = [
+            this.once('purged', cleanResolve),
+            this.once('purgeFailed', cleanReject.bind(this)),
+            this.once('failed', cleanReject.bind(this))
+          ]
           function cleanResolve (result) {
             unhandle(_handlers)
             resolve(result)
@@ -160,11 +164,6 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
             this.next('failed')
             reject(err)
           }
-          _handlers = [
-            this.once('purged', cleanResolve),
-            this.once('purgeFailed', cleanReject.bind(this)),
-            this.once('failed', cleanReject.bind(this))
-          ]
           this.handle('purge')
         }.bind(this))
       },
@@ -178,7 +177,12 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
 
       release: function () {
         return new Promise(function (resolve, reject) {
-          let _handlers
+          const _handlers = [
+            this.once('released', cleanResolve.bind(this)),
+            this.once('failed', cleanReject.bind(this)),
+            this.once('unreachable', cleanReject.bind(this)),
+            this.once('noqueue', cleanResolve.bind(this))
+          ]
           function cleanResolve () {
             unhandle(_handlers)
             resolve()
@@ -187,12 +191,6 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
             unhandle(_handlers)
             reject(err)
           }
-          _handlers = [
-            this.once('released', cleanResolve.bind(this)),
-            this.once('failed', cleanReject.bind(this)),
-            this.once('unreachable', cleanReject.bind(this)),
-            this.once('noqueue', cleanResolve.bind(this))
-          ]
           this.handle('release')
         }.bind(this))
       },
@@ -205,7 +203,11 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
         options.subscribe = true
         options.exclusive = exclusive
         return new Promise(function (resolve, reject) {
-          let _handlers
+          const _handlers = [
+            this.once('subscribed', cleanResolve),
+            this.once('subscribeFailed', cleanReject.bind(this)),
+            this.once('failed', cleanReject.bind(this))
+          ]
           function cleanResolve () {
             unhandle(_handlers)
             resolve()
@@ -215,11 +217,6 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
             this.next('failed')
             reject(err)
           }
-          _handlers = [
-            this.once('subscribed', cleanResolve),
-            this.once('subscribeFailed', cleanReject.bind(this)),
-            this.once('failed', cleanReject.bind(this))
-          ]
           this.handle('subscribe')
         }.bind(this))
       },
@@ -407,11 +404,11 @@ function getDefinition(options, connection, topology, serializers, queueFn) {
         }
       },
       subscribing: {
-        onEntry: function() {
+        onEntry: function () {
           return this.subscriber()
         },
         closed: { next: 'closed' },
-        //purge: { deferUntil: 'ready' },
+        // purge: { deferUntil: 'ready' },
         release: function () {
           this.next('releasing')
           this.handle('release')

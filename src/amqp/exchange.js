@@ -75,7 +75,7 @@ function publish (channel, options, topology, log, serializers, message) {
   const payload = serializer.serialize(message.body)
   const publishOptions = {
     type: message.type || '',
-    contentType: contentType,
+    contentType,
     contentEncoding: 'utf8',
     correlationId: message.correlationId || '',
     replyTo: message.replyTo || topology.replyQueue.name || '',
@@ -145,7 +145,7 @@ module.exports = function (options, topology, publishLog, serializers) {
   return topology.connection.getChannel(options.name, !options.noConfirm, 'exchange channel for ' + options.name)
     .then(function (channel) {
       return {
-        channel: channel,
+        channel,
         define: define.bind(undefined, channel, options, topology.connection.name),
         release: function () {
           if (channel) {

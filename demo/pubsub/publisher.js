@@ -1,5 +1,4 @@
 const rabbit = require('../../src/index.js')
-const fs = require('fs')
 
 // rabbit.log(
 //   { level: 'debug', stream: fs.createWriteStream('./debug.log'), objectMode: true }

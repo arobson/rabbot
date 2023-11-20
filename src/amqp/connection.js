@@ -59,7 +59,7 @@ function max (x, y) {
 
 function parseUri (uri) {
   if (uri) {
-    const parsed = url.parse(uri)
+    const parsed = new url.URL(uri)
     const authSplit = parsed.auth ? parsed.auth.split(':') : [null, null]
     const heartbeat = parsed.query ? parsed.query.split('&')[0].split('=')[1] : null
     return {
@@ -69,7 +69,7 @@ function parseUri (uri) {
       host: parsed.hostname,
       port: parsed.port,
       vhost: parsed.pathname ? parsed.pathname.slice(1) : undefined,
-      heartbeat: heartbeat
+      heartbeat
     }
   }
 }
@@ -136,7 +136,7 @@ const Adapter = function (parameters) {
   if (caPaths) {
     const list = caPaths.split(',')
     this.options.ca = list.map((caPath) => {
-      fs.existsSync(caPath) ? fs.readFileSync(caPath) : caPath // eslint-disable-line no-unused-expressions
+      return fs.existsSync(caPath) ? fs.readFileSync(caPath) : caPath // eslint-disable-line no-unused-expressions
     })
   }
   if (useSSL) {
@@ -153,8 +153,7 @@ const Adapter = function (parameters) {
 Adapter.prototype.connect = function () {
   return new Promise(function (resolve, reject) {
     const attempted = []
-    let attempt
-    attempt = function () {
+    const attempt = function () {
       const nextUri = this.getNextUri()
       log.info(`Attempting connection to '${this.name}' (${nextUri})`)
       function onConnection (connection) {
@@ -174,7 +173,7 @@ Adapter.prototype.connect = function () {
         }
       }
       if (attempted.indexOf(nextUri) < 0) {
-        amqp.connect(nextUri, Object.assign({ servername: url.parse(nextUri).hostname }, this.options))
+        amqp.connect(nextUri, Object.assign({ servername: new url.URL(nextUri).hostname }, this.options))
           .then(onConnection.bind(this), onConnectionError.bind(this))
       } else {
         log.info(`Cannot connect to '${this.name}' - all endpoints failed`)

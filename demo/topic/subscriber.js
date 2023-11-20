@@ -1,4 +1,3 @@
-
 const rabbit = require('../../src/index.js')
 
 require('./topology')(rabbit)

@@ -9,7 +9,7 @@ function closer () {
 }
 
 const connectionMonadFn = function () {
-  let dispatch = Dispatcher()
+  const dispatch = Dispatcher()
 
   function emit (ev, data) {
     return dispatch.emit(ev, data)
@@ -35,10 +35,10 @@ const connectionMonadFn = function () {
     close: closer,
     createChannel: noOp,
     createConfirmChannel: noOp,
-    on: on,
-    emit: emit,
+    on,
+    emit,
     release: noOp,
-    reset: reset
+    reset
   }
   instance.close.bind(instance)
   setTimeout(instance.acquire.bind(instance), 0)
@@ -51,7 +51,9 @@ describe('Connection FSM', function () {
     it('should not throw exception', function () {
       expect(function () {
         connection = connectionFn({
-          name: 'gogetter', failAfter: .05, retryLimit: 3,
+          name: 'gogetter',
+          failAfter: 0.05,
+          retryLimit: 3,
           get: function (property) {
             const value = this[property]
             if (value === undefined) {
@@ -73,7 +75,7 @@ describe('Connection FSM', function () {
       let connection, monad
       before(function (done) {
         monad = connectionMonadFn()
-        connection = connectionFn({ name: 'failure', failAfter: .05, retryLimit: 3 }, function () {
+        connection = connectionFn({ name: 'failure', failAfter: 0.05, retryLimit: 3 }, function () {
           return monad
         })
         monad.release = function () {
@@ -153,7 +155,7 @@ describe('Connection FSM', function () {
         // was never established
         const attempts = ['acquired', 'failed']
         monad = connectionMonadFn()
-        connection = connectionFn({ name: 'success', failAfter: .05, retryLimit: 3 }, function () {
+        connection = connectionFn({ name: 'success', failAfter: 0.05, retryLimit: 3 }, function () {
           return monad
         })
         connection.once('connected', function () {
@@ -198,7 +200,7 @@ describe('Connection FSM', function () {
         // was never established
         const attempts = ['acquired', 'failed']
         monad = connectionMonadFn()
-        connection = connectionFn({ name: 'success', failAfter: .05, retryLimit: 3 }, function () {
+        connection = connectionFn({ name: 'success', failAfter: 0.05, retryLimit: 3 }, function () {
           return monad
         })
         connection.once('connected', function () {
@@ -340,7 +342,7 @@ describe('Connection FSM', function () {
         })
       })
 
-      after(function() {
+      after(function () {
         return connection.close()
       })
     })

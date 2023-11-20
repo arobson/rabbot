@@ -67,7 +67,7 @@ function getDefinition (options, type, factory, close) {
           this.item.removeAllListeners('unblocked')
         }
       },
-      _delegate: function(event, data) {
+      _delegate: function (event, data) {
         if (this.item) {
           this.item.emit(event, data)
         } else {

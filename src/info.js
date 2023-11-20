@@ -8,7 +8,7 @@ const architecture = os.arch()
 const title = process.title
 const pid = process.pid
 const consumerId = `${host}.${title}.${pid}`
-const consistentId = `host.title`
+const consistentId = 'host.title'
 const toBE = os.endianness() === 'BE'
 
 function createConsumerTag (queueName) {
@@ -53,5 +53,5 @@ module.exports = {
   process: getProcessInfo,
   createTag: createConsumerTag,
   createHash: createConsumerHash,
-  createConsistentHash: createConsistentHash
+  createConsistentHash
 }

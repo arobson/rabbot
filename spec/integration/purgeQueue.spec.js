@@ -142,7 +142,7 @@ describe('Purge Queue', function () {
         this.timeout(50000)
         // rabbit.getQueue('rabbot-q.purged-2')
         //   .currentState.should.equal('subscribed')
-        //harness.clean()
+        // harness.clean()
         handler = rabbit.handle('topic2', (m) => {
           m.ack()
           done()

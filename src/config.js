@@ -6,7 +6,7 @@ const log = require('./log')('rabbot.configuration')
       * configuration failed (in exchange, queue or bindings)
 */
 
-function getName(config) {
+function getName (config) {
   if (config.connection) {
     return config.connection.name
   }

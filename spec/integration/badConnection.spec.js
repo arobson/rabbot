@@ -2,9 +2,8 @@ require('../setup')
 const rabbit = require('../../src/index.js')
 
 describe('Bad Connection', function () {
-  const noop = () => {}
   describe('when attempting a connection', function () {
-    let error1, error2, error3
+    let error1, error2
     before(() => {
       rabbit.once('#.connection.failed', (err) => {
         error2 = err
@@ -15,15 +14,15 @@ describe('Bad Connection', function () {
         server: 'shfifty-five.gov',
         publishTimeout: 50,
         timeout: 100,
-        failAfter: .3,
+        failAfter: 0.3,
         retryLimit: 2
       })
-      .catch(e => {
-        error1 = e
-      })
+        .catch(e => {
+          error1 = e
+        })
     })
 
-    it('should fail to connect',  function () {
+    it('should fail to connect', function () {
       error2.should.equal('No endpoints could be reached')
       error1.should.equal('No endpoints could be reached')
     })
@@ -44,7 +43,7 @@ describe('Bad Connection', function () {
           name: 'silly2',
           server: 'this-is-not-a-real-thing-at-all.org',
           timeout: 100,
-          failAfter: .05,
+          failAfter: 0.05,
           retryLimit: 2
         },
         exchanges: [

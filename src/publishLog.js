@@ -83,7 +83,7 @@ function publishLog () {
     onceEmptied: getEmptyPromise.bind(undefined, state),
     reset: reset.bind(undefined, state),
     remove: remove.bind(undefined, state),
-    state: state
+    state
   }
 }
 

@@ -18,7 +18,6 @@ let replyId
 */
 
 const DIRECT_REPLY_TO = 'amq.rabbitmq.reply-to'
-const noop = () => {}
 
 function getKeys (keys) {
   let actualKeys = ['']
@@ -173,7 +172,7 @@ Topology.prototype.createBinding = function (options) {
     this.promises[id] = promise = this.connection.getChannel('control', false, 'control channel for bindings')
       .then((channel) => {
         log.info(
-          `Binding ${options.queue ? 'queue' : 'exchange'} '${target}' to '${source}' on '${this.connection.name}' with keys: ${JSON.stringify(keys)}`,
+          `Binding ${options.queue ? 'queue' : 'exchange'} '${target}' to '${source}' on '${this.connection.name}' with keys: ${JSON.stringify(keys)}`
         )
         return Promise.all(
           keys.map((key) => channel[call](target, source, key))
@@ -181,7 +180,7 @@ Topology.prototype.createBinding = function (options) {
       })
   }
   return promise.then(results => {
-    return results;
+    return results
   })
 }
 
@@ -410,9 +409,9 @@ module.exports = async function (connection, options, serializers, unhandledStra
     .catch(melt.onReplyQueueFailed.bind(melt))
     .then(() => melt.createDefaultExchange())
     .then(() => {
-      connection.on("failed", (err) => {
-        console.log("connection failed, emitting failed from topology")
-        // melt.emit("failed", err)
+      connection.on('failed', (err) => {
+        console.log('connection failed, emitting failed from topology', err)
+        melt.emit("failed", err)
       })
       return melt
     })

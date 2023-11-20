@@ -4,7 +4,7 @@ const log = require('../log')('rabbot.queue')
 const topLog = require('../log')('rabbot.topology')
 const unhandledLog = require('../log')('rabbot.unhandled')
 const noOp = function () {}
-const {received, replies, signal} = require('../dispatch')
+const { received, replies, signal } = require('../dispatch')
 
 /* log
   * `rabbot.amqp-queue`
@@ -120,9 +120,9 @@ function getNoBatchOps (channel, raw, messages, noAck) {
   }
 
   return {
-    ack: ack,
-    nack: nack,
-    reject: reject
+    ack,
+    nack,
+    reject
   }
 }
 
@@ -146,7 +146,7 @@ function getReply (channel, serializers, raw, replyQueue, connectionName) {
     if (replyTo) {
       const publishOptions = {
         type: replyType,
-        contentType: contentType,
+        contentType,
         contentEncoding: 'utf8',
         correlationId: raw.properties.messageId,
         timestamp: options && options.timestamp ? options.timestamp : Date.now(),
@@ -485,8 +485,8 @@ module.exports = function (options, topology, serializers) {
         topology.connection.name
       )
       return {
-        channel: channel,
-        messages: messages,
+        channel,
+        messages,
         define: definer,
         finalize: finalize.bind(undefined, channel, messages),
         getMessageCount: getCount.bind(undefined, messages),

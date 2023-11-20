@@ -3,7 +3,6 @@ const exchangeFsm = require('../../src/exchangeFsm')
 const defer = require('fauxdash').future
 const Dispatcher = require('topic-dispatch')
 const noop = () => {}
-const _ = require('fauxdash')
 
 function exchangeFn (options) {
   const channel = {
@@ -39,11 +38,13 @@ describe('Exchange FSM', function () {
       channelMock
         .expects('define')
         .once()
-        .returns({ then: () => {
-          return new Promise((res, rej) => {
-            setTimeout(resolve, 5000)
-          })
-        } })
+        .returns({
+          then: () => {
+            return new Promise((resolve, reject) => {
+              setTimeout(resolve, 5000)
+            })
+          }
+        })
 
       exchange = exchangeFsm(options, connection, topology, {}, ex.factory)
       published = [1, 2, 3].map(() => exchange.publish({}).catch(e => e ? e.message || e : e))
@@ -84,7 +85,7 @@ describe('Exchange FSM', function () {
       })
 
       it('should clean up the "failed" subscription', function () {
-        //exchange._subscriptions.failed.should.have.lengthOf(0)
+        // exchange._subscriptions.failed.should.have.lengthOf(0)
       })
     })
 

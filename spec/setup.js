@@ -71,12 +71,12 @@ global.harnessFactory = function (rabbit, cb, expected) {
       received.push(msg)
       check()
     },
-    received: received,
-    clean: clean,
+    received,
+    clean,
     handle: handleFn,
-    handlers: handlers,
-    unhandled: unhandled,
-    returned: returned
+    handlers,
+    unhandled,
+    returned
   }
 }
 

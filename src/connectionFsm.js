@@ -1,5 +1,4 @@
 const fsm = require('mfsm')
-const format = require('util').format
 const log = require('./log.js')('rabbot.connection')
 const defer = require('fauxdash').future
 
@@ -29,7 +28,7 @@ const defer = require('fauxdash').future
       * failed reconnection
 */
 
-function getDefinition(options, connectionFn, channelFn) {
+function getDefinition (options, connectionFn, channelFn) {
   let connection
   let queues = []
   let exchanges = []
@@ -41,7 +40,7 @@ function getDefinition(options, connectionFn, channelFn) {
       connected: false,
       consecutiveFailures: 0,
       connectTimeout: undefined,
-      failAfter: (options.failAfter || 60) * 1000,
+      failAfter: (options.failAfter || 60) * 1000
     },
     api: {
       initialize: function () {
@@ -134,10 +133,10 @@ function getDefinition(options, connectionFn, channelFn) {
       getChannel: function (name, confirm, context) {
         const deferred = defer()
         this.handle('channel', {
-          name: name,
-          confirm: confirm,
-          context: context,
-          deferred: deferred
+          name,
+          confirm,
+          context,
+          deferred
         })
         return deferred.promise
       },
@@ -201,7 +200,7 @@ function getDefinition(options, connectionFn, channelFn) {
           connection.acquire()
             .then(null, function () {})
         },
-        acquiring: function() {},
+        acquiring: function () {},
         acquired: { next: 'connected' },
         channel: { after: 'connected' },
         close: { after: '*' },
@@ -267,9 +266,9 @@ function getDefinition(options, connectionFn, channelFn) {
           if (closeList.length) {
             Promise
               .all(closeList.map((channel) => {
-                const promy = channel.release ?
-                  channel.release() :
-                  Promise.resolve(true)
+                const promy = channel.release
+                  ? channel.release()
+                  : Promise.resolve(true)
                 return promy
               }))
               .then(() => {
@@ -282,7 +281,7 @@ function getDefinition(options, connectionFn, channelFn) {
         channel: function (request) {
           log.warn(`Channel '${request.name}' was requested for '${this.name}' during user initiated close. Request will be rejected.`)
           request.deferred.reject(new Error(
-            `Illegal request for channel '${request.name}' during close of connection '${this.name}' initiated by user`,
+            `Illegal request for channel '${request.name}' during close of connection '${this.name}' initiated by user`
           ))
         },
         connect: { deferUntil: 'closed' },

@@ -11,7 +11,7 @@
     "lint": "standard",
     "lint-fix": "standard --fix",
     "pretest": "standard",
-    "test": "./node_modules/mocha/bin/mocha spec/**/*.spec.js",
+    "test": "mocha spec/**/*.spec.js",
     "coverage": "nyc npm test",
     "release": "standard-version",
     "build-image": "docker build -t rabbot .",
@@ -79,7 +79,7 @@
     "topic-dispatch": "^2.1.0",
     "uuid": "^9.0.1"
   },
-  "semistandard": {
+  "standard": {
     "env": [
       "mocha"
     ],

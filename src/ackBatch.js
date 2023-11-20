@@ -41,8 +41,7 @@ AckBatch.prototype._ackOrNackSequence = function () {
   const firstStatus = firstMessage.status
   let sequenceEnd = firstMessage.tag
   const call = calls[firstStatus]
-  if (firstStatus === 'pending') {
-  } else {
+  if (firstStatus !== 'pending') {
     for (let i = 1; i < this.messages.length - 1; i++) {
       if (this.messages[i].status !== firstStatus) {
         break
@@ -169,7 +168,7 @@ AckBatch.prototype._resolveTag = function (tag, operation, inclusive) {
   log.debug(
     `${operation} ${removed.length} tags (${inclusive ? 'inclusive' : 'individual'}) on ${this.name} - ${this.connectionName}. (Next ack: ${this.firstAck || 0}, Next nack: ${this.firstNack || 0}, Next reject: ${this.firstReject || 0})`
   )
-  this.resolver(operation, { tag: tag, inclusive: inclusive })
+  this.resolver(operation, { tag, inclusive })
 }
 
 AckBatch.prototype._removeByStatus = function (status) {

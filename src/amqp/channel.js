@@ -30,7 +30,7 @@ module.exports = {
     const factory = function () {
       return connection[method]()
     }
-    const channel = monad({ name: name }, 'channel', factory, AmqpChannel, close.bind(null, name))
+    const channel = monad({ name }, 'channel', factory, AmqpChannel, close.bind(null, name))
     return channel
   }
 }

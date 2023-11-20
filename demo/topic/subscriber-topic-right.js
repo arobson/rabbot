@@ -1,4 +1,3 @@
-
 module.exports = function (rabbit) {
   // variable to hold starting time
   const started = Date.now()

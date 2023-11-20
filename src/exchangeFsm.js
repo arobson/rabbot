@@ -23,7 +23,7 @@ function unhandle (handlers) {
   })
 }
 
-function getDefinition(options, connection, topology, serializers, exchangeFn) {
+function getDefinition (options, connection, topology, serializers, exchangeFn) {
   return {
     init: {
       name: options.name,
@@ -166,8 +166,12 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
         return new Promise(function (resolve, reject) {
           let timeout
           let timedOut
-          let failedSub
-          let closedSub
+          const failedSub = this.once('failed', (err) => {
+            onRejected.bind(this)(err)
+          })
+          const closedSub = this.once('closed', (err) => {
+            onRejected.bind(this)(err)
+          })
           if (publishTimeout > 0) {
             timeout = setTimeout(function () {
               timedOut = true
@@ -208,12 +212,6 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
               }
             }
           }.bind(this)
-          failedSub = this.once('failed', (err) => {
-            onRejected.bind(this)(err)
-          })
-          closedSub = this.once('closed', (err) => {
-            onRejected.bind(this)(err)
-          })
           this.deferred.push(reject)
           this.handle('publish', op)
         }.bind(this))
@@ -228,8 +226,8 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
         onEntry: function () {
           this._onClose()
         },
-        check: { deferUntil: 'ready', next: 'initializing'},
-        publish: { deferUntil: 'ready', next: 'initializing'}
+        check: { deferUntil: 'ready', next: 'initializing' },
+        publish: { deferUntil: 'ready', next: 'initializing' }
       },
       failed: {
         onEntry: function () {
@@ -263,7 +261,7 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
         closed: { deferUntil: 'ready' },
         release: { deferUntil: 'ready' },
         released: { next: 'initializing' },
-        publish: { deferUntil: 'ready' },
+        publish: { deferUntil: 'ready' }
       },
       ready: {
         onEntry: function () {
@@ -273,7 +271,7 @@ function getDefinition(options, connection, topology, serializers, exchangeFn) {
           deferred.resolve()
           this.emit('defined')
         },
-        release: { deferUntil: 'released', next: 'releasing'},
+        release: { deferUntil: 'released', next: 'releasing' },
         closed: function () {
           this.next('closed')
         },
