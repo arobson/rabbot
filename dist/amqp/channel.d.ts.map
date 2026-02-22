@@ -1,0 +1,1 @@
+{"version":3,"file":"channel.d.ts","sourceRoot":"","sources":["../../src/amqp/channel.ts"],"names":[],"mappings":";uBAyCqB;QAAE,aAAa,EAAE,MAAM,OAAO,CAAC,OAAO,CAAC,CAAC;QAAC,oBAAoB,EAAE,MAAM,OAAO,CAAC,OAAO,CAAC,CAAA;KAAE,QAAQ,MAAM,WAAW,OAAO;;AAD5I,wBAYE"}

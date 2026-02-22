@@ -1,0 +1,40 @@
+interface ConnectionOptions {
+    name?: string;
+    host?: string;
+    server?: string;
+    RABBIT_BROKER?: string;
+    port?: number | string;
+    RABBIT_PORT?: string;
+    heartbeat?: number;
+    RABBIT_HEARTBEAT?: string;
+    protocol?: string;
+    RABBIT_PROTOCOL?: string;
+    pass?: string;
+    RABBIT_PASSWORD?: string;
+    user?: string;
+    RABBIT_USER?: string;
+    vhost?: string;
+    RABBIT_VHOST?: string;
+    timeout?: number;
+    RABBIT_TIMEOUT?: string;
+    certPath?: string;
+    RABBIT_CERT?: string;
+    keyPath?: string;
+    RABBIT_KEY?: string;
+    caPath?: string;
+    RABBIT_CA?: string;
+    passphrase?: string;
+    RABBIT_PASSPHRASE?: string;
+    pfxPath?: string;
+    RABBIT_PFX?: string;
+    useSSL?: boolean;
+    clientProperties?: Record<string, unknown>;
+    uri?: string;
+    waitMin?: number;
+    waitMax?: number;
+    waitIncrement?: number;
+    get?: (key: string, defaultValue?: unknown) => unknown;
+}
+export default function createConnection(options: ConnectionOptions): import("./iomonad.js").IOMonad;
+export {};
+//# sourceMappingURL=connection.d.ts.map
