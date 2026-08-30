@@ -469,9 +469,22 @@ Broker.prototype.request = function (exchangeName, options = {}, notify, connect
     return Promise.reject(new Error(`Request failed - no connection ${options.connectionName} has been configured`));
   }
 
-  return this.onExchange(exchangeName, options.connectionName)
-    .then(exchange => {
-      const connection = this.connections[options.connectionName].options;
+  const topology = this.connections[options.connectionName];
+  // opt-in alternate response destination (#148, #191): lets a responder
+  // (often cross-language) that publishes replies to a known
+  // exchange/routing key of its own - rather than honoring `replyTo` -
+  // still be heard, by binding a queue there and treating its deliveries
+  // as RPC responses correlated by correlationId
+  const responseQueue = options.responseQueue
+    ? topology.getResponseQueue(options.responseQueue.exchange, options.responseQueue.key, options.responseQueue.name)
+    : Promise.resolve();
+
+  return Promise.all([this.onExchange(exchangeName, options.connectionName), responseQueue])
+    .then(([exchange, responseQueueName]) => {
+      if (responseQueueName) {
+        options.replyTo = options.replyTo || responseQueueName;
+      }
+      const connection = topology.options;
       const publishTimeout = options.timeout || exchange.publishTimeout || connection.publishTimeout || 500;
       const replyTimeout = options.replyTimeout || exchange.replyTimeout || connection.replyTimeout || (publishTimeout * 2);
 
@@ -483,9 +496,18 @@ Broker.prototype.request = function (exchangeName, options = {}, notify, connect
         const scatter = options.expect;
         let remaining = options.expect;
         const subscription = responseChannel.on(requestId, message => {
+          // a `notify` callback means the caller expects a stream of
+          // messages before a final one - rely on the `sequence_end`
+          // header req.reply() sets on the terminal reply. Without one,
+          // the caller only expects a single reply, so any message
+          // resolves it - this matters for a responder (often
+          // cross-language, #148/#191) publishing straight to a custom
+          // responseQueue rather than through req.reply(), which won't
+          // know to set that header
+          const headers = message.properties.headers || {};
           const end = scatter
             ? --remaining <= 0
-            : message.properties.headers.sequence_end;
+            : (notify ? headers.sequence_end : true);
           if (end) {
             clearTimeout(timeout);
             if (!scatter || remaining === 0) {

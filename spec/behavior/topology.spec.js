@@ -788,6 +788,79 @@ describe('Topology', function () {
     });
   });
 
+  describe('when requesting an opt-in response queue for cross-language replies (#148, #191)', function () {
+    let topology, conn, q, uniqueName;
+
+    before(function (done) {
+      const ex = emitter();
+      q = emitter();
+      q.uniqueName = 'custom.response.queue';
+      const Exchange = function () {
+        return ex;
+      };
+      const Queue = function () {
+        return q;
+      };
+      conn = connectionFn();
+      const control = {
+        bindQueue: noOp
+      };
+      const controlMock = sinon.mock(control);
+      controlMock.expects('bindQueue')
+        .withArgs('custom.response.queue', 'foreign-ex', 'foreign.key')
+        .returns(Promise.resolve());
+      conn.mock.expects('getChannel')
+        .resolves(control);
+      topology = topologyFn(conn.instance, { replyQueue: false }, {}, undefined, undefined, Exchange, Queue);
+      topology.getResponseQueue('foreign-ex', 'foreign.key', 'custom.response.queue')
+        .then((name) => {
+          uniqueName = name;
+          done();
+        });
+      process.nextTick(function () {
+        q.raise('defined');
+      });
+    });
+
+    it("should resolve with the queue's unique name", function () {
+      uniqueName.should.equal('custom.response.queue');
+    });
+
+    it('should register the queue as a response queue', function () {
+      topology.isResponseQueue('custom.response.queue').should.equal(true);
+    });
+
+    it('should not treat other queues as response queues', function () {
+      topology.isResponseQueue('some.other.queue').should.equal(false);
+    });
+
+    it('should not affect the default reply queue check', function () {
+      topology.replyQueue.name.should.equal(false);
+    });
+
+    describe('when requesting the same exchange/key again', function () {
+      let secondName;
+      before(function () {
+        return topology.getResponseQueue('foreign-ex', 'foreign.key', 'custom.response.queue')
+          .then((name) => {
+            secondName = name;
+          });
+      });
+
+      it('should reuse the cached queue rather than declaring a new one', function () {
+        secondName.should.equal('custom.response.queue');
+      });
+    });
+  });
+
+  describe('when a responseQueue is requested without an exchange or key', function () {
+    it('should reject', function () {
+      const conn = connectionFn();
+      const topology = topologyFn(conn.instance, { replyQueue: false }, {}, undefined, undefined, noOp, noOp);
+      return topology.getResponseQueue(undefined, undefined).should.be.rejectedWith('A responseQueue requires both an exchange and a key');
+    });
+  });
+
   describe('when a connection to rabbit cannot be established', function () {
     describe('when attempting to create an exchange', function () {
       let topology, conn, error, ex, q;

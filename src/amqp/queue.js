@@ -438,7 +438,10 @@ function subscribe (channelName, channel, topology, serializers, messages, optio
       }
     };
 
-    if (raw.fields.routingKey === topology.replyQueue.name) {
+    // messages on the default reply queue, or on an opt-in response queue
+    // registered via request()'s `responseQueue` option (#148, #191), are
+    // RPC replies rather than ordinary handled messages
+    if (raw.fields.routingKey === topology.replyQueue.name || topology.isResponseQueue(channelName)) {
       responseChannel.emit(correlationId, raw, onPublish);
     } else {
       dispatchChannel.emit(topic, raw, onPublish);

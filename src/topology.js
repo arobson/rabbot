@@ -83,6 +83,12 @@ const Topology = function (connection, options, serializers, unhandledStrategies
   };
   this.options = options;
   this.replyQueue = { name: false };
+  // opt-in alternate response destinations for request/reply (#148, #191):
+  // a queue bound to a caller-chosen exchange/key, for responders (often
+  // cross-language) that don't honor `replyTo` and instead publish
+  // replies to a known exchange/routing key of their own
+  this.responseQueues = {};
+  this.responseQueueNames = new Set();
   this.serializers = serializers;
   this.onUnhandled = (message) => unhandledStrategies.onUnhandled(message);
   this.onReturned = (message) => returnedStrategies.onReturned(message);
@@ -298,6 +304,37 @@ Topology.prototype.deleteQueue = function (name) {
     });
 };
 
+// gets (creating and binding if necessary) a queue bound to the given
+// exchange/key that request()'s response listening will treat as a
+// source of replies, correlated by `correlationId` rather than by
+// matching rabbot's own default reply queue. Cached per exchange/key pair
+// so repeated request() calls targeting the same destination reuse one
+// queue and binding rather than declaring a new one per call.
+Topology.prototype.getResponseQueue = function (exchangeName, key, name) {
+  if (!exchangeName || !key) {
+    return Promise.reject(new Error('A responseQueue requires both an exchange and a key'));
+  }
+  const cacheKey = `${exchangeName}::${key}`;
+  if (this.responseQueues[cacheKey]) {
+    return this.responseQueues[cacheKey];
+  }
+  const queueName = name || `${replyId}.response.${info.createHash()}`;
+  const promise = this.createQueue({ name: queueName, autoDelete: true, subscribe: true })
+    .then((queue) =>
+      this.createBinding({ source: exchangeName, target: queueName, keys: key, queue: true })
+        .then(() => {
+          this.responseQueueNames.add(queue.uniqueName);
+          return queue.uniqueName;
+        })
+    );
+  this.responseQueues[cacheKey] = promise;
+  return promise;
+};
+
+Topology.prototype.isResponseQueue = function (name) {
+  return this.responseQueueNames.has(name);
+};
+
 Topology.prototype.getUniqueName = function (options) {
   if (options.unique === 'id') {
     return `${info.id}-${options.name}`;
@@ -364,6 +401,8 @@ Topology.prototype.reset = function () {
     queues: {},
     subscriptions: {}
   };
+  this.responseQueues = {};
+  this.responseQueueNames = new Set();
 };
 
 Topology.prototype.renameQueue = function (newQueueName) {
