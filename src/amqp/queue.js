@@ -136,7 +136,14 @@ function getReply (channel, serializers, raw, replyQueue, connectionName) {
     const payload = serializer.serialize(reply);
 
     const replyTo = raw.properties.replyTo;
-    raw.ack();
+    const isFinalReply = !(options && options.more);
+    // #192: only ack the original message on the terminal reply. Acking
+    // on every intermediate `more: true` reply meant a crash between
+    // streamed replies lost the original message with no chance of
+    // redelivery, even though more work on it was still outstanding.
+    if (isFinalReply) {
+      raw.ack();
+    }
     if (replyTo) {
       const publishOptions = {
         type: replyType,
@@ -147,7 +154,7 @@ function getReply (channel, serializers, raw, replyQueue, connectionName) {
         replyTo: replyQueue === false ? undefined : replyQueue,
         headers: options && options.headers ? options.headers : {}
       };
-      if (options && options.more) {
+      if (!isFinalReply) {
         publishOptions.headers.position = (position++);
       } else {
         publishOptions.headers.sequence_end = true; // jshint ignore:line

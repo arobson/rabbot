@@ -25,7 +25,8 @@ Options is a hash that can contain the following:
 | **pass** | the password for the specified user. | `"guest"` |
 | **timeout** | how long to wait for a connection to be established in milliseconds. | `2000` |
 | **heartbeat** | how often the client and server check to see if they can still reacheach other, specified in seconds. | `30` |
-| **replyQueue** | the name of the reply queue to use. | unique to the process |
+| **replyQueue** | the name of the reply queue to use, `false` to disable, or an object (`{ name, exclusive, ... }`) to pass additional queue options (e.g. `exclusive: true`) for a custom reply queue. | unique to the process |
+| **exclusiveReplyQueue** | make the auto-generated default reply queue (used when `replyQueue` isn't specified at all) exclusive to this connection. Has no effect if `replyQueue` is set explicitly - pass `exclusive` on that object instead. | `false` |
 | **publishTimeout** | the default timeout in milliseconds for a publish call. | |
 | **replyTimeout** | the default timeout in milliseconds to wait for a reply. | |
 | **failAfter** | limits how long rabbot will attempt to connect (in seconds). | `60` |

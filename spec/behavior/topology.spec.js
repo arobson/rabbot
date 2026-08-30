@@ -119,7 +119,8 @@ describe('Topology', function () {
           name: 'test.response.queue',
           uniqueName: 'test.response.queue',
           autoDelete: true,
-          subscribe: true
+          subscribe: true,
+          exclusive: false
         }
       );
     });
@@ -167,7 +168,8 @@ describe('Topology', function () {
             name: 'test.response.queue',
             uniqueName: 'test.response.queue',
             autoDelete: true,
-            subscribe: true
+            subscribe: true,
+            exclusive: false
           }
         );
       });

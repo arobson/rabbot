@@ -65,7 +65,11 @@ function toArray (x, list) {
 const Topology = function (connection, options, serializers, unhandledStrategies, returnedStrategies) {
   Object.assign(this, dispatcher());
 
-  const autoReplyTo = { name: `${replyId}.response.queue`, autoDelete: true, subscribe: true };
+  // #141: exclusive is already supported on custom reply queues via the
+  // generic object pass-through below (replyQueue: { name, exclusive });
+  // this is the opt-in for the auto-generated default reply queue, which
+  // has no user-supplied options object to read exclusive from otherwise.
+  const autoReplyTo = { name: `${replyId}.response.queue`, autoDelete: true, subscribe: true, exclusive: !!options.exclusiveReplyQueue };
   const rabbitReplyTo = { name: 'amq.rabbitmq.reply-to', subscribe: true, noAck: true };
   const userReplyTo = isObject(options.replyQueue) ? options.replyQueue : { name: options.replyQueue, autoDelete: true, subscribe: true };
   this.name = options.name;
