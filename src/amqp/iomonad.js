@@ -68,6 +68,14 @@ export default function (options, type, factory, methodNames, close) {
       _onAcquisition: function (instance) {
         this.item = instance;
         this.waitInterval = this.waitMin;
+        // bumped on every real (re)acquisition of the underlying amqplib
+        // channel/connection - amqp delivery tags are only meaningful for
+        // the specific channel instance that issued them, and reset back
+        // to 1 on each new channel, so consumers of `channel.generation`
+        // use this to detect and discard operations tied to a channel
+        // that no longer exists rather than risk acking/nacking a
+        // coincidentally-numbered but unrelated message (#47, #155)
+        this.generation += 1;
         log.debug(`Acquired ${type} '${this.name}' successfully`);
         // amqplib primitives emit close and error events
         this.item.on('return', function (raw) {
@@ -164,6 +172,7 @@ export default function (options, type, factory, methodNames, close) {
       default: 'acquiring',
       id: staticId++,
       item: undefined,
+      generation: 0,
       name: options.name,
       waitInterval: 0,
       waitMin: options.waitMin || 0,

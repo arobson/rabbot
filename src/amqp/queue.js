@@ -89,6 +89,14 @@ function getCount (messages) {
 
 function getNoBatchOps (channel, raw, messages, noAck) {
   messages.receivedCount += 1;
+  // captured at receipt time - if the channel has reconnected by the time
+  // this message's handler resolves, the delivery tag below is either
+  // meaningless or, worse, coincidentally reused by an unrelated message
+  // on the new channel (amqp delivery tags restart from 1 per channel),
+  // so a stale generation means the broker has already requeued this
+  // message and any resolution attempt here must be skipped (#47, #155)
+  const generation = channel.generation;
+  const isStale = () => channel.generation !== generation;
 
   let ack, nack, reject;
   if (noAck) {
@@ -101,14 +109,26 @@ function getNoBatchOps (channel, raw, messages, noAck) {
     };
   } else {
     ack = function () {
+      if (isStale()) {
+        log.warn("Ignoring stale ack for tag %d on '%s' - '%s' (channel reconnected since this message was received)", raw.fields.deliveryTag, messages.name, messages.connectionName);
+        return;
+      }
       log.debug("Acking tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName);
       channel.ack({ fields: { deliveryTag: raw.fields.deliveryTag } }, false);
     };
     nack = function () {
+      if (isStale()) {
+        log.warn("Ignoring stale nack for tag %d on '%s' - '%s' (channel reconnected since this message was received)", raw.fields.deliveryTag, messages.name, messages.connectionName);
+        return;
+      }
       log.debug("Nacking tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName);
       channel.nack({ fields: { deliveryTag: raw.fields.deliveryTag } }, false);
     };
     reject = function () {
+      if (isStale()) {
+        log.warn("Ignoring stale reject for tag %d on '%s' - '%s' (channel reconnected since this message was received)", raw.fields.deliveryTag, messages.name, messages.connectionName);
+        return;
+      }
       log.debug("Rejecting tag %d on '%s' - '%s'", raw.fields.deliveryTag, messages.name, messages.connectionName);
       channel.reject({ fields: { deliveryTag: raw.fields.deliveryTag } }, false, false);
     };
@@ -446,7 +466,18 @@ export default function (options, topology, serializers) {
   const channelName = ['queue', options.uniqueName].join(':');
   return topology.connection.getChannel(channelName, false, 'queue channel for ' + options.name)
     .then(function (channel) {
-      const messages = new AckBatch(options.name, topology.connection.name, resolveTags(channel, options.name, topology.connection.name));
+      const messages = new AckBatch(
+        options.name,
+        topology.connection.name,
+        resolveTags(channel, options.name, topology.connection.name),
+        () => channel.generation
+      );
+      // any message tracked (or pending being tracked) against a prior
+      // channel generation is already meaningless to the broker - it was
+      // requeued the moment the old channel dropped, and will arrive
+      // again as a fresh delivery once the consumer resubscribes, so
+      // discard rather than let stale tags accumulate here (#47, #155)
+      channel.on('acquired', () => messages.reset());
       const subscriber = subscribe.bind(undefined, options.uniqueName, channel, topology, serializers, messages, options);
       const definer = define.bind(undefined, channel, options, subscriber, topology.connection.name);
       return {

@@ -23,11 +23,12 @@ const calls = {
   reject: '_reject'
 };
 
-const AckBatch = function (name, connectionName, resolver) {
+const AckBatch = function (name, connectionName, resolver, getGeneration) {
   Object.assign(this, dispatcher());
   this.name = name;
   this.connectionName = connectionName;
   this.resolver = resolver;
+  this.getGeneration = getGeneration || function () { return 0; };
   this.reset();
 };
 
@@ -218,29 +219,52 @@ AckBatch.prototype.changeName = function (name) {
 };
 
 AckBatch.prototype.getMessageOps = function (tag) {
-  return new TrackedMessage(tag, this);
+  return new TrackedMessage(tag, this, this.getGeneration());
 };
 
 class TrackedMessage {
-  constructor (tag, batch) {
+  constructor (tag, batch, generation) {
     this.tag = tag;
     this.status = 'pending';
     this.batch = batch;
+    this.generation = generation;
+  }
+
+  // delivery tags are only meaningful for the channel generation that
+  // issued them - after a reconnect the channel is new, tags restart
+  // from 1, and this message has already been (or will be) requeued by
+  // the broker, so a resolution captured against the old generation must
+  // be discarded rather than risk acking/nacking an unrelated message
+  // that happens to reuse the same numeric tag (#47, #155)
+  _isStale () {
+    return this.generation !== this.batch.getGeneration();
   }
 
   ack () {
+    if (this._isStale()) {
+      log.warn('Ignoring stale ack for tag %d on queue %s - %s (channel reconnected since this message was received)', this.tag, this.batch.name, this.batch.connectionName);
+      return;
+    }
     this.status = 'ack';
     this.batch.firstAck = this.batch.firstAck || this.tag;
     log.debug("Marking tag %d as %s'd on queue %s - %s", this.tag, this.status, this.batch.name, this.batch.connectionName);
   }
 
   nack () {
+    if (this._isStale()) {
+      log.warn('Ignoring stale nack for tag %d on queue %s - %s (channel reconnected since this message was received)', this.tag, this.batch.name, this.batch.connectionName);
+      return;
+    }
     this.status = 'nack';
     this.batch.firstNack = this.batch.firstNack || this.tag;
     log.debug("Marking tag %d as %s'd on queue %s - %s", this.tag, this.status, this.batch.name, this.batch.connectionName);
   }
 
   reject () {
+    if (this._isStale()) {
+      log.warn('Ignoring stale reject for tag %d on queue %s - %s (channel reconnected since this message was received)', this.tag, this.batch.name, this.batch.connectionName);
+      return;
+    }
     this.status = 'reject';
     this.batch.firstReject = this.batch.firstReject || this.tag;
     log.debug('Marking tag %d as %sed on queue %s - %s', this.tag, this.status, this.batch.name, this.batch.connectionName);

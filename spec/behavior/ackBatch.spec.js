@@ -395,4 +395,55 @@ describe('Ack Batching', function () {
       batch.ignoreSignal();
     });
   });
+
+  describe('when the channel has reconnected since a message was received (#47, #155)', function () {
+    let batch, generation, messageData;
+    before(function () {
+      generation = 1;
+      batch = new AckBatch('test-queue', 'test-connection', noOp, () => generation);
+      messageData = batch.getMessageOps(101);
+      batch.addMessage(messageData);
+      // simulate a reconnect: the channel (and its delivery tags) that
+      // issued this message no longer exist by the time the handler
+      // finally settles and calls ack/nack/reject
+      generation = 2;
+    });
+
+    it('should ignore a stale ack rather than resolve it against the new channel', function () {
+      messageData.ack();
+      messageData.status.should.eql('pending');
+      should.not.exist(batch.firstAck);
+    });
+
+    it('should ignore a stale nack rather than resolve it against the new channel', function () {
+      messageData.nack();
+      messageData.status.should.eql('pending');
+      should.not.exist(batch.firstNack);
+    });
+
+    it('should ignore a stale reject rather than resolve it against the new channel', function () {
+      messageData.reject();
+      messageData.status.should.eql('pending');
+      should.not.exist(batch.firstReject);
+    });
+
+    after(function () {
+      batch.ignoreSignal();
+    });
+  });
+
+  describe('when the channel reacquires (reconnects)', function () {
+    it('should discard any messages tracked against the prior channel generation', function () {
+      const batch = new AckBatch('test-queue', 'test-connection', noOp, () => 1);
+      batch.addMessage(batch.getMessageOps(101));
+      batch.addMessage(batch.getMessageOps(102));
+      batch.messages.length.should.equal(2);
+
+      batch.reset();
+
+      batch.messages.should.eql([]);
+      should.not.exist(batch.firstAck);
+      batch.ignoreSignal();
+    });
+  });
 });
