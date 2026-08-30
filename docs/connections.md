@@ -131,7 +131,7 @@ It's worth noting that you should be pairing this with monitoring and alerting o
 
 ```js
 // How to create a zombie
-var rabbit = require( "rabbot" );
+import rabbit from "rabbot";
 
 rabbit.on( "unreachable", function() {
   rabbit.retry();

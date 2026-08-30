@@ -37,7 +37,7 @@ This example shows most of the available options described above.
 
 To establish a connection with all settings in place and ready to go call configure:
 ```javascript
-  var rabbit = require( "rabbot" );
+  import rabbit from "rabbot";
 
   rabbit.configure( settings ).done( function() {
     // ready to go!

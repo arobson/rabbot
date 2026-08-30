@@ -1,9 +1,9 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 describe('Request & Response', function () {
-  var harness;
+  let harness;
   before(function () {
     return rabbit.configure({
       connection: config.connection,
@@ -72,9 +72,9 @@ describe('Request & Response', function () {
   });
 
   describe('when getting a response within the timeout', function () {
-    var response1;
-    var response2;
-    var response3;
+    let response1;
+    let response2;
+    let response3;
 
     before(function (done) {
       this.timeout(3000);
@@ -123,7 +123,7 @@ describe('Request & Response', function () {
     });
 
     it('should receive multiple responses', function () {
-      var results = harness.received.map((m) => ({
+      const results = harness.received.map((m) => ({
         body: m.body
       }));
       sortBy(results, 'body').should.eql(
@@ -192,7 +192,7 @@ describe('Request & Response', function () {
   });
 
   describe('when the request times out', function () {
-    var timeoutError;
+    let timeoutError;
     const timeout = 100;
     before(function () {
       return rabbit.request(

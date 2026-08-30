@@ -1,7 +1,9 @@
-const postal = require('postal');
-const Monologue = require('monologue.js');
-const signal = postal.channel('rabbit.ack');
-const log = require('./log.js')('rabbot.acknack');
+import dispatcher from 'topic-dispatch';
+import { ackChannel } from './dispatchChannels.js';
+import createLog from './log.js';
+import { safeEmit } from './eventUtils.js';
+
+const log = createLog('rabbot.acknack');
 
 /* log
   * `rabbot.acknack`
@@ -22,6 +24,7 @@ const calls = {
 };
 
 const AckBatch = function (name, connectionName, resolver) {
+  Object.assign(this, dispatcher());
   this.name = name;
   this.connectionName = connectionName;
   this.resolver = resolver;
@@ -35,39 +38,40 @@ AckBatch.prototype._ack = function (tag, inclusive) {
 
 AckBatch.prototype._ackOrNackSequence = function () {
   // try {
-  const firstMessage = this.messages[ 0 ];
+  const firstMessage = this.messages[0];
   if (firstMessage === undefined) {
     return;
   }
   const firstStatus = firstMessage.status;
   let sequenceEnd = firstMessage.tag;
-  const call = calls[ firstStatus ];
+  const call = calls[firstStatus];
   if (firstStatus === 'pending') {
+    // nothing to resolve yet - leading pending tags block further resolution
   } else {
     for (let i = 1; i < this.messages.length - 1; i++) {
-      if (this.messages[ i ].status !== firstStatus) {
+      if (this.messages[i].status !== firstStatus) {
         break;
       }
-      sequenceEnd = this.messages[ i ].tag;
+      sequenceEnd = this.messages[i].tag;
     }
     if (call) {
-      this[ call ](sequenceEnd, true);
+      this[call](sequenceEnd, true);
     }
   }
 };
 
 AckBatch.prototype._firstByStatus = function (status) {
-  for (var i = 0; i < this.messages.length; i++) {
-    if (this.messages[ i ].status === status) {
-      return this.messages[ i ];
+  for (let i = 0; i < this.messages.length; i++) {
+    if (this.messages[i].status === status) {
+      return this.messages[i];
     }
   }
   return undefined;
 };
 
 AckBatch.prototype._findIndex = function (status) {
-  for (var i = 0; i < this.messages.length; i++) {
-    if (this.messages[ i ].status === status) {
+  for (let i = 0; i < this.messages.length; i++) {
+    if (this.messages[i].status === status) {
       return i;
     }
   }
@@ -75,9 +79,9 @@ AckBatch.prototype._findIndex = function (status) {
 };
 
 AckBatch.prototype._lastByStatus = function (status) {
-  for (var i = this.messages.length - 1; i >= 0; i--) {
-    if (this.messages[ i ].status === status) {
-      return this.messages[ i ];
+  for (let i = this.messages.length - 1; i >= 0; i--) {
+    if (this.messages[i].status === status) {
+      return this.messages[i];
     }
   }
   return undefined;
@@ -124,12 +128,12 @@ AckBatch.prototype._processBatch = function () {
 
 AckBatch.prototype._resolveAll = function (status, first, last) {
   const count = this.messages.length;
-  const emitEmpty = function () {
+  const emitEmpty = () => {
     // process.nextTick( function() {
-    setTimeout(function () {
-      this.emit('empty');
-    }.bind(this), 10);
-  }.bind(this);
+    setTimeout(() => {
+      safeEmit(this, 'empty');
+    }, 10);
+  };
   if (this.messages.length > 0) {
     const lastTag = this._lastByStatus(status).tag;
     log.debug('%s ALL (%d) tags on %s up to %d - %s.',
@@ -139,10 +143,10 @@ AckBatch.prototype._resolveAll = function (status, first, last) {
       lastTag,
       this.connectionName);
     this.resolver(status, { tag: lastTag, inclusive: true })
-      .then(function () {
-        this[ last ] = lastTag;
+      .then(() => {
+        this[last] = lastTag;
         this._removeByStatus(status);
-        this[ first ] = undefined;
+        this[first] = undefined;
         if (count > 0 && this.messages.length === 0) {
           log.debug('No pending tags remaining on queue %s - %s', this.name, this.connectionName);
           // The following setTimeout is the only thing between an insideous heisenbug and your sanity:
@@ -156,7 +160,7 @@ AckBatch.prototype._resolveAll = function (status, first, last) {
           emitEmpty();
         }
         this.acking = false;
-      }.bind(this));
+      });
   }
 };
 
@@ -177,7 +181,7 @@ AckBatch.prototype._resolveTag = function (tag, operation, inclusive) {
     this.firstAck || 0,
     this.firstNack || 0,
     this.firstReject || 0);
-  this.resolver(operation, { tag: tag, inclusive: inclusive });
+  this.resolver(operation, { tag, inclusive });
 };
 
 AckBatch.prototype._removeByStatus = function (status) {
@@ -245,13 +249,13 @@ class TrackedMessage {
 
 AckBatch.prototype.ignoreSignal = function () {
   if (this.signalSubscription) {
-    this.signalSubscription.unsubscribe();
+    this.signalSubscription.off();
   }
 };
 
 AckBatch.prototype.listenForSignal = function () {
   if (!this.signalSubscription) {
-    this.signalSubscription = signal.subscribe('#', () => {
+    this.signalSubscription = ackChannel.on('#', () => {
       this._processBatch();
     });
   }
@@ -268,6 +272,4 @@ AckBatch.prototype.reset = function () {
   this.receivedCount = 0;
 };
 
-Monologue.mixInto(AckBatch);
-
-module.exports = AckBatch;
+export default AckBatch;

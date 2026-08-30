@@ -1,8 +1,9 @@
 // This is probably not a true monad, but it seems close based on my current understanding.
 
-const Monologue = require('monologue.js');
-const machina = require('machina');
-const log = require('../log.js')('rabbot.io');
+import fsm from 'mfsm';
+import createLog from '../log.js';
+
+const log = createLog('rabbot.io');
 let staticId = 0;
 
 /* state definitions
@@ -41,160 +42,164 @@ let staticId = 0;
     * failure due to an exception (bad code)
 */
 
-module.exports = function (options, type, factory, target, close) {
-  var IOMonad = machina.Fsm.extend({
-    id: staticId++,
-    initialState: 'acquiring',
-    item: undefined,
-    name: options.name,
-    waitInterval: 0,
-    waitMin: options.waitMin || 0,
-    waitMax: options.waitMax || 5000,
-    waitIncrement: options.waitIncrement || 100,
-    eventHandlers: [],
-    _acquire: function () {
-      process.nextTick(function () {
-        this.emit('acquiring');
-      }.bind(this));
-      log.debug(`Attempting acquisition of ${type} '${this.name}'`);
-      factory()
-        .then(
-          this._onAcquisition.bind(this),
-          this._onAcquisitionError.bind(this)
-        );
-    },
-    _clearEventHandlers: function () {
-      if (this.item) {
-        this.item.removeAllListeners('blocked');
-        this.item.removeAllListeners('unblocked');
-      }
-    },
-    _finalize: function () {
-      if (this.item && this.item.removeAllListeners) {
-        this.item.removeAllListeners();
-      }
-      this.item = null;
-    },
-    _onAcquisition: function (instance) {
-      this.item = instance;
-      this.waitInterval = this.waitMin;
-      log.debug(`Acquired ${type} '${this.name}' successfully`);
-      // amqplib primitives emit close and error events
-      this.item.on('return', function (raw) {
-        this.handle('return', raw);
-      }.bind(this));
-      this.item.once('close', function (info) {
-        info = info || 'No information provided';
-        this._clearEventHandlers();
-        this.handle('released', info);
-      }.bind(this));
-      this.item.on('error', function (err) {
-        log.error(`Error emitted by ${type} '${this.name}' - '${err.stack}'`);
-        this._clearEventHandlers();
-        this.emit('failed', err);
-        this.handle('failed', err);
-      }.bind(this));
-      this.item
-        .on('unblocked', function () {
-          log.warn(`${type} '${this.name}' was unblocked by the broker`);
-          this.emit('unblocked');
-          this.handle('unblocked');
-        }.bind(this))
-        .on('blocked', function () {
-          log.warn(`${type} '${this.name}' was blocked by the broker`);
-          this.emit('blocked');
-          this.handle('blocked');
+export default function (options, type, factory, methodNames, close) {
+  const machine = fsm({
+    api: {
+      _acquire: function () {
+        log.debug(`Attempting acquisition of ${type} '${this.name}'`);
+        factory()
+          .then(
+            this._onAcquisition.bind(this),
+            this._onAcquisitionError.bind(this)
+          );
+      },
+      _clearEventHandlers: function () {
+        if (this.item) {
+          this.item.removeAllListeners('blocked');
+          this.item.removeAllListeners('unblocked');
+        }
+      },
+      _finalize: function () {
+        if (this.item && this.item.removeAllListeners) {
+          this.item.removeAllListeners();
+        }
+        this.item = null;
+      },
+      _onAcquisition: function (instance) {
+        this.item = instance;
+        this.waitInterval = this.waitMin;
+        log.debug(`Acquired ${type} '${this.name}' successfully`);
+        // amqplib primitives emit close and error events
+        this.item.on('return', function (raw) {
+          this.handle('return', raw);
         }.bind(this));
-      this.transition('acquired');
-    },
-    _onAcquisitionError: function (err) {
-      log.error(`Acquisition of ${type} '${this.name}' failed with '${err}'`);
-      this.emit('failed', err);
-      this.handle('failed');
-    },
-    _release: function () {
-      if (this.retry) {
-        clearTimeout(this.retry);
-      }
-      if (this.item) {
-        // go through close procedure for resource
-        if (close) {
-          try {
-            close(this.item);
-          } catch (ex) {
-            log.warn(`${type} '${this.name}' threw an exception on close: ${ex}`);
-            this.handle('released');
+        this.item.once('close', function (info) {
+          info = info || 'No information provided';
+          this._clearEventHandlers();
+          this.handle('released', info);
+        }.bind(this));
+        this.item.on('error', function (err) {
+          log.error(`Error emitted by ${type} '${this.name}' - '${err.stack}'`);
+          this._clearEventHandlers();
+          this.handle('failed', err);
+        }.bind(this));
+        this.item
+          .on('unblocked', function () {
+            log.warn(`${type} '${this.name}' was unblocked by the broker`);
+            this.emit('unblocked');
+            this.handle('unblocked');
+          }.bind(this))
+          .on('blocked', function () {
+            log.warn(`${type} '${this.name}' was blocked by the broker`);
+            this.handle('blocked');
+          }.bind(this));
+        this.next('acquired');
+      },
+      _onAcquisitionError: function (err) {
+        log.error(`Acquisition of ${type} '${this.name}' failed with '${err}'`);
+        this.handle('failed', err);
+      },
+      _release: function () {
+        if (this.retry) {
+          clearTimeout(this.retry);
+        }
+        if (this.item) {
+          // go through close procedure for resource
+          if (close) {
+            try {
+              close(this.item);
+            } catch (ex) {
+              log.warn(`${type} '${this.name}' threw an exception on close: ${ex}`);
+              this.handle('released');
+            }
+          } else {
+            try {
+              this.item.close();
+            } catch (ex) {
+              log.warn(`${type} '${this.name}' threw an exception on close: ${ex}`);
+              this.handle('released');
+            }
           }
         } else {
-          try {
-            this.item.close();
-          } catch (ex) {
-            log.warn(`${type} '${this.name}' threw an exception on close: ${ex}`);
-            this.handle('released');
-          }
+          this.handle('released');
         }
-      } else {
-        this.handle('released');
-      }
-    },
-    acquire: function () {
-      this.handle('acquire');
-      return new Promise(function (resolve, reject) {
-        this.once('acquired', function () {
-          resolve(this);
+      },
+      acquire: function () {
+        this.handle('acquire');
+        return new Promise((resolve, reject) => {
+          const acquiredSub = this.once('acquired', () => {
+            releasedSub.off();
+            resolve(this);
+          });
+          const releasedSub = this.once('released', () => {
+            acquiredSub.off();
+            reject(new Error(`Cannot reacquire released ${type} '${this.name}'`));
+          });
+        });
+      },
+      operate: function (call, args) {
+        const op = { operation: call, argList: args, index: this.index };
+        const promise = new Promise(function (resolve, reject) {
+          op.resolve = resolve;
+          op.reject = reject;
+        });
+        this.handle('operate', op);
+        return promise.then(null, function (err) {
+          return Promise.reject(err);
+        });
+      },
+      release: function () {
+        if (this.retry) {
+          clearTimeout(this.retry);
+        }
+        return new Promise(function (resolve) {
+          this.once('released', function () {
+            resolve();
+          });
+          this.handle('release');
         }.bind(this));
-        this.once('released', function () {
-          reject(new Error(`Cannot reacquire released ${type} '${this.name}'`));
-        });
-      }.bind(this));
-    },
-    operate: function (call, args) {
-      const op = { operation: call, argList: args, index: this.index };
-      const promise = new Promise(function (resolve, reject) {
-        op.resolve = resolve;
-        op.reject = reject;
-      });
-      this.handle('operate', op);
-      return promise.then(null, function (err) {
-        return Promise.reject(err);
-      });
-    },
-    release: function () {
-      if (this.retry) {
-        clearTimeout(this.retry);
       }
-      return new Promise(function (resolve) {
-        this.once('released', function () {
-          resolve();
-        });
-        this.handle('release');
-      }.bind(this));
     },
+    init: {
+      default: 'acquiring',
+      id: staticId++,
+      item: undefined,
+      name: options.name,
+      waitInterval: 0,
+      waitMin: options.waitMin || 0,
+      waitMax: options.waitMax || 5000,
+      waitIncrement: options.waitIncrement || 100
+    },
+    // Note on emit()/state-name coincidence: mfsm's next() automatically
+    // emits the state's own name on entry, so any state whose onEntry
+    // previously did nothing but `this.emit('sameName')` (as the
+    // machina/monologue.js version did) simply omits onEntry here -
+    // duplicating that emit would fire the event twice. Where an event
+    // name is being handled but doesn't share a name with the state being
+    // entered (e.g. 'unblocked' transitions into 'acquired', not a state
+    // named 'unblocked'), the explicit emit is kept.
     states: {
       acquiring: {
-        _onEnter: function () {
+        onEntry: function () {
           this._acquire();
         },
         blocked: function () {
-          this.deferUntilTransition('acquired');
+          this.deferUntil('acquired', 'blocked');
         },
-        failed: function () {
-          this.transition('failed');
+        failed: function (err) {
+          this.next('failed', err);
         },
-        operate: function () {
-          this.deferUntilTransition('acquired');
+        operate: function (call) {
+          this.deferUntil('acquired', 'operate', call);
         },
         release: function () {
-          this.transition('released');
+          this.next('released', this.id);
         },
         released: function () {
-          this.transition('released');
+          this.next('released', this.id);
         }
       },
       acquired: {
-        _onEnter: function () {
-          this.emit('acquired');
-        },
         acquire: function () {
           this.emit('acquired');
         },
@@ -202,14 +207,14 @@ module.exports = function (options, type, factory, target, close) {
           this.emit('return', raw);
         },
         blocked: function () {
-          this.transition('blocked');
+          this.next('blocked');
         },
-        failed: function () {
-          this.transition('failed');
+        failed: function (err) {
+          this.next('failed', err);
         },
         operate: function (call) {
           try {
-            var result = this.item[ call.operation ].apply(this.item, call.argList);
+            const result = this.item[call.operation].apply(this.item, call.argList);
             if (result && result.then) {
               result
                 .then(call.resolve, call.reject);
@@ -223,110 +228,108 @@ module.exports = function (options, type, factory, target, close) {
         release: function () {
           // the user has called release during acquired state
           log.info(`${type} '${this.name}' was closed by the user`);
-          this.transition('releasing');
+          this.next('releasing');
         },
         released: function (reason) {
           // the remote end initiated close
           log.warn(`${type} '${this.name}' was closed by the broker with reason '${reason}'`);
           this.closeReason = reason;
-          this.transition('closed');
+          this.next('closed', reason);
         }
       },
       blocked: {
-        failed: function () {
-          this.transition('failed');
+        failed: function (err) {
+          this.next('failed', err);
         },
-        operate: function () {
-          this.deferUntilTransition('acquired');
+        operate: function (call) {
+          this.deferUntil('acquired', 'operate', call);
         },
         release: function () {
           // the user has called release during acquired state
           log.info(`${type} '${this.name}' was closed by the user`);
-          this.transition('releasing');
+          this.next('releasing');
         },
         released: function (reason) {
           // the remote end initiated close
           log.warn(`${type} '${this.name}' was closed by the broker with reason '${reason}'`);
           this.closeReason = reason;
-          this.transition('closed');
+          this.next('closed', reason);
         },
         unblocked: function () {
-          this.transition('acquired');
+          this.next('acquired');
         }
       },
       closed: {
-        _onEnter: function () {
+        onEntry: function () {
           if (this.retry) {
             clearTimeout(this.retry);
           }
-          this.emit('closed', this.closeReason);
           this.item = null;
           this.closeReason = null;
         },
         acquire: function () {
-          this.transition('acquiring');
+          this.next('acquiring');
         },
         operate: function (call) {
           log.info(`Operation '${call.operation}' invoked on closed ${type} '${this.name}'`);
-          this.deferUntilTransition('acquired');
-          this.transition('acquiring');
+          this.deferUntil('acquired', 'operate', call);
+          this.next('acquiring');
         },
         release: function () {
-          this.transition('released');
+          this.next('released', this.id);
         },
         released: function () {
-          this.transition('released');
+          this.next('released', this.id);
         }
       },
       failed: {
-        _onEnter: function () {
+        onEntry: function () {
           this.retry = setTimeout(function () {
             if ((this.waitInterval + this.waitIncrement) < this.waitMax) {
               this.waitInterval += this.waitIncrement;
             }
-            this.transition('acquiring');
+            this.next('acquiring');
           }.bind(this), this.waitInterval);
         },
         acquire: function () {
           if (this.retry) {
             clearTimeout(this.retry);
           }
-          this.transition('acquiring');
+          this.next('acquiring');
         },
-        operate: function () {
-          this.deferUntilTransition('acquired');
+        operate: function (call) {
+          this.deferUntil('acquired', 'operate', call);
         },
         release: function () {
-          this.transition('released');
+          this.next('released', this.id);
         },
         released: function () {
           // this is expected because the close event fires after the error event on a channel or connection
         }
       },
       releasing: {
-        _onEnter: function () {
+        onEntry: function () {
           this._release();
         },
         acquire: function () {
-          this.deferUntilTransition('released');
+          this.deferUntil('released', 'acquire');
         },
-        operate: function () {
-          this.deferUntilTransition('released');
+        operate: function (call) {
+          this.deferUntil('released', 'operate', call);
         },
         release: function () {
-          this.deferUntilTransition('released');
+          this.deferUntil('released', 'release');
         },
         released: function () {
-          this.transition('released');
+          this.next('released', this.id);
         }
       },
       released: {
-        _onEnter: function () {
+        onEntry: function () {
           this._finalize();
-          this.emit('released', this.id);
         },
         acquire: function () {
-          this.transition('acquiring');
+          this.next('acquiring');
         },
         operate: function (call) {
           log.warn(`Operation '${call.operation}' invoked on released ${type} '${this.name}' - reacquisition is required.`);
@@ -342,18 +345,11 @@ module.exports = function (options, type, factory, target, close) {
     }
   });
 
-  Monologue.mixInto(IOMonad);
-  var machine = new IOMonad();
-
-  const names = Object.getOwnPropertyNames(target.prototype);
-  names.forEach(name => {
-    const prop = target.prototype[ name ];
-    if (typeof prop === 'function') {
-      machine[ name ] = function () {
-        var list = Array.prototype.slice.call(arguments, 0);
-        return machine.operate(name, list);
-      };
-    }
+  methodNames.forEach(name => {
+    machine[name] = function () {
+      const list = Array.prototype.slice.call(arguments, 0);
+      return machine.operate(name, list);
+    };
   });
   return machine;
-};
+}

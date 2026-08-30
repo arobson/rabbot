@@ -1,10 +1,10 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 describe('Batch Acknowledgments Disabled (noBatch: true)', function () {
-  var messagesToSend;
-  var harness;
+  let messagesToSend;
+  let harness;
 
   before(function (done) {
     rabbit.configure({
@@ -34,7 +34,7 @@ describe('Batch Acknowledgments Disabled (noBatch: true)', function () {
     }).then(() => {
       messagesToSend = 10;
       harness = harnessFactory(rabbit, done, messagesToSend);
-      var messageCount = 0;
+      let messageCount = 0;
 
       harness.handle('no.batch', (message) => {
         if (messageCount > 0) {

@@ -1,8 +1,11 @@
-var chai = require('chai');
-chai.use(require('chai-as-promised'));
+import chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
+import sinon from 'sinon';
+
+chai.use(chaiAsPromised);
 global.should = chai.should();
 global.expect = chai.expect;
-global.sinon = require('sinon');
+global.sinon = sinon;
 process.title = 'rabbot-test';
 
 global.harnessFactory = function (rabbit, cb, expected) {
@@ -66,20 +69,20 @@ global.harnessFactory = function (rabbit, cb, expected) {
       received.push(msg);
       check();
     },
-    received: received,
-    clean: clean,
+    received,
+    clean,
     handle: handleFn,
-    handlers: handlers,
-    unhandled: unhandled,
-    returned: returned
+    handlers,
+    unhandled,
+    returned
   };
 };
 
 global.sortBy = function (list, prop) {
   list.sort((a, b) => {
-    if (a[ prop ] < b[ prop ]) {
+    if (a[prop] < b[prop]) {
       return -1;
-    } else if (a[ prop ] > b[ prop ]) {
+    } else if (a[prop] > b[prop]) {
       return 1;
     } else {
       return 0;

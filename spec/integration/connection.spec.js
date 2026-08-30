@@ -1,10 +1,10 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 describe('Connection', function () {
   describe('on connection', function () {
-    var connected;
+    let connected;
     before(function (done) {
       rabbit.once('connected', (c) => {
         connected = c;

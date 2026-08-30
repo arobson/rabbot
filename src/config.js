@@ -1,4 +1,6 @@
-const log = require('./log')('rabbot.configuration');
+import createLog from './log.js';
+
+const log = createLog('rabbot.configuration');
 
 /* log
   * `rabbot.configuration`
@@ -6,12 +8,12 @@ const log = require('./log')('rabbot.configuration');
       * configuration failed (in exchange, queue or bindings)
 */
 
-module.exports = function (Broker) {
+export default function (Broker) {
   Broker.prototype.configure = function (config) {
     const emit = this.emit.bind(this);
     const configName = config.name || 'default';
-    this.configurations[ configName ] = config;
-    this.configuring[ configName ] = new Promise(function (resolve, reject) {
+    this.configurations[configName] = config;
+    this.configuring[configName] = new Promise(function (resolve, reject) {
       function onExchangeError (connection, err) {
         log.error('Configuration of %s failed due to an error in one or more exchange settings: %s', connection.name, err);
         reject(err);
@@ -65,6 +67,6 @@ module.exports = function (Broker) {
           reject
         );
     }.bind(this));
-    return this.configuring[ configName ];
+    return this.configuring[configName];
   };
-};
+}

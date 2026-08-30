@@ -16,6 +16,8 @@ This is a very opinionated abstraction over amqplib to help simplify the impleme
 
 > !Important! - successful use of this library will require a conceptual knowledge of AMQP and an understanding of RabbitMQ.
 
+> Requires Node.js >=22. As of v3, rabbot is published as an ES module - use `import`, not `require`.
+
 ### Features:
 
  * Attempt to gracefully handle lost connections and channels
@@ -65,18 +67,18 @@ This contrived example is here to make it easy to see what the API looks like no
 
 
 ```js
-const rabbit = require('rabbot');
+import rabbit from 'rabbot';
 
-rabbot.handle('MyMessage', (msg) => {
+rabbit.handle('MyMessage', (msg) => {
   console.log('received msg', msg.body);
   msg.ack();
 });
 
-rabbot.handle('MyRequest', (req) => {
+rabbit.handle('MyRequest', (req) => {
   req.reply('yes?');
 });
 
-rabbot.configure({
+rabbit.configure({
   connection: {
     name: 'default',
     user: 'guest',
@@ -96,10 +98,10 @@ rabbot.configure({
     { exchange: 'ex.1', target: 'q.1', keys: [] }
   ]
 }).then(
-  () => console.log('connected!');
+  () => console.log('connected!')
 );
 
-rabbot.request('ex.1', { type: 'MyRequest' })
+rabbit.request('ex.1', { type: 'MyRequest' })
   .then(
     reply => {
       console.log('got response:', reply.body);
@@ -107,11 +109,11 @@ rabbot.request('ex.1', { type: 'MyRequest' })
     }
   );
 
-rabbot.publish('ex.1', { type: 'MyMessage', body: 'hello!' });
+rabbit.publish('ex.1', { type: 'MyMessage', body: 'hello!' });
 
 
 setTimeout(() => {
-  rabbot.shutdown(true)
+  rabbit.shutdown(true)
 },5000);
 ```
 

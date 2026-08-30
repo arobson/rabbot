@@ -1,11 +1,11 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
-describe(`Direct Reply Queue (replyQueue: 'rabbit')`, function () {
-  var messagesToSend;
-  var harness;
-  var replies = [];
+describe('Direct Reply Queue (replyQueue: \'rabbit\')', function () {
+  let messagesToSend;
+  let harness;
+  const replies = [];
 
   before(function (done) {
     harness = harnessFactory(rabbit, () => {}, messagesToSend);
@@ -37,7 +37,7 @@ describe(`Direct Reply Queue (replyQueue: 'rabbit')`, function () {
       harness.handle('no.replyQueue', (req) => {
         req.reply({ reply: req.body.message });
       });
-      for (var i = 0; i < messagesToSend; i++) {
+      for (let i = 0; i < messagesToSend; i++) {
         rabbit.request('noreply-ex.direct', {
           connectionName: 'directReplyQueue',
           type: 'no.replyQueue',

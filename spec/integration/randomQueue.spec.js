@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 /*
 Demonstrates a few things:
@@ -12,8 +12,8 @@ Demonstrates a few things:
 It shows that you _can_ move messages between services with minimal configuration.
 */
 describe('Random Queue Name', function () {
-  var harness;
-  var queueName;
+  let harness;
+  let queueName;
   before((done) => {
     rabbit.configure({
       connection: config.connection,
@@ -30,7 +30,7 @@ describe('Random Queue Name', function () {
           queueName = queue.name;
           rabbit.publish('', { type: 'rando', routingKey: queueName, body: 'one' });
           rabbit.publish('', { type: 'rando', routingKey: queueName, body: Buffer.from('two') });
-          rabbit.publish('', { type: 'rando', routingKey: queueName, body: [ 0x62, 0x75, 0x66, 0x66, 0x65, 0x72 ] });
+          rabbit.publish('', { type: 'rando', routingKey: queueName, body: [0x62, 0x75, 0x66, 0x66, 0x65, 0x72] });
         });
     });
     harness = harnessFactory(rabbit, done, 3);

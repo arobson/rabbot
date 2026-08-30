@@ -1,18 +1,22 @@
 {
   "name": "rabbot",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Abstractions to simplify working with the RabbitMQ",
+  "type": "module",
   "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
   "engines": {
-    "node": ">=6.0.0"
+    "node": ">=22"
   },
   "repository": "https://github.com/arobson/rabbot",
   "scripts": {
     "lint": "semistandard",
     "lint-fix": "semistandard --fix",
     "pretest": "semistandard",
-    "test": "./node_modules/mocha/bin/mocha spec/**/*.spec.js",
-    "coverage": "nyc npm test",
+    "test": "mocha",
+    "coverage": "c8 npm test",
     "release": "standard-version",
     "build-image": "docker build -t rabbot .",
     "create-container": "docker run -d --name rabbot -p 15672:15672 -p 5672:5672 rabbot",
@@ -62,28 +66,26 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "chai": "^4.1.2",
-    "chai-as-promised": "^7.1.1",
+    "c8": "^12.0.0",
+    "chai": "^4.5.0",
+    "chai-as-promised": "^7.1.2",
     "coveralls": "^2.13.1",
-    "lodash": "4.17.x",
-    "mocha": "^3.4.1",
-    "mocha-lcov-reporter": "^1.3.0",
-    "nyc": "^10.3.2",
-    "request": "^2.83.0",
-    "semistandard": "^12.0.0",
-    "sinon": "^4.0.2",
+    "mocha": "^11.8.0",
+    "semistandard": "^17.0.0",
+    "sinon": "^22.1.0",
     "standard-version": "^4.3.0"
   },
   "dependencies": {
-    "amqplib": "~0.5.2",
+    "amqplib": "^2.0.1",
     "bole": "^3.0.2",
     "debug": "^3.1.0",
-    "machina": "2.0.2",
-    "monologue.js": "^0.3.5",
-    "postal": "^2.0.5",
-    "uuid": "^3.1.0"
+    "mfsm": "^3.1.0",
+    "topic-dispatch": "^4.0.0",
+    "uuid": "^11.1.1"
   },
   "semistandard": {
+    "parser": "espree",
+    "sourceType": "module",
     "env": [
       "mocha"
     ],
@@ -94,5 +96,10 @@
       "harnessFactory",
       "sortBy"
     ]
+  },
+  "mocha": {
+    "spec": "spec/**/*.spec.js",
+    "timeout": 8000,
+    "exit": true
   }
 }

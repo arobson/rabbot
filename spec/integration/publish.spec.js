@@ -1,5 +1,5 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
+import '../setup.js';
+import rabbit from '../../src/index.js';
 
 describe('Publishing Messages', function () {
   describe('without a connection defined', function () {

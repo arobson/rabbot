@@ -1,10 +1,10 @@
-const defer = require('./defer');
+import defer from './defer.js';
 
 function add (state, m) {
   if (!state.messages.sequenceNo) {
-    var mSeq = next(state);
+    const mSeq = next(state);
     m.sequenceNo = mSeq;
-    state.messages[ mSeq ] = m;
+    state.messages[mSeq] = m;
   }
 }
 
@@ -15,7 +15,7 @@ function next (state) {
 
 function getEmptyPromise (state) {
   if (state.count) {
-    var deferred = defer();
+    const deferred = defer();
     state.waiting = deferred;
     return deferred.promise;
   } else {
@@ -40,10 +40,10 @@ function rejectWaiting (state) {
 }
 
 function remove (state, m) {
-  var mSeq = m.sequenceNo !== undefined ? m.sequenceNo : m;
-  var removed = false;
-  if (state.messages[ mSeq ]) {
-    delete state.messages[ mSeq ];
+  const mSeq = m.sequenceNo !== undefined ? m.sequenceNo : m;
+  let removed = false;
+  if (state.messages[mSeq]) {
+    delete state.messages[mSeq];
     state.count--;
     removed = true;
   }
@@ -55,8 +55,8 @@ function remove (state, m) {
 
 function reset (state, err) {
   const keys = Object.keys(state.messages);
-  var list = keys.map((key) => {
-    const m = state.messages[ key ];
+  const list = keys.map((key) => {
+    const m = state.messages[key];
     delete m.sequenceNo;
     return m;
   });
@@ -68,7 +68,7 @@ function reset (state, err) {
 }
 
 function publishLog () {
-  var state = {
+  const state = {
     count: 0,
     messages: {},
     sequenceNumber: 0,
@@ -83,8 +83,8 @@ function publishLog () {
     onceEmptied: getEmptyPromise.bind(undefined, state),
     reset: reset.bind(undefined, state),
     remove: remove.bind(undefined, state),
-    state: state
+    state
   };
 }
 
-module.exports = publishLog;
+export default publishLog;

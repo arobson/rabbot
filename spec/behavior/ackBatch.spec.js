@@ -1,13 +1,12 @@
-require('../setup.js');
-var postal = require('postal');
-var signal = postal.channel('rabbit.ack');
-var AckBatch = require('../../src/ackBatch.js');
-var noOp = function () {};
+import '../setup.js';
+import { ackChannel } from '../../src/dispatchChannels.js';
+import AckBatch from '../../src/ackBatch.js';
+const noOp = function () {};
 
 describe('Ack Batching', function () {
   describe('when adding a new message', function () {
-    var batch;
-    var messageData;
+    let batch;
+    let messageData;
     before(function () {
       batch = new AckBatch('test-queue', 'test-connection', noOp);
       messageData = batch.getMessageOps(101);
@@ -23,25 +22,25 @@ describe('Ack Batching', function () {
     });
 
     it('should add pending status with tag', function () {
-      remap(batch.messages).should.eql([ { tag: 101, status: 'pending' } ]);
+      remap(batch.messages).should.eql([{ tag: 101, status: 'pending' }]);
     });
 
     it('ack operation should change status to ack', function () {
       messageData.ack();
       messageData.status.should.eql('ack');
-      remap(batch.messages).should.eql([ { tag: 101, status: 'ack' } ]);
+      remap(batch.messages).should.eql([{ tag: 101, status: 'ack' }]);
     });
 
     it('nack operation should change status to nack', function () {
       messageData.nack();
       messageData.status.should.eql('nack');
-      remap(batch.messages).should.eql([ { tag: 101, status: 'nack' } ]);
+      remap(batch.messages).should.eql([{ tag: 101, status: 'nack' }]);
     });
 
     it('reject operation should change status to reject', function () {
       messageData.reject();
       messageData.status.should.eql('reject');
-      remap(batch.messages).should.eql([ { tag: 101, status: 'reject' } ]);
+      remap(batch.messages).should.eql([{ tag: 101, status: 'reject' }]);
     });
 
     after(function () {
@@ -50,9 +49,9 @@ describe('Ack Batching', function () {
   });
 
   describe('when resolving with no tags', function () {
-    var batch;
-    var resolver;
-    var status;
+    let batch;
+    let resolver;
+    let status;
     before(function (done) {
       resolver = function (s) {
         status = s;
@@ -60,7 +59,7 @@ describe('Ack Batching', function () {
       };
       batch = new AckBatch('test-queue', 'test-connection', resolver);
       batch.listenForSignal();
-      signal.publish('go', {});
+      ackChannel.emit('go', {});
     });
 
     it("should resolve with 'waiting'", function () {
@@ -77,9 +76,9 @@ describe('Ack Batching', function () {
   });
 
   describe('when resolving with only pending tags', function () {
-    var batch;
-    var resolver;
-    var status;
+    let batch;
+    let resolver;
+    let status;
     before(function (done) {
       resolver = function (s) {
         status = s;
@@ -91,7 +90,7 @@ describe('Ack Batching', function () {
       batch.addMessage({ tag: 103, status: 'pending' });
       batch.addMessage({ tag: 104, status: 'pending' });
       batch.listenForSignal();
-      signal.publish('go', {});
+      ackChannel.emit('go', {});
     });
 
     it("should resolve with 'waiting'", function () {
@@ -117,9 +116,9 @@ describe('Ack Batching', function () {
   });
 
   describe('when resolving with leading pending tags', function () {
-    var batch;
-    var resolver;
-    var status;
+    let batch;
+    let resolver;
+    let status;
     before(function (done) {
       resolver = function (s) {
         status = s;
@@ -132,7 +131,7 @@ describe('Ack Batching', function () {
       batch.addMessage({ tag: 104, status: 'nack' });
       batch.addMessage({ tag: 105, status: 'reject' });
       batch.listenForSignal();
-      signal.publish('go', {});
+      ackChannel.emit('go', {});
     });
 
     it("should resolve with 'waiting'", function () {
@@ -159,9 +158,9 @@ describe('Ack Batching', function () {
   });
 
   describe('when resolving with all ack tags', function () {
-    var batch;
-    var resolver;
-    var status, data;
+    let batch;
+    let resolver;
+    let status, data;
     before(function (done) {
       resolver = function (s, d) {
         status = s;
@@ -180,7 +179,7 @@ describe('Ack Batching', function () {
       batch.addMessage({ tag: 104, status: 'ack' });
       batch.addMessage({ tag: 105, status: 'ack' });
       batch.firstAck = 101;
-      signal.publish('go', {});
+      ackChannel.emit('go', {});
     });
 
     it("should resolve with 'ack'", function () {
@@ -210,9 +209,9 @@ describe('Ack Batching', function () {
   });
 
   describe('when resolving with all nack tags', function () {
-    var batch;
-    var resolver;
-    var status, data;
+    let batch;
+    let resolver;
+    let status, data;
     before(function (done) {
       resolver = function (s, d) {
         status = s;
@@ -231,7 +230,7 @@ describe('Ack Batching', function () {
       batch.addMessage({ tag: 105, status: 'nack' });
       batch.firstNack = 101;
       batch.listenForSignal();
-      signal.publish('go', {});
+      ackChannel.emit('go', {});
     });
 
     it("should resolve with 'nack'", function () {
@@ -261,9 +260,9 @@ describe('Ack Batching', function () {
   });
 
   describe('when resolving with all reject tags', function () {
-    var batch;
-    var resolver;
-    var status, data;
+    let batch;
+    let resolver;
+    let status, data;
     before(function (done) {
       resolver = function (s, d) {
         status = s;
@@ -282,7 +281,7 @@ describe('Ack Batching', function () {
       batch.addMessage({ tag: 105, status: 'reject' });
       batch.firstReject = 101;
       batch.listenForSignal();
-      signal.publish('go', {});
+      ackChannel.emit('go', {});
     });
 
     it("should resolve with 'reject'", function () {
@@ -312,10 +311,10 @@ describe('Ack Batching', function () {
   });
 
   describe('when resolving with no pending tags (mixed ops)', function () {
-    var batch;
-    var resolver;
-    var status = [];
-    var data = [];
+    let batch;
+    let resolver;
+    const status = [];
+    const data = [];
     before(function (done) {
       resolver = function (s, d) {
         status.push(s);
@@ -327,7 +326,7 @@ describe('Ack Batching', function () {
         done();
       });
 
-      var messages = [
+      const messages = [
         batch.getMessageOps(101),
         batch.getMessageOps(102),
         batch.getMessageOps(103),
@@ -338,21 +337,21 @@ describe('Ack Batching', function () {
 
       messages.forEach(batch.addMessage.bind(batch));
 
-      messages[ 0 ].ack();
-      messages[ 1 ].ack();
-      messages[ 2 ].nack();
-      messages[ 3 ].nack();
-      messages[ 4 ].reject();
-      messages[ 5 ].reject();
+      messages[0].ack();
+      messages[1].ack();
+      messages[2].nack();
+      messages[3].nack();
+      messages[4].reject();
+      messages[5].reject();
 
       batch.listenForSignal();
-      signal.publish('go', {});
-      signal.publish('go', {});
-      signal.publish('go', {});
+      ackChannel.emit('go', {});
+      ackChannel.emit('go', {});
+      ackChannel.emit('go', {});
     });
 
     it('should resolve operations in expected order with correct arguments', function () {
-      status.should.eql([ 'ack', 'nack', 'reject' ]);
+      status.should.eql(['ack', 'nack', 'reject']);
       data.should.eql([
         { tag: 102, inclusive: true },
         { tag: 104, inclusive: true },

@@ -1,6 +1,8 @@
-// var log = require( "whistlepunk" ).log;
-const log = require('bole');
-const debug = require('debug');
+import bole from 'bole';
+import debugFactory from 'debug';
+
+const log = bole;
+const debug = debugFactory;
 const debugEnv = process.env.DEBUG;
 
 const debugOut = {
@@ -17,11 +19,11 @@ if (debugEnv) {
   });
 }
 
-module.exports = function (config) {
+export default function (config) {
   if (typeof config === 'string') {
     return log(config);
   } else {
     log.output(config);
     return log;
   }
-};
+}

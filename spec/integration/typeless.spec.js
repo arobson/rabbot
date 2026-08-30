@@ -1,12 +1,12 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 /*
   Demonstrates handling Messages With No Type Provided
 */
 describe('No Type Handling', function () {
-  var harness;
+  let harness;
 
   before(function (done) {
     rabbit.configure({

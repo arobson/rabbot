@@ -1,8 +1,13 @@
-const Monologue = require('monologue.js');
-const log = require('./log')('rabbot.topology');
-const info = require('./info');
-var Exchange, Queue;
-var replyId;
+import dispatcher from 'topic-dispatch';
+import createLog from './log.js';
+import info from './info.js';
+import { safeEmit } from './eventUtils.js';
+import defaultExchangeFn from './exchangeFsm.js';
+import defaultQueueFn from './queueFsm.js';
+
+const log = createLog('rabbot.topology');
+let Exchange, Queue;
+let replyId;
 
 /* log
   * `rabbot.topology`
@@ -20,9 +25,9 @@ const DIRECT_REPLY_TO = 'amq.rabbitmq.reply-to';
 const noop = () => {};
 
 function getKeys (keys) {
-  var actualKeys = [ '' ];
+  let actualKeys = [''];
   if (keys && keys.length > 0) {
-    actualKeys = Array.isArray(keys) ? keys : [ keys ];
+    actualKeys = Array.isArray(keys) ? keys : [keys];
   }
   return actualKeys;
 }
@@ -40,7 +45,7 @@ function isObject (value) {
 }
 
 function has (obj, property) {
-  return obj && obj[ property ] != null;
+  return obj && obj[property] != null;
 }
 
 function toArray (x, list) {
@@ -49,15 +54,17 @@ function toArray (x, list) {
   }
   if (isObject(x) && list) {
     const keys = Object.keys(x);
-    return keys.map((key) => x[ key ]);
+    return keys.map((key) => x[key]);
   }
   if (x === null || x === undefined || x === '') {
     return [];
   }
-  return [ x ];
+  return [x];
 }
 
-var Topology = function (connection, options, serializers, unhandledStrategies, returnedStrategies) {
+const Topology = function (connection, options, serializers, unhandledStrategies, returnedStrategies) {
+  Object.assign(this, dispatcher());
+
   const autoReplyTo = { name: `${replyId}.response.queue`, autoDelete: true, subscribe: true };
   const rabbitReplyTo = { name: 'amq.rabbitmq.reply-to', subscribe: true, noAck: true };
   const userReplyTo = isObject(options.replyQueue) ? options.replyQueue : { name: options.replyQueue, autoDelete: true, subscribe: true };
@@ -105,8 +112,8 @@ Topology.prototype.completeRebuild = function () {
   return this.configureBindings(this.definitions.bindings, true)
     .then(() => {
       log.info("Topology rebuilt for connection '%s'", this.connection.name);
-      this.emit('bindings.completed', this.definitions);
-      this.emit(this.connection.name + '.connection.configured', this.connection);
+      safeEmit(this, 'bindings.completed', this.definitions);
+      safeEmit(this, this.connection.name + '.connection.configured', this.connection);
     });
 };
 
@@ -116,7 +123,7 @@ Topology.prototype.configureBindings = function (bindingDef, list) {
   } else {
     const actualDefinitions = toArray(bindingDef, list);
     const bindings = actualDefinitions.map((def) => {
-      const q = this.definitions.queues[ def.queueAlias ? def.queueAlias : def.target ];
+      const q = this.definitions.queues[def.queueAlias ? def.queueAlias : def.target];
       return this.createBinding(
         {
           source: def.exchange || def.source,
@@ -160,24 +167,24 @@ Topology.prototype.createBinding = function (options) {
   if (keys[0] !== '') {
     id += ':' + keys.join(':');
   }
-  let promise = this.promises[ id ];
+  let promise = this.promises[id];
   if (!promise) {
-    this.definitions.bindings[ id ] = options;
+    this.definitions.bindings[id] = options;
     const call = options.queue ? 'bindQueue' : 'bindExchange';
     const source = options.source;
     let target = options.target;
     if (options.queue) {
-      const queue = this.definitions.queues[ options.target ];
+      const queue = this.definitions.queues[options.target];
       if (queue && queue.uniqueName) {
         target = queue.uniqueName;
       }
     }
-    this.promises[ id ] = promise = this.connection.getChannel('control', false, 'control channel for bindings')
+    this.promises[id] = promise = this.connection.getChannel('control', false, 'control channel for bindings')
       .then((channel) => {
         log.info("Binding %s '%s' to '%s' on '%s' with keys: %s",
           (options.queue ? 'queue' : 'exchange'), target, source, this.connection.name, JSON.stringify(keys));
         return Promise.all(
-          keys.map((key) => channel[ call ](target, source, key))
+          keys.map((key) => channel[call](target, source, key))
         );
       });
   }
@@ -185,36 +192,36 @@ Topology.prototype.createBinding = function (options) {
 };
 
 Topology.prototype.createPrimitive = function (Primitive, primitiveType, options) {
-  var errorFn = function (err) {
+  const errorFn = function (err) {
     return new Error('Failed to create ' + primitiveType + " '" + options.name +
       "' on connection '" + this.connection.name +
       "' with '" + (err ? (err.stack || err) : 'N/A') + "'");
   }.bind(this);
   const definitions = primitiveType === 'exchange' ? this.definitions.exchanges : this.definitions.queues;
   const channelName = `${primitiveType}:${options.name}`;
-  let promise = this.promises[ channelName ];
+  let promise = this.promises[channelName];
   if (!promise) {
-    this.promises[ channelName ] = promise = new Promise((resolve, reject) => {
-      definitions[ options.name ] = options;
-      const primitive = this.channels[ channelName ] = new Primitive(options, this.connection, this, this.serializers);
+    this.promises[channelName] = promise = new Promise((resolve, reject) => {
+      definitions[options.name] = options;
+      const primitive = this.channels[channelName] = new Primitive(options, this.connection, this, this.serializers);
       const onConnectionFailed = function (connectionError) {
         reject(errorFn(connectionError));
       };
-      if (this.connection.state === 'failed') {
+      if (this.connection.currentState === 'failed') {
         onConnectionFailed(this.connection.lastError());
       } else {
-        var onFailed = this.connection.on('failed', function (err) {
+        const onFailed = this.connection.on('failed', function (err) {
           onConnectionFailed(err);
         });
         primitive.once('defined', function () {
-          onFailed.unsubscribe();
+          onFailed.off();
           resolve(primitive);
         });
       }
       primitive.once('failed', function (err) {
-        delete definitions[ options.name ];
-        delete this.channels[ channelName ];
-        delete this.promises[ channelName ];
+        delete definitions[options.name];
+        delete this.channels[channelName];
+        delete this.promises[channelName];
         reject(errorFn(err));
       }.bind(this));
     });
@@ -239,31 +246,31 @@ Topology.prototype.createReplyQueue = function () {
   if (this.replyQueue.name === false) {
     return Promise.resolve();
   }
-  var key = 'queue:' + this.replyQueue.name;
-  var promise;
-  if (!this.channels[ key ]) {
+  const key = 'queue:' + this.replyQueue.name;
+  let promise;
+  if (!this.channels[key]) {
     promise = this.createQueue(this.replyQueue);
     promise.then(
       (channel) => {
-        this.channels[ key ] = channel;
-        this.emit('replyQueue.ready', this.replyQueue);
+        this.channels[key] = channel;
+        safeEmit(this, 'replyQueue.ready', this.replyQueue);
       },
       this.onReplyQueueFailed.bind(this)
     );
   } else {
-    promise = Promise.resolve(this.channels[ key ]);
-    this.emit('replyQueue.ready', this.replyQueue);
+    promise = Promise.resolve(this.channels[key]);
+    safeEmit(this, 'replyQueue.ready', this.replyQueue);
   }
   return promise;
 };
 
 Topology.prototype.deleteExchange = function (name) {
-  var key = 'exchange:' + name;
-  var channel = this.channels[ key ];
+  const key = 'exchange:' + name;
+  const channel = this.channels[key];
   if (channel) {
     channel.release();
-    delete this.channels[ key ];
-    delete this.promises[ key ];
+    delete this.channels[key];
+    delete this.promises[key];
     log.info("Deleting %s exchange '%s' on connection '%s'", channel.type, name, this.connection.name);
   }
   return this.connection.getChannel('control', false, 'control channel for bindings')
@@ -273,12 +280,12 @@ Topology.prototype.deleteExchange = function (name) {
 };
 
 Topology.prototype.deleteQueue = function (name) {
-  var key = 'queue:' + name;
-  var channel = this.channels[ key ];
+  const key = 'queue:' + name;
+  const channel = this.channels[key];
   if (channel) {
     channel.release();
-    delete this.channels[ key ];
-    delete this.promises[ key ];
+    delete this.channels[key];
+    delete this.promises[key];
     log.info("Deleting queue '%s' on connection '%s'", name, this.connection.name);
   }
   return this.connection.getChannel('control', false, 'control channel for bindings')
@@ -302,7 +309,7 @@ Topology.prototype.getUniqueName = function (options) {
 Topology.prototype.handleReturned = function (raw) {
   raw.type = isEmpty(raw.properties.type) ? raw.fields.routingKey : raw.properties.type;
   const contentType = raw.properties.contentType || 'application/octet-stream';
-  const serializer = this.serializers[ contentType ];
+  const serializer = this.serializers[contentType];
   if (!serializer) {
     log.error("Could not deserialize message id %s, connection '%s' - no serializer defined",
       raw.properties.messageId, this.connection.name);
@@ -320,11 +327,14 @@ Topology.prototype.onReconnect = function () {
   log.info("Reconnection to '%s' established - rebuilding topology", this.name);
   this.promises = {};
 
-  this.createReplyQueue().then(null, this.onReplyQueueFailed);
+  this.createReplyQueue().then(null, this.onReplyQueueFailed.bind(this));
   this.createDefaultExchange().then(null, noop);
   const channelPromises = this.reconnectChannels();
   return Promise.all(channelPromises || [])
-    .then(this.completeRebuild.bind(this));
+    .then(this.completeRebuild.bind(this))
+    .catch((err) => {
+      log.error("Failed to rebuild topology for connection '%s' after reconnect - '%s'", this.connection.name, err && err.stack ? err.stack : err);
+    });
 };
 
 Topology.prototype.onReplyQueueFailed = function (err) {
@@ -336,7 +346,7 @@ Topology.prototype.onReplyQueueFailed = function (err) {
 Topology.prototype.reconnectChannels = function () {
   const channelNames = Object.keys(this.channels);
   const channelPromises = channelNames.map((channelName) => {
-    const channel = this.channels[ channelName ];
+    const channel = this.channels[channelName];
     return channel.reconnect ? channel.reconnect() : Promise.resolve(true);
   });
   return channelPromises;
@@ -353,12 +363,12 @@ Topology.prototype.reset = function () {
 };
 
 Topology.prototype.renameQueue = function (newQueueName) {
-  const queue = this.definitions.queues[ '' ];
-  const channel = this.channels[ 'queue:' ];
-  this.definitions.queues[ newQueueName ] = queue;
-  this.channels[ `queue:${newQueueName}` ] = channel;
-  delete this.definitions.queues[ '' ];
-  delete this.channels[ 'queue:' ];
+  const queue = this.definitions.queues[''];
+  const channel = this.channels['queue:'];
+  this.definitions.queues[newQueueName] = queue;
+  this.channels[`queue:${newQueueName}`] = channel;
+  delete this.definitions.queues[''];
+  delete this.channels['queue:'];
 };
 
 Topology.prototype.removeBinding = function (options) {
@@ -367,13 +377,13 @@ Topology.prototype.removeBinding = function (options) {
   if (keys[0] !== '') {
     id += ':' + keys.join(':');
   }
-  let promise = this.promises[ id ];
+  let promise = this.promises[id];
   if (promise) {
     const call = options.queue ? 'unbindQueue' : 'unbindExchange';
     const source = options.source;
     let target = options.target;
     if (options.queue) {
-      var queue = this.definitions.queues[ options.target ];
+      const queue = this.definitions.queues[options.target];
       if (queue && queue.uniqueName) {
         target = queue.uniqueName;
       }
@@ -383,12 +393,12 @@ Topology.prototype.removeBinding = function (options) {
         log.info(`Unbinding ${options.queue ? 'queue' : 'exchange'} '${target}' to '${source}' on '${this.connection.name}' with keys: ${JSON.stringify(keys)}`);
         return Promise.all(
           keys.map((key) => {
-            return channel[ call ](target, source, key);
+            return channel[call](target, source, key);
           }));
       })
       .then((channel) => {
-        delete this.promises[ id ];
-        delete this.definitions.bindings[ id ];
+        delete this.promises[id];
+        delete this.definitions.bindings[id];
       });
   } else {
     promise = Promise.resolve();
@@ -396,13 +406,11 @@ Topology.prototype.removeBinding = function (options) {
   return promise;
 };
 
-Monologue.mixInto(Topology);
-
-module.exports = function (connection, options, serializers, unhandledStrategies, returnedStrategies, exchangeFsm, queueFsm, defaultId) {
+export default function (connection, options, serializers, unhandledStrategies, returnedStrategies, exchangeFsm, queueFsm, defaultId) {
   // allows us to optionally provide mocks and control the default queue name
-  Exchange = exchangeFsm || require('./exchangeFsm.js');
-  Queue = queueFsm || require('./queueFsm.js');
+  Exchange = exchangeFsm || defaultExchangeFn;
+  Queue = queueFsm || defaultQueueFn;
   replyId = defaultId || info.id;
 
   return new Topology(connection, options, serializers, unhandledStrategies, returnedStrategies);
-};
+}

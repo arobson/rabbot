@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 describe('Unhandled Strategies', function () {
   /*
@@ -18,7 +18,7 @@ describe('Unhandled Strategies', function () {
   */
 
   describe('Custom Strategy - Capturing Messages With No Handler', function () {
-    var harness;
+    let harness;
 
     before(function (done) {
       rabbit.configure({
@@ -53,7 +53,7 @@ describe('Unhandled Strategies', function () {
     });
 
     it('should capture all unhandled messages via custom unhandled message strategy', function () {
-      var results = harness.unhandled.map((m) => ({
+      const results = harness.unhandled.map((m) => ({
         body: m.body,
         type: m.type
       }));
@@ -75,7 +75,7 @@ describe('Unhandled Strategies', function () {
   via deadlettering for logging or processing.
   */
   describe('Rejecting Unhandled Messages To A Deadletter', function () {
-    var harness;
+    let harness;
 
     before(function (done) {
       rabbit.configure({

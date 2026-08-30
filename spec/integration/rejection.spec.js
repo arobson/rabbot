@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 /*
 This spec demonstrates how a rejected message flows from
@@ -11,7 +11,7 @@ You can easily break this by removing the binding between
 the deadletter exchange and deadletter queue (for example)
 */
 describe('Rejecting Messages To A Deadletter', function () {
-  var harness;
+  let harness;
 
   before(function (done) {
     rabbit.configure({

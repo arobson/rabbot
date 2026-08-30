@@ -1,12 +1,14 @@
-const amqp = require('amqplib');
-const fs = require('fs');
-const AmqpConnection = require('amqplib/lib/callback_model').CallbackModel;
-const monad = require('./iomonad');
-const log = require('../log')('rabbot.connection');
-const info = require('../info');
-const url = require('url');
-const crypto = require('crypto');
-const os = require('os');
+import amqp from 'amqplib';
+import fs from 'node:fs';
+import url from 'node:url';
+import crypto from 'node:crypto';
+import os from 'node:os';
+import monad from './iomonad.js';
+import createLog from '../log.js';
+import info from '../info.js';
+import { CONNECTION_METHODS } from '../amqpMethods.js';
+
+const log = createLog('rabbot.connection');
 
 /* log
   * `rabbot.amqp-connection`
@@ -21,7 +23,7 @@ const os = require('os');
 
 function getArgs (fn) {
   const fnString = fn.toString();
-  const argList = /[(]([^)]*)[)]/.exec(fnString)[ 1 ].split(',');
+  const argList = /[(]([^)]*)[)]/.exec(fnString)[1].split(',');
   return argList.map(String.prototype.trim);
 }
 
@@ -43,7 +45,7 @@ function getOption (opts, key, alt) {
   if (opts.get && supportsDefaults(opts.get)) {
     return opts.get(key, alt);
   } else {
-    return opts[ key ] || alt;
+    return opts[key] || alt;
   }
 }
 
@@ -59,24 +61,24 @@ function max (x, y) {
 
 function parseUri (uri) {
   if (uri) {
-    var parsed = url.parse(uri);
-    var authSplit = parsed.auth ? parsed.auth.split(':') : [ null, null ];
-    var heartbeat = parsed.query ? parsed.query.split('&')[ 0 ].split('=')[ 1 ] : null;
+    const parsed = url.parse(uri);
+    const authSplit = parsed.auth ? parsed.auth.split(':') : [null, null];
+    const heartbeat = parsed.query ? parsed.query.split('&')[0].split('=')[1] : null;
     return {
       useSSL: parsed.protocol === 'amqps:',
-      user: authSplit[ 0 ],
-      pass: authSplit[ 1 ],
+      user: authSplit[0],
+      pass: authSplit[1],
       host: parsed.hostname,
       port: parsed.port,
       vhost: parsed.pathname ? parsed.pathname.slice(1) : undefined,
-      heartbeat: heartbeat
+      heartbeat
     };
   }
 }
 
 function split (x) {
   if (typeof x === 'number') {
-    return [ x ];
+    return [x];
   } else if (Array.isArray(x)) {
     return x;
   } else {
@@ -93,7 +95,7 @@ function trim (x) {
 }
 
 const Adapter = function (parameters) {
-  var uriOpts = parseUri(parameters.uri);
+  const uriOpts = parseUri(parameters.uri);
   Object.assign(parameters, uriOpts);
   const hosts = getOption(parameters, 'host');
   const servers = getOption(parameters, 'server');
@@ -135,9 +137,7 @@ const Adapter = function (parameters) {
   }
   if (caPaths) {
     const list = caPaths.split(',');
-    this.options.ca = list.map((caPath) => {
-      fs.existsSync(caPath) ? fs.readFileSync(caPath) : caPath; // eslint-disable-line no-unused-expressions
-    });
+    this.options.ca = list.map((caPath) => fs.existsSync(caPath) ? fs.readFileSync(caPath) : caPath);
   }
   if (useSSL) {
     this.protocol = 'amqps://';
@@ -153,9 +153,8 @@ const Adapter = function (parameters) {
 Adapter.prototype.connect = function () {
   return new Promise(function (resolve, reject) {
     const attempted = [];
-    var attempt;
-    attempt = function () {
-      var nextUri = this.getNextUri();
+    const attempt = function () {
+      const nextUri = this.getNextUri();
       log.info("Attempting connection to '%s' (%s)", this.name, nextUri);
       function onConnection (connection) {
         connection.uri = nextUri;
@@ -196,19 +195,19 @@ Adapter.prototype.bumpIndex = function () {
 Adapter.prototype.getNextUri = function () {
   const server = this.getNext(this.servers);
   const port = this.getNext(this.ports);
-  const uri = getUri(this.protocol, this.user, escape(this.pass), server, port, this.vhost, this.heartbeat);
+  const uri = getUri(this.protocol, this.user, encodeURIComponent(this.pass), server, port, this.vhost, this.heartbeat);
   return uri;
 };
 
 Adapter.prototype.getNext = function (list) {
   if (this.connectionIndex >= list.length) {
-    return list[ 0 ];
+    return list[0];
   } else {
-    return list[ this.connectionIndex ];
+    return list[this.connectionIndex];
   }
 };
 
-module.exports = function (options) {
+export default function (options) {
   const close = function (connection) {
     connection.close()
       .then(null, function (err) {
@@ -219,5 +218,5 @@ module.exports = function (options) {
       });
   };
   const adapter = new Adapter(options);
-  return monad(options, 'connection', adapter.connect.bind(adapter), AmqpConnection, close);
-};
+  return monad(options, 'connection', adapter.connect.bind(adapter), CONNECTION_METHODS, close);
+}

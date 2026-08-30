@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 /*
   Demonstrates handling types based on wild card matching.
@@ -8,7 +8,7 @@ const config = require('./configuration');
   provided.
 */
 describe('Wild Card Type Handling', function () {
-  var harness;
+  let harness;
 
   before(function () {
     harness = harnessFactory(rabbit, () => {}, 3);
@@ -65,7 +65,7 @@ describe('Wild Card Type Handling', function () {
 
   it("should not handle message types that don't match the pattern", function () {
     harness.unhandled.length.should.equal(1);
-    harness.unhandled[ 0 ].body.should.eql('four');
+    harness.unhandled[0].body.should.eql('four');
   });
 
   after(function () {

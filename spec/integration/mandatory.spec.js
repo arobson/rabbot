@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 /*
 This specificationd demonstrates the returned callback strategy.
@@ -8,7 +8,7 @@ The harness provides a default returned handler that captures
 returned messages and adds them to a list.
 */
 describe('Undeliverable & Mandatory: true', function () {
-  var harness;
+  let harness;
 
   before(function (done) {
     rabbit.configure({
