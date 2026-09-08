@@ -11,5 +11,4 @@ tmp/
 *.swp
 *.swo
 /Vagrantfile
-package-lock.json
 debug.log
