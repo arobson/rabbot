@@ -1,6 +1,6 @@
 {
   "name": "rabbot",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Abstractions to simplify working with the RabbitMQ",
   "type": "module",
   "main": "src/index.js",
