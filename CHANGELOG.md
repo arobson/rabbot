@@ -69,6 +69,33 @@ All notable changes to this project will be documented in this file. See [standa
 
 # rabbot
 
+## [4.0.0](https://github.com/arobson/rabbot/compare/v3.0.0...v4.0.0) (2026-09-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* ESM/mfsm rewrite (v3), bump amqplib to 2.x ([#203](https://github.com/arobson/rabbot/issues/203))
+
+### Features
+
+* ([#87](https://github.com/arobson/rabbot/issues/87)) add support for scatter-gather pattern via request ([db23b48](https://github.com/arobson/rabbot/commit/db23b480188fc1db5d1a7e9a1f258c1a9d4a36c5))
+* ([#93](https://github.com/arobson/rabbot/issues/93)) add support for bulkPublish operation ([d2df5ea](https://github.com/arobson/rabbot/commit/d2df5ea1aceb9ae906be79ad4d4253495b18c405))
+* add support for purging queues ([19a678d](https://github.com/arobson/rabbot/commit/19a678d17898130b530e695a467ca4435f2fb501))
+* allow ssl certs to be provided as a string ([fd8d631](https://github.com/arobson/rabbot/commit/fd8d631f5aff2765930781689bc305a138002322))
+* allow ssl certs to be provided as a string ([744981e](https://github.com/arobson/rabbot/commit/744981ed27b50ea3892d442d2225ba35d808c6ce))
+* ESM/mfsm rewrite (v3), bump amqplib to 2.x ([#203](https://github.com/arobson/rabbot/issues/203)) ([19786df](https://github.com/arobson/rabbot/commit/19786dfe1c90d3d0881b8061f318d396a3d93d37))
+
+
+### Bug Fixes
+
+* ([#104](https://github.com/arobson/rabbot/issues/104)) improve poison message handling ([9d5ccc3](https://github.com/arobson/rabbot/commit/9d5ccc34612497a7dba5b99e1ab7a80fe5a67a34))
+* ([#109](https://github.com/arobson/rabbot/issues/109)) randomize initial connection index based on pid or hostname ([2d6f372](https://github.com/arobson/rabbot/commit/2d6f37239c1833a12933a28a0a7ac5a59b509732))
+* ([#74](https://github.com/arobson/rabbot/issues/74)) correct errors in direct reply queue implementation ([cccdf09](https://github.com/arobson/rabbot/commit/cccdf098a0e91f4dad9b18f9f0730a3d3ccf70a5))
+* ([#78](https://github.com/arobson/rabbot/issues/78)) make it possible to handle messages from a unique queue using the alias/friendly name ([50045a8](https://github.com/arobson/rabbot/commit/50045a8842bbf3287175734aa7152eaed161d381))
+* **connection:** typo error ([ba417da](https://github.com/arobson/rabbot/commit/ba417da1fc6e531b8827b1d90d6a7b4eb0bf32d5))
+* correct issue where publishes and requests before connection or configuration had completed would get lost ([1f58c0b](https://github.com/arobson/rabbot/commit/1f58c0bcdf73a75f2bf11d8b8232b82e6aff7c81))
+* remove remaining lodash references in core that got missed ([9aa3b04](https://github.com/arobson/rabbot/commit/9aa3b0402011f25c219cc60e028500f893a75b17))
+
 ## 2.0.0
 
  * Allow publisher confirms to be turned off per exchange
