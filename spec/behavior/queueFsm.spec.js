@@ -148,7 +148,7 @@ describe('Queue FSM', function () {
       });
 
       it('should resolve purge without error and resubscribe', function (done) {
-        queue.on('subscribed', function () {
+        queue.once('subscribed', function () {
           queue.currentState.should.equal('subscribed');
           done();
         });
@@ -217,6 +217,79 @@ describe('Queue FSM', function () {
         Object.entries(channel.handlers).forEach(function ([, list]) {
           list.length.should.equal(1);
         });
+      });
+    });
+
+    describe('when channel is closed remotely and nothing calls check() (#202)', function () {
+      let channel;
+      before(function (done) {
+        channelMock
+          .expects('define')
+          .once()
+          .resolves();
+
+        queue.once('defined', function () {
+          done();
+        });
+
+        ch.factory().then(function (q) {
+          channel = q.channel;
+          q.channel.raise('closed');
+        });
+      });
+
+      it('should reinitialize without any application intervention', function () {
+        should.not.exist(error);
+      });
+
+      it('should be in a ready state', function () {
+        queue.currentState.should.equal('ready');
+      });
+
+      it('should not duplicate subscriptions to channel events', function () {
+        Object.entries(channel.handlers).forEach(function ([, list]) {
+          list.length.should.equal(1);
+        });
+      });
+    });
+
+    describe('when the channel reacquires after a protocol error without the queue ever visiting its own closed state (#202)', function () {
+      // amqplib always emits 'error' before 'close' for a broker-forced
+      // channel close (e.g. consumer ack-timeout precondition_failed) -
+      // the channel's own failed-state retry loop reacquires it without
+      // this queue's FSM ever seeing a 'closed' event. Redeclaring on
+      // 'acquired' alone (the pre-existing behavior) leaves the consumer
+      // gone for good, so a resubscribe must happen too.
+      before(function (done) {
+        channelMock
+          .expects('subscribe')
+          .once()
+          .resolves(true);
+
+        queue.once('subscribed', function () {
+          channelMock
+            .expects('define')
+            .once()
+            .resolves();
+          channelMock
+            .expects('subscribe')
+            .once()
+            .resolves(true);
+
+          queue.once('subscribed', function () {
+            done();
+          });
+
+          ch.factory().then(function (q) {
+            q.channel.raise('acquired');
+          });
+        });
+
+        queue.subscribe();
+      });
+
+      it('should have redeclared and resubscribed automatically', function () {
+        queue.currentState.should.equal('subscribed');
       });
     });
 

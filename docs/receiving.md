@@ -184,6 +184,14 @@ The following structure shows and briefly explains the format of the message tha
 
 Stops consuming messages from the queue. Does not explicitly change bindings on the queue. Does not explicitly release the queue or the channel used to establish the queue. In general, Rabbot works best when queues exist for the lifetime of a service. Starting and stopping queue subscriptions is likely to produce unexpected behaviors (read: avoid it).
 
+## Broker-Initiated Channel Closure
+
+RabbitMQ can force-close a queue's channel without dropping the underlying connection - for example a `precondition_failed` error when a consumer doesn't ack/nack within the broker's `consumer_timeout`. Because the connection stays healthy, `rabbot.on('unreachable', ...)` never fires for this.
+
+When this happens, rabbot automatically re-declares the queue and, if it was subscribed, resubscribes - the same recovery a fresh `configure()` would perform. You don't need to call anything for the subscription to come back. This applies both to a channel protocol error (like the `consumer_timeout` case above) and to a channel dropped as a side effect of the underlying connection itself being lost and reconnected.
+
+There isn't yet a single event dedicated to "this queue just silently recovered from a broker-forced closure" - `defined` and `subscribed` fire on the queue instance (from `rabbot.getQueue( queueName )`) both during this automatic recovery and during ordinary startup, so they aren't a reliable signal on their own for alerting purposes.
+
 ## Message API
 rabbot defaults to (and assumes) queues are in ack mode. It batches ack and nack operations in order to improve total throughput. Ack/Nack calls do not take effect immediately.
 

@@ -112,7 +112,23 @@ const Factory = function (options, connection, topology, serializers, queueFn) {
         this.purger = purger;
 
         handlers.push(queue.channel.on('acquired', () => {
+          // a channel-level protocol error (e.g. broker-forced close from
+          // a consumer ack-timeout precondition_failed) always reaches
+          // amqplib as 'error' *before* 'close' (see amqplib's
+          // Channel#accept ChannelClose case), so the underlying channel
+          // resource recovers via its own acquired/failed retry loop
+          // without ever visiting this queue's own 'closed' state below.
+          // Redeclaring alone leaves the consumer gone for good, so
+          // re-subscribe here too when one was active - mirroring the
+          // same re-subscribe-after-redefine pattern the 'purged' state
+          // already uses (#202)
+          const shouldResubscribe = options.subscribe;
           this._define(queue);
+          if (shouldResubscribe) {
+            this.once('defined', () => {
+              this.handle('subscribe');
+            });
+          }
         }));
         handlers.push(queue.channel.on('released', () => {
           this.handle('released', queue);
@@ -261,6 +277,13 @@ const Factory = function (options, connection, topology, serializers, queueFn) {
         onEntry: function () {
           this.subscribed = false;
           this._release(true);
+          // reached when the channel closes with no preceding protocol
+          // error - e.g. a connection-level drop cascades to its channels
+          // via a bare close (amqplib's Connection#_closeChannels calls
+          // Channel#toClosed directly, with no 'error' emitted first).
+          // Recover the same way an application-driven check() would
+          // rather than sitting here silently forever (#202)
+          this.next('initializing');
         },
         check: function (deferred) {
           this.deferUntil('ready', 'check', deferred);
