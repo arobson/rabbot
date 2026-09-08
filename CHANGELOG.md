@@ -69,6 +69,13 @@ All notable changes to this project will be documented in this file. See [standa
 
 # rabbot
 
+## [4.0.1](https://github.com/arobson/rabbot/compare/v4.0.0...v4.0.1) (2026-09-08)
+
+
+### Bug Fixes
+
+* commit package-lock.json for reproducible npm ci in CI ([e451dc9](https://github.com/arobson/rabbot/commit/e451dc91ace250ffee84d900652121dbee329078))
+
 ## [4.0.0](https://github.com/arobson/rabbot/compare/v3.0.0...v4.0.0) (2026-09-08)
 
 
