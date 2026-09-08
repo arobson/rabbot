@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="3.0.0"></a>
+# [3.0.0](https://github.com/arobson/rabbot/compare/v2.1.0...v3.0.0) (2026-09-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* rewrite on mfsm/topic-dispatch, convert to ESM, bump amqplib to 2.x
+
+
+### Features
+
+* opt-in custom response exchange/key for request() ([#148](https://github.com/arobson/rabbot/issues/148), [#191](https://github.com/arobson/rabbot/issues/191))
+
+
+### Bug Fixes
+
+* automatically recover a queue's subscription after a broker-forced channel close ([#202](https://github.com/arobson/rabbot/issues/202))
+* discard stale acks/nacks/rejects from before a channel reconnect ([#47](https://github.com/arobson/rabbot/issues/47), [#155](https://github.com/arobson/rabbot/issues/155))
+* correct durable-default docs, add opt-in exclusive reply queue, fix reply ack timing
+
+
 <a name="2.1.0"></a>
 # [2.1.0](https://github.com/arobson/rabbot/compare/v1.1.0...v2.1.0) (2018-02-18)
 
