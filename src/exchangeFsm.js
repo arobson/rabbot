@@ -1,9 +1,11 @@
-const machina = require('machina');
-const Monologue = require('monologue.js');
-const publishLog = require('./publishLog');
-const exLog = require('./log.js')('rabbot.exchange');
-const format = require('util').format;
-const defer = require('./defer');
+import fsm from 'mfsm';
+import { format } from 'node:util';
+import publishLog from './publishLog.js';
+import createLog from './log.js';
+import defer from './defer.js';
+import defaultExchangeFn from './amqp/exchange.js';
+
+const exLog = createLog('rabbot.exchange');
 
 /* log
   * `rabbot.exchange`
@@ -18,222 +20,226 @@ const defer = require('./defer');
 
 function unhandle (handlers) {
   handlers.forEach((handle) =>
-    handle.unsubscribe()
+    handle.off()
   );
 }
 
 const Factory = function (options, connection, topology, serializers, exchangeFn) {
   // allows us to optionally provide a mock
-  exchangeFn = exchangeFn || require('./amqp/exchange');
-  const Fsm = machina.Fsm.extend({
-    name: options.name,
-    type: options.type,
-    publishTimeout: options.publishTimeout || 0,
-    replyTimeout: options.replyTimeout || 0,
-    limit: (options.limit || 100),
-    publisher: undefined,
-    releasers: [],
-    deferred: [],
-    published: publishLog(),
+  exchangeFn = exchangeFn || defaultExchangeFn;
 
-    _define: function (exchange, stateOnDefined) {
-      function onDefinitionError (err) {
-        this.failedWith = err;
-        this.transition('failed');
-      }
-      function onDefined () {
-        this.transition(stateOnDefined);
-      }
-      exchange.define()
-        .then(onDefined.bind(this), onDefinitionError.bind(this));
-    },
+  const machine = fsm({
+    api: {
+      _define: function (exchange, stateOnDefined) {
+        const onDefinitionError = (err) => {
+          this.failedWith = err;
+          this.next('failed', err);
+        };
+        const onDefined = () => {
+          this.next(stateOnDefined);
+        };
+        exchange.define()
+          .then(onDefined, onDefinitionError);
+      },
 
-    _listen: function () {
-      connection.on('unreachable', function (err) {
-        err = err || new Error('Could not establish a connection to any known nodes.');
-        this._onFailure(err);
-        this.transition('unreachable');
-      }.bind(this));
-    },
-
-    _onAcquisition: function (transitionTo, exchange) {
-      const handlers = [];
-
-      handlers.push(exchange.channel.once('released', function () {
-        this.handle('released', exchange);
-      }.bind(this)));
-
-      handlers.push(exchange.channel.once('closed', function () {
-        this.handle('closed', exchange);
-      }.bind(this)));
-
-      function cleanup () {
-        unhandle(handlers);
-        exchange.release()
-          .then(function () {
-            this.transition('released');
-          }.bind(this)
-          );
-      }
-
-      function onCleanupError () {
-        var count = this.published.count();
-        if (count > 0) {
-          exLog.warn("%s exchange '%s', connection '%s' was released with %d messages unconfirmed",
-            this.type,
-            this.name,
-            connection.name,
-            count);
-        }
-        cleanup.bind(this)();
-      }
-
-      const releaser = function () {
-        return this.published.onceEmptied()
-          .then(cleanup.bind(this), onCleanupError.bind(this));
-      }.bind(this);
-
-      const publisher = function (message) {
-        return exchange.publish(message);
-      };
-
-      this.publisher = publisher;
-      this.releasers.push(releaser);
-      this._define(exchange, transitionTo);
-    },
-
-    _onClose: function () {
-      exLog.info(`Rejecting ${this.published.count()} published messages`);
-      this.published.reset();
-    },
-
-    _onFailure: function (err) {
-      this.failedWith = err;
-      this.deferred.forEach((x) => x(err));
-      this.deferred = [];
-      this.published.reset();
-    },
-
-    _removeDeferred: function (reject) {
-      const index = this.deferred.indexOf(reject);
-      if (index >= 0) {
-        this.deferred.splice(index, 1);
-      }
-    },
-
-    _release: function (closed) {
-      const release = this.releasers.shift();
-      if (release) {
-        return release(closed);
-      } else {
-        return Promise.resolve();
-      }
-    },
-
-    check: function () {
-      var deferred = defer();
-      this.handle('check', deferred);
-      return deferred.promise;
-    },
-
-    reconnect: function () {
-      if (/releas/.test(this.state)) {
-        this.transition('initializing');
-      }
-      return this.check();
-    },
-
-    release: function () {
-      exLog.debug('Release called on exchange %s - %s (%d messages pending)', this.name, connection.name, this.published.count());
-      return new Promise(function (resolve) {
-        this.once('released', function () {
-          resolve();
+      _listen: function () {
+        connection.on('unreachable', (err) => {
+          err = err || new Error('Could not establish a connection to any known nodes.');
+          this._onFailure(err);
+          this.next('unreachable');
         });
-        this.handle('release');
-      }.bind(this));
-    },
+      },
 
-    publish: function (message) {
-      if (this.state !== 'ready' && this.published.count() >= this.limit) {
-        exLog.warn("Exchange '%s' has reached the limit of %d messages waiting on a connection",
-          this.name,
-          this.limit
-        );
-        return Promise.reject(new Error('Exchange has reached the limit of messages waiting on a connection'));
-      }
-      var publishTimeout = message.timeout || options.publishTimeout || message.connectionPublishTimeout || 0;
-      return new Promise(function (resolve, reject) {
-        var timeout;
-        var timedOut;
-        var failedSub;
-        var closedSub;
-        if (publishTimeout > 0) {
-          timeout = setTimeout(function () {
-            timedOut = true;
-            onRejected.bind(this)(new Error('Publish took longer than configured timeout'));
-          }.bind(this), publishTimeout);
-        }
-        function onPublished () {
-          resolve();
-          this._removeDeferred(reject);
-          failedSub.unsubscribe();
-          closedSub.unsubscribe();
-        }
-        function onRejected (err) {
-          reject(err);
-          this._removeDeferred(reject);
-          failedSub.unsubscribe();
-          closedSub.unsubscribe();
-        }
-        var op = function (err) {
-          if (err) {
-            onRejected.bind(this)(err);
-          } else {
-            if (timeout) {
-              clearTimeout(timeout);
-              timeout = null;
-            }
-            if (!timedOut) {
-              return this.publisher(message)
-                .then(onPublished.bind(this), onRejected.bind(this));
-            }
+      _onAcquisition: function (transitionTo, exchange) {
+        const handlers = [];
+
+        handlers.push(exchange.channel.once('released', () => {
+          this.handle('released', exchange);
+        }));
+
+        handlers.push(exchange.channel.once('closed', () => {
+          this.handle('closed', exchange);
+        }));
+
+        const cleanup = () => {
+          unhandle(handlers);
+          exchange.release()
+            .then(() => {
+              this.next('released');
+            });
+        };
+
+        const onCleanupError = () => {
+          const count = this.published.count();
+          if (count > 0) {
+            exLog.warn("%s exchange '%s', connection '%s' was released with %d messages unconfirmed",
+              this.type,
+              this.name,
+              connection.name,
+              count);
           }
-        }.bind(this);
-        failedSub = this.once('failed', (err) => {
-          onRejected.bind(this)(err);
-        });
-        closedSub = this.once('closed', (err) => {
-          onRejected.bind(this)(err);
-        });
-        this.deferred.push(reject);
-        this.handle('publish', op);
-      }.bind(this));
-    },
+          cleanup();
+        };
 
-    retry: function () {
-      this.transition('initializing');
-    },
+        const releaser = () => {
+          return this.published.onceEmptied()
+            .then(cleanup, onCleanupError);
+        };
 
-    initialState: 'setup',
+        const publisher = function (message) {
+          return exchange.publish(message);
+        };
+
+        this.publisher = publisher;
+        this.releasers.push(releaser);
+        this._define(exchange, transitionTo);
+      },
+
+      _onClose: function () {
+        exLog.info(`Rejecting ${this.published.count()} published messages`);
+        this.published.reset();
+      },
+
+      _onFailure: function (err) {
+        this.failedWith = err;
+        this.deferred.forEach((x) => x(err));
+        this.deferred = [];
+        this.published.reset();
+      },
+
+      _removeDeferred: function (reject) {
+        const index = this.deferred.indexOf(reject);
+        if (index >= 0) {
+          this.deferred.splice(index, 1);
+        }
+      },
+
+      _release: function (closed) {
+        const release = this.releasers.shift();
+        if (release) {
+          return release(closed);
+        } else {
+          return Promise.resolve();
+        }
+      },
+
+      check: function () {
+        const deferred = defer();
+        this.handle('check', deferred);
+        return deferred.promise;
+      },
+
+      reconnect: function () {
+        if (/releas/.test(this.currentState)) {
+          this.next('initializing');
+        }
+        return this.check();
+      },
+
+      release: function () {
+        exLog.debug('Release called on exchange %s - %s (%d messages pending)', this.name, connection.name, this.published.count());
+        return new Promise((resolve) => {
+          this.once('released', () => {
+            resolve();
+          });
+          this.handle('release');
+        });
+      },
+
+      publish: function (message) {
+        if (this.currentState !== 'ready' && this.published.count() >= this.limit) {
+          exLog.warn("Exchange '%s' has reached the limit of %d messages waiting on a connection",
+            this.name,
+            this.limit
+          );
+          return Promise.reject(new Error('Exchange has reached the limit of messages waiting on a connection'));
+        }
+        const publishTimeout = message.timeout || options.publishTimeout || message.connectionPublishTimeout || 0;
+        return new Promise((resolve, reject) => {
+          let timeout;
+          let timedOut;
+          if (publishTimeout > 0) {
+            timeout = setTimeout(() => {
+              timedOut = true;
+              onRejected(new Error('Publish took longer than configured timeout'));
+            }, publishTimeout);
+          }
+          const onPublished = () => {
+            resolve();
+            this._removeDeferred(reject);
+            failedSub.off();
+            closedSub.off();
+          };
+          const onRejected = (err) => {
+            reject(err);
+            this._removeDeferred(reject);
+            failedSub.off();
+            closedSub.off();
+          };
+          const op = (err) => {
+            if (err) {
+              onRejected(err);
+            } else {
+              if (timeout) {
+                clearTimeout(timeout);
+                timeout = null;
+              }
+              if (!timedOut) {
+                return this.publisher(message)
+                  .then(onPublished, onRejected);
+              }
+            }
+          };
+          const failedSub = this.once('failed', (err) => {
+            onRejected(err);
+          });
+          const closedSub = this.once('closed', (err) => {
+            onRejected(err);
+          });
+          this.deferred.push(reject);
+          this.handle('publish', op);
+        });
+      },
+
+      retry: function () {
+        this.next('initializing');
+      }
+    },
+    init: {
+      default: 'initializing',
+      name: options.name,
+      type: options.type,
+      publishTimeout: options.publishTimeout || 0,
+      replyTimeout: options.replyTimeout || 0,
+      limit: (options.limit || 100),
+      publisher: undefined,
+      releasers: [],
+      deferred: [],
+      published: publishLog()
+    },
+    // Note on emit()/state-name coincidence: mfsm's next() automatically
+    // emits the state's own name (with whatever data was passed to next())
+    // on entry, so onEntry hooks that previously did nothing but manually
+    // re-announce their own state name (as monologue.js required) simply
+    // omit that call here and thread the payload through next() instead -
+    // duplicating it would fire the event twice.
     states: {
       closed: {
-        _onEnter: function () {
+        onEntry: function () {
           this._onClose();
-          this.emit('closed');
         },
-        check: function () {
-          this.deferUntilTransition('ready');
-          this.transition('initializing');
+        check: function (deferred) {
+          this.deferUntil('ready', 'check', deferred);
+          this.next('initializing');
         },
-        publish: function () {
-          this.deferUntilTransition('ready');
-          this.transition('initializing');
+        publish: function (op) {
+          this.deferUntil('ready', 'publish', op);
+          this.next('initializing');
         }
       },
       failed: {
-        _onEnter: function () {
+        onEntry: function () {
           this._onFailure(this.failedWith);
-          this.emit('failed', this.failedWith);
         },
         check: function (deferred) {
           deferred.reject(this.failedWith);
@@ -241,42 +247,42 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
         },
         release: function (exchange) {
           this._release(exchange)
-            .then(function () {
-              this.transition('released');
-            }.bind(this));
+            .then(() => {
+              this.next('released');
+            });
         },
         publish: function (op) {
           op(this.failedWith);
         }
       },
       initializing: {
-        _onEnter: function () {
+        onEntry: function () {
           exchangeFn(options, topology, this.published, serializers)
-            .then(function (exchange) {
+            .then((exchange) => {
               this.handle('acquired', exchange);
-            }.bind(this));
+            });
         },
         acquired: function (exchange) {
           this._onAcquisition('ready', exchange);
         },
-        check: function () {
-          this.deferUntilTransition('ready');
+        check: function (deferred) {
+          this.deferUntil('ready', 'check', deferred);
         },
-        closed: function () {
-          this.deferUntilTransition('ready');
+        closed: function (exchange) {
+          this.deferUntil('ready', 'closed', exchange);
         },
         release: function () {
-          this.deferUntilTransition('ready');
+          this.deferUntil('ready', 'release');
         },
         released: function () {
-          this.transition('initializing');
+          this.next('initializing');
         },
-        publish: function () {
-          this.deferUntilTransition('ready');
+        publish: function (op) {
+          this.deferUntil('ready', 'publish', op);
         }
       },
       ready: {
-        _onEnter: function () {
+        onEntry: function () {
           this.emit('defined');
         },
         check: function (deferred) {
@@ -284,39 +290,36 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
           this.emit('defined');
         },
         release: function () {
-          this.deferUntilTransition('released');
-          this.transition('releasing');
+          this.deferUntil('released', 'release');
+          this.next('releasing');
         },
         closed: function () {
-          this.transition('closed');
+          this.next('closed');
         },
-        released: function () {
-          this.deferUntilTransition('releasing');
+        released: function (exchange) {
+          this.deferUntil('releasing', 'released', exchange);
         },
         publish: function (op) {
           op();
         }
       },
       releasing: {
-        _onEnter: function () {
+        onEntry: function () {
           this._release()
-            .then(function () {
-              this.transition('released');
-            }.bind(this));
+            .then(() => {
+              this.next('released');
+            });
         },
-        publish: function () {
-          this.deferUntilTransition('released');
+        publish: function (op) {
+          this.deferUntil('released', 'publish', op);
         },
         release: function () {
-          this.deferUntilTransition('released');
+          this.deferUntil('released', 'release');
         }
       },
       released: {
-        _onEnter: function () {
-          this.emit('released');
-        },
-        check: function () {
-          this.deferUntilTransition('ready');
+        check: function (deferred) {
+          this.deferUntil('ready', 'check', deferred);
         },
         release: function () {
           this.emit('released');
@@ -326,17 +329,8 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
           op(new Error(format("Cannot publish to exchange '%s' after intentionally closing its connection", this.name)));
         }
       },
-      setup: {
-        _onEnter: function () {
-          this._listen();
-          this.transition('initializing');
-        },
-        publish: function () {
-          this.deferUntilTransition('ready');
-        }
-      },
       unreachable: {
-        _onEnter: function () {
+        onEntry: function () {
           this.emit('failed', this.failedWith);
         },
         check: function (deferred) {
@@ -350,10 +344,17 @@ const Factory = function (options, connection, topology, serializers, exchangeFn
     }
   });
 
-  Monologue.mixInto(Fsm);
-  const fsm = new Fsm();
-  connection.addExchange(fsm);
-  return fsm;
+  // mfsm always defers onEntry (even for the default/initial state set
+  // during construction) by a tick via process.nextTick, unlike machina
+  // which ran the initial state's _onEnter synchronously. Registering the
+  // connection's 'unreachable' listener here - rather than from within
+  // 'initializing' state's onEntry - keeps this synchronous with
+  // construction, so nothing raised on `connection` immediately after
+  // creating the exchange can be missed.
+  machine._listen();
+
+  connection.addExchange(machine);
+  return machine;
 };
 
-module.exports = Factory;
+export default Factory;

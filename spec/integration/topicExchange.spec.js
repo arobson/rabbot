@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 /*
   In this test it is worth noting the setup and the topics
@@ -12,7 +12,7 @@ const config = require('./configuration');
   this works when in use in rabbot.
 */
 describe('Topic Exchange With Alternate Bindings', function () {
-  var harness;
+  let harness;
 
   before(function (done) {
     rabbit.configure({

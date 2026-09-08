@@ -1,10 +1,10 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 describe('Consistent Hash Exchange', function () {
-  var limit;
-  var harness;
+  let limit;
+  let harness;
 
   before(function (done) {
     rabbit.configure({
@@ -83,17 +83,17 @@ describe('Consistent Hash Exchange', function () {
   it('should distribute messages across queues within margin for error', function () {
     const consumers = harness.received.reduce((acc, m) => {
       const key = m.fields.consumerTag;
-      if (acc[ key ]) {
-        acc[ key ]++;
+      if (acc[key]) {
+        acc[key]++;
       } else {
-        acc[ key ] = 1;
+        acc[key] = 1;
       }
       return acc;
     }, {});
 
     const quarter = limit / 4;
     const margin = quarter / 4;
-    const counts = Object.keys(consumers).map((k) => consumers[ k ]);
+    const counts = Object.keys(consumers).map((k) => consumers[k]);
     counts.forEach((count) => {
       count.should.be.closeTo(quarter, margin);
     });

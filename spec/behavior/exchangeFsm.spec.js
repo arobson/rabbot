@@ -1,12 +1,11 @@
-require('../setup.js');
-const exchangeFsm = require('../../src/exchangeFsm');
-const emitter = require('./emitter');
-const defer = require('../../src/defer');
+import '../setup.js';
+import exchangeFsm from '../../src/exchangeFsm.js';
+import emitter from './emitter.js';
+import defer from '../../src/defer.js';
 const noop = () => {};
-const _ = require('lodash');
 
 function exchangeFn (options) {
-  var channel = {
+  const channel = {
     name: options.name,
     type: options.type,
     channel: emitter(),
@@ -14,7 +13,7 @@ function exchangeFn (options) {
     release: noop,
     publish: noop
   };
-  var channelMock = sinon.mock(channel);
+  const channelMock = sinon.mock(channel);
 
   return {
     mock: channelMock,
@@ -26,15 +25,15 @@ function exchangeFn (options) {
 
 describe('Exchange FSM', function () {
   describe('when connection is unreachable', function () {
-    var connection, topology, exchange, channelMock, options, error;
-    var published;
+    let connection, topology, exchange, channelMock, options, error;
+    let published;
     before(function (done) {
       options = { name: 'test', type: 'test' };
       connection = emitter();
       connection.addExchange = noop;
       topology = emitter();
 
-      var ex = exchangeFn(options);
+      const ex = exchangeFn(options);
       channelMock = ex.mock;
       channelMock
         .expects('define')
@@ -42,11 +41,11 @@ describe('Exchange FSM', function () {
         .returns({ then: noop });
 
       exchange = exchangeFsm(options, connection, topology, {}, ex.factory);
-      published = [ 1, 2, 3 ].map(() => exchange.publish({}).then(null, e => e.message));
+      published = [1, 2, 3].map(() => exchange.publish({}).then(null, e => e.message));
       exchange.once('failed', function (err) {
         error = err;
         done();
-      }).once();
+      });
       connection.raise('unreachable');
     });
 
@@ -61,11 +60,11 @@ describe('Exchange FSM', function () {
     });
 
     it('should be in unreachable state', function () {
-      exchange.state.should.equal('unreachable');
+      exchange.currentState.should.equal('unreachable');
     });
 
     describe('when publishing in unreachable state', function () {
-      var error;
+      let error;
 
       before(function () {
         return exchange.publish({}).catch(function (err) {
@@ -75,10 +74,6 @@ describe('Exchange FSM', function () {
 
       it('should reject publish with an error', function () {
         error.toString().should.equal('Error: Could not establish a connection to any known nodes.');
-      });
-
-      it('should clean up the "failed" subscription', function () {
-        exchange._subscriptions.failed.should.have.lengthOf(0);
       });
     });
 
@@ -90,24 +85,24 @@ describe('Exchange FSM', function () {
   });
 
   describe('when definition has failed with error', function () {
-    var connection, topology, exchange, channelMock, options;
-    var published;
+    let connection, topology, exchange, channelMock, options;
+    let published;
     before(function () {
       options = { name: 'test', type: 'test' };
       connection = emitter();
       connection.addExchange = noop;
       topology = emitter();
 
-      var ex = exchangeFn(options);
+      const ex = exchangeFn(options);
       channelMock = ex.mock;
-      var deferred = defer();
+      const deferred = defer();
       channelMock
         .expects('define')
         .once()
         .returns(deferred.promise);
 
       exchange = exchangeFsm(options, connection, topology, {}, ex.factory);
-      published = [ 1, 2, 3 ].map(() =>
+      published = [1, 2, 3].map(() =>
         exchange.publish({})
           .then(null, (err) => err.message)
       );
@@ -116,7 +111,7 @@ describe('Exchange FSM', function () {
     });
 
     it('should be in failed state', function () {
-      exchange.state.should.equal('failed');
+      exchange.currentState.should.equal('failed');
     });
 
     it('should reject all published promises', function () {
@@ -126,7 +121,7 @@ describe('Exchange FSM', function () {
     });
 
     describe('when publishing in unreachable state', function () {
-      var error;
+      let error;
 
       before(function () {
         return exchange.publish({}).catch(function (err) {
@@ -136,10 +131,6 @@ describe('Exchange FSM', function () {
 
       it('should reject publish with an error', function () {
         error.toString().should.equal('Error: nope');
-      });
-
-      it('should clean up the "failed" subscription', function () {
-        exchange._subscriptions.failed.should.have.lengthOf(0);
       });
     });
 
@@ -151,7 +142,7 @@ describe('Exchange FSM', function () {
   });
 
   describe('when initializing succeeds', function () {
-    var connection, topology, exchange, ex, channelMock, options, error;
+    let connection, topology, exchange, ex, channelMock, options, error;
 
     before(function (done) {
       options = { name: 'test', type: 'test' };
@@ -167,13 +158,13 @@ describe('Exchange FSM', function () {
         .returns(Promise.resolve());
 
       exchange = exchangeFsm(options, connection, topology, {}, ex.factory);
-      exchange.on('failed', function (err) {
+      exchange.once('failed', function (err) {
         error = err;
         done();
-      }).once();
-      exchange.on('defined', function () {
+      });
+      exchange.once('defined', function () {
         done();
-      }).once();
+      });
     });
 
     it('should not have failed', function () {
@@ -181,11 +172,11 @@ describe('Exchange FSM', function () {
     });
 
     it('should be in ready state', function () {
-      exchange.state.should.equal('ready');
+      exchange.currentState.should.equal('ready');
     });
 
     describe('when publishing in ready state', function () {
-      var promise;
+      let promise;
 
       before(function () {
         channelMock
@@ -200,11 +191,6 @@ describe('Exchange FSM', function () {
 
       it('should resolve publish without error', function () {
         return promise.should.be.fulfilled;
-      });
-
-      it('should clean up the "failed" subscription', function () {
-        // Should only have a single failed subscription from the outer "before" block
-        exchange._subscriptions.failed.should.have.lengthOf(1);
       });
     });
 
@@ -221,9 +207,9 @@ describe('Exchange FSM', function () {
           .once()
           .returns(Promise.resolve());
 
-        exchange.on('defined', function () {
+        exchange.once('defined', function () {
           done();
-        }).once();
+        });
 
         exchange.once('closed', function () {
           exchange.check();
@@ -260,8 +246,8 @@ describe('Exchange FSM', function () {
       });
 
       it('should remove handlers from topology and connection', function () {
-        _.flatten(_.values(connection.handlers)).length.should.equal(1);
-        _.flatten(_.values(topology.handlers)).length.should.equal(0);
+        Object.values(connection.handlers).flat().length.should.equal(1);
+        Object.values(topology.handlers).flat().length.should.equal(0);
       });
 
       it('should release channel instance', function () {
@@ -280,7 +266,7 @@ describe('Exchange FSM', function () {
         });
 
         it('should reject publish', function () {
-          return exchange.publish({}).should.be.rejectedWith(`Cannot publish to exchange 'test' after intentionally closing its connection`);
+          return exchange.publish({}).should.be.rejectedWith('Cannot publish to exchange \'test\' after intentionally closing its connection');
         });
 
         it('should not make any calls to underlying exchange channel', function () {

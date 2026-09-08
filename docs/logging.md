@@ -11,7 +11,7 @@ A DEBUG adapter that works just like before is already included in rabbot, so yo
 A log call is now exposed directly to make it easier to attach streams to the bole instance:
 
 ```js
-const rabbot = require( "rabbot" );
+import rabbot from "rabbot";
 
 // works like bole's output call
 rabbot.log( [

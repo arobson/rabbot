@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 /*
   This passes a queue name argument to rabbit's handle call
@@ -9,7 +9,7 @@ const config = require('./configuration');
 */
 describe('Queue Specific Handler', function () {
   describe('with standard queues', function () {
-    var harness;
+    let harness;
 
     before(function (done) {
       rabbit.configure({
@@ -79,7 +79,7 @@ describe('Queue Specific Handler', function () {
   });
 
   describe('with unique queue', function () {
-    var harness;
+    let harness;
 
     before(function (done) {
       rabbit.configure({

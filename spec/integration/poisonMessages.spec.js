@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 /*
   When garbage is in the queue from a publisher
@@ -8,7 +8,7 @@ const config = require('./configuration');
   message instead of melting down the process
 */
 describe('Invalid Message Format', function () {
-  var harness;
+  let harness;
 
   before(function (done) {
     rabbit.configure({

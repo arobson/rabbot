@@ -1,10 +1,10 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
+import '../setup.js';
+import rabbit from '../../src/index.js';
 
 describe('Bad Connection', function () {
   const noop = () => {};
   describe('when attempting a connection', function () {
-    var error;
+    let error;
     before((done) => {
       rabbit.once('#.connection.failed', (err) => {
         error = err;
@@ -34,7 +34,7 @@ describe('Bad Connection', function () {
   });
 
   describe('when configuring against a bad connection', function () {
-    var config;
+    let config;
     before(() => {
       config = {
         connection: {

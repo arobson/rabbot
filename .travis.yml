@@ -6,7 +6,7 @@ os:
 
 language: node_js
 node_js:
-  - "6"
+  - "22"
   - "node"
 
 before_script:
@@ -14,7 +14,7 @@ before_script:
   - sleep 10
 
 script:
-  - nyc npm test && nyc report --reporter=text-lcov | coveralls
+  - c8 npm test && c8 report --reporter=text-lcov | coveralls
 
 after_script:
   - npm run remove-container

@@ -1,6 +1,11 @@
-const crypto = require('crypto');
-const os = require('os');
-const format = require('util').format;
+import crypto from 'node:crypto';
+import os from 'node:os';
+import { format } from 'node:util';
+import { createRequire } from 'node:module';
+
+// semistandard's bundled ESLint (v8) doesn't parse import-attribute syntax
+// (`with { type: 'json' }`), so this uses the createRequire interop instead.
+const require = createRequire(import.meta.url);
 const self = require('../package.json');
 
 const host = os.hostname();
@@ -21,8 +26,11 @@ function createConsumerTag (queueName) {
 }
 
 function hash (id) {
-  var bytes = crypto.createHash('md4').update(id).digest();
-  var num = toBE ? bytes.readdInt16BE() : bytes.readInt16LE();
+  // md4 is unavailable under OpenSSL 3.x's default provider (Node >=17);
+  // sha1 is only used here as a fast, well-supported digest to derive a
+  // short, stable-ish suffix - not for any cryptographic purpose.
+  const bytes = crypto.createHash('sha1').update(id).digest();
+  const num = toBE ? bytes.readdInt16BE() : bytes.readInt16LE();
   return num < 0 ? Math.abs(num) + 0xffffffff : num;
 }
 
@@ -47,12 +55,12 @@ function getLibInfo () {
   return format('rabbot - %s', self.version);
 }
 
-module.exports = {
+export default {
   id: consumerId,
   host: getHostInfo,
   lib: getLibInfo,
   process: getProcessInfo,
   createTag: createConsumerTag,
   createHash: createConsumerHash,
-  createConsistentHash: createConsistentHash
+  createConsistentHash
 };

@@ -1,6 +1,6 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 /*
   Tests that queues are purged according to expected behavior:
@@ -60,7 +60,7 @@ describe('Purge Queue', function () {
 
     it('should not re-subscribe to queue automatically (when not already subscribed)', function () {
       rabbit.getQueue('rabbot-q.purged')
-        .state.should.equal('ready');
+        .currentState.should.equal('ready');
     });
 
     after(function () {
@@ -73,9 +73,9 @@ describe('Purge Queue', function () {
 
   describe('when subcribed', function () {
     describe('and queue is autodelete', function () {
-      var purgeCount;
-      var harness;
-      var handler;
+      let purgeCount;
+      let harness;
+      let handler;
       before(function (done) {
         rabbit.configure({
           connection: config.connection,
@@ -138,14 +138,21 @@ describe('Purge Queue', function () {
       });
 
       it('should re-subscribe to queue automatically (when not already subscribed)', function (done) {
-        rabbit.getQueue('rabbot-q.purged-2')
-          .state.should.equal('subscribed');
-        harness.clean();
-        handler = rabbit.handle('topic', (m) => {
-          m.ack();
-          done();
-        });
-        rabbit.publish('rabbot-ex.purged-2', { type: 'topic', routingKey: 'this.is.easy', body: 'stapler' });
+        const queue = rabbit.getQueue('rabbot-q.purged-2');
+        const proceed = () => {
+          queue.currentState.should.equal('subscribed');
+          harness.clean();
+          handler = rabbit.handle('topic', (m) => {
+            m.ack();
+            done();
+          });
+          rabbit.publish('rabbot-ex.purged-2', { type: 'topic', routingKey: 'this.is.easy', body: 'stapler' });
+        };
+        if (queue.currentState === 'subscribed') {
+          proceed();
+        } else {
+          queue.once('subscribed', proceed);
+        }
       });
 
       after(function () {
@@ -160,9 +167,9 @@ describe('Purge Queue', function () {
     });
 
     describe('and queue is not autodelete', function () {
-      var purgeCount;
-      var harness;
-      var handler;
+      let purgeCount;
+      let harness;
+      let handler;
       before(function (done) {
         rabbit.configure({
           connection: config.connection,
@@ -225,14 +232,21 @@ describe('Purge Queue', function () {
       });
 
       it('should re-subscribe to queue automatically (when not already subscribed)', function (done) {
-        rabbit.getQueue('rabbot-q.purged-3')
-          .state.should.equal('subscribed');
-        harness.clean();
-        handler = rabbit.handle('topic', (m) => {
-          m.ack();
-          done();
-        });
-        rabbit.publish('rabbot-ex.purged-3', { type: 'topic', routingKey: 'this.is.easy', body: 'stapler' });
+        const queue = rabbit.getQueue('rabbot-q.purged-3');
+        const proceed = () => {
+          queue.currentState.should.equal('subscribed');
+          harness.clean();
+          handler = rabbit.handle('topic', (m) => {
+            m.ack();
+            done();
+          });
+          rabbit.publish('rabbot-ex.purged-3', { type: 'topic', routingKey: 'this.is.easy', body: 'stapler' });
+        };
+        if (queue.currentState === 'subscribed') {
+          proceed();
+        } else {
+          queue.once('subscribed', proceed);
+        }
       });
 
       after(function () {

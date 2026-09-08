@@ -11,4 +11,4 @@ function defer () {
   return deferred;
 }
 
-module.exports = defer;
+export default defer;

@@ -1,12 +1,12 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 /*
   Demonstrates handling by type specification from *any* queue
 */
 describe('Type Handling On Any Queue', function () {
-  var harness;
+  let harness;
 
   before(function (done) {
     rabbit.configure({

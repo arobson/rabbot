@@ -1,11 +1,10 @@
-require('../setup.js');
-var _ = require('lodash');
-var queueFsm = require('../../src/queueFsm');
-var noOp = function () {};
-var emitter = require('./emitter');
+import '../setup.js';
+import queueFsm from '../../src/queueFsm.js';
+import emitter from './emitter.js';
+const noOp = function () {};
 
 function channelFn (options) {
-  var channel = {
+  const channel = {
     name: options.name,
     type: options.type,
     channel: emitter(),
@@ -18,7 +17,7 @@ function channelFn (options) {
     subscribe: noOp,
     unsubscribe: noOp
   };
-  var channelMock = sinon.mock(channel);
+  const channelMock = sinon.mock(channel);
 
   return {
     mock: channelMock,
@@ -30,7 +29,7 @@ function channelFn (options) {
 
 describe('Queue FSM', function () {
   describe('when initialization fails', function () {
-    var connection, topology, queue, channelMock, options, error;
+    let connection, topology, queue, channelMock, options, error;
 
     before(function (done) {
       options = { name: 'test', type: 'test' };
@@ -38,7 +37,7 @@ describe('Queue FSM', function () {
       connection.addQueue = noOp;
       topology = emitter();
 
-      var ch = channelFn(options);
+      const ch = channelFn(options);
       channelMock = ch.mock;
       channelMock
         .expects('define')
@@ -46,10 +45,10 @@ describe('Queue FSM', function () {
         .returns(Promise.reject(new Error('nope')));
 
       queue = queueFsm(options, connection, topology, {}, ch.factory);
-      queue.on('failed', function (err) {
+      queue.once('failed', function (err) {
         error = err;
         done();
-      }).once();
+      });
     });
 
     it('should have failed with an error', function () {
@@ -57,7 +56,7 @@ describe('Queue FSM', function () {
     });
 
     it('should be in failed state', function () {
-      queue.state.should.equal('failed');
+      queue.currentState.should.equal('failed');
     });
 
     describe('when subscribing in failed state', function () {
@@ -80,7 +79,7 @@ describe('Queue FSM', function () {
   });
 
   describe('when initializing succeeds', function () {
-    var connection, topology, queue, ch, channelMock, options, error;
+    let connection, topology, queue, ch, channelMock, options, error;
 
     before(function (done) {
       options = { name: 'test', type: 'test' };
@@ -99,10 +98,10 @@ describe('Queue FSM', function () {
       queue.once('failed', function (err) {
         error = err;
         done();
-      }).once();
+      });
       queue.once('defined', function () {
         done();
-      }).once();
+      });
     });
 
     it('should not have failed', function () {
@@ -110,7 +109,7 @@ describe('Queue FSM', function () {
     });
 
     it('should be in ready state', function () {
-      queue.state.should.equal('ready');
+      queue.currentState.should.equal('ready');
     });
 
     describe('when subscribing in ready state', function () {
@@ -131,7 +130,7 @@ describe('Queue FSM', function () {
       });
 
       it('should be in subscribed state', function () {
-        queue.state.should.equal('subscribed');
+        queue.currentState.should.equal('subscribed');
       });
     });
 
@@ -149,8 +148,8 @@ describe('Queue FSM', function () {
       });
 
       it('should resolve purge without error and resubscribe', function (done) {
-        queue.on('subscribed', function () {
-          queue.state.should.equal('subscribed');
+        queue.once('subscribed', function () {
+          queue.currentState.should.equal('subscribed');
           done();
         });
         queue.purge().should.eventually.equal(10);
@@ -159,7 +158,7 @@ describe('Queue FSM', function () {
 
     describe('when checking after subscribed state', function () {
       it('should be in subscribed state', function () {
-        return queue.state.should.equal('subscribed');
+        return queue.currentState.should.equal('subscribed');
       });
 
       it('should resolve check without error', function () {
@@ -185,7 +184,7 @@ describe('Queue FSM', function () {
     });
 
     describe('when channel is closed remotely', function () {
-      var channel;
+      let channel;
       before(function (done) {
         channelMock
           .expects('define')
@@ -211,13 +210,86 @@ describe('Queue FSM', function () {
       });
 
       it('should be in a ready state', function () {
-        queue.state.should.equal('ready');
+        queue.currentState.should.equal('ready');
       });
 
       it('should not duplicate subscriptions to channel events', function () {
-        _.each(channel.handlers, function (list, name) {
+        Object.entries(channel.handlers).forEach(function ([, list]) {
           list.length.should.equal(1);
         });
+      });
+    });
+
+    describe('when channel is closed remotely and nothing calls check() (#202)', function () {
+      let channel;
+      before(function (done) {
+        channelMock
+          .expects('define')
+          .once()
+          .resolves();
+
+        queue.once('defined', function () {
+          done();
+        });
+
+        ch.factory().then(function (q) {
+          channel = q.channel;
+          q.channel.raise('closed');
+        });
+      });
+
+      it('should reinitialize without any application intervention', function () {
+        should.not.exist(error);
+      });
+
+      it('should be in a ready state', function () {
+        queue.currentState.should.equal('ready');
+      });
+
+      it('should not duplicate subscriptions to channel events', function () {
+        Object.entries(channel.handlers).forEach(function ([, list]) {
+          list.length.should.equal(1);
+        });
+      });
+    });
+
+    describe('when the channel reacquires after a protocol error without the queue ever visiting its own closed state (#202)', function () {
+      // amqplib always emits 'error' before 'close' for a broker-forced
+      // channel close (e.g. consumer ack-timeout precondition_failed) -
+      // the channel's own failed-state retry loop reacquires it without
+      // this queue's FSM ever seeing a 'closed' event. Redeclaring on
+      // 'acquired' alone (the pre-existing behavior) leaves the consumer
+      // gone for good, so a resubscribe must happen too.
+      before(function (done) {
+        channelMock
+          .expects('subscribe')
+          .once()
+          .resolves(true);
+
+        queue.once('subscribed', function () {
+          channelMock
+            .expects('define')
+            .once()
+            .resolves();
+          channelMock
+            .expects('subscribe')
+            .once()
+            .resolves(true);
+
+          queue.once('subscribed', function () {
+            done();
+          });
+
+          ch.factory().then(function (q) {
+            q.channel.raise('acquired');
+          });
+        });
+
+        queue.subscribe();
+      });
+
+      it('should have redeclared and resubscribed automatically', function () {
+        queue.currentState.should.equal('subscribed');
       });
     });
 
@@ -232,8 +304,8 @@ describe('Queue FSM', function () {
       });
 
       it('should remove handlers from topology and connection', function () {
-        _.flatten(_.values(connection.handlers)).length.should.equal(0);
-        _.flatten(_.values(topology.handlers)).length.should.equal(0);
+        Object.values(connection.handlers).flat().length.should.equal(0);
+        Object.values(topology.handlers).flat().length.should.equal(0);
       });
 
       it('should release channel instance', function () {
@@ -242,11 +314,11 @@ describe('Queue FSM', function () {
 
       describe('when checking a released queue', function () {
         it('should be released', function () {
-          return queue.state.should.equal('released');
+          return queue.currentState.should.equal('released');
         });
 
         it('should reject check', function () {
-          return queue.check().should.be.rejectedWith(`Cannot establish queue 'test' after intentionally closing its connection`);
+          return queue.check().should.be.rejectedWith('Cannot establish queue \'test\' after intentionally closing its connection');
         });
       });
     });

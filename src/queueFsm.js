@@ -1,9 +1,10 @@
-const machina = require('machina');
-const format = require('util').format;
-const Monologue = require('monologue.js');
-Monologue.mixInto(machina.Fsm);
-const log = require('./log.js')('rabbot.queue');
-const defer = require('./defer');
+import fsm from 'mfsm';
+import { format } from 'node:util';
+import createLog from './log.js';
+import defer from './defer.js';
+import defaultQueueFn from './amqp/queue.js';
+
+const log = createLog('rabbot.queue');
 
 /* log
   * `rabbot.queue`
@@ -18,253 +19,286 @@ const defer = require('./defer');
 
 function unhandle (handlers) {
   handlers.forEach((handle) =>
-    handle.unsubscribe()
+    handle.off()
   );
 }
 
-var Factory = function (options, connection, topology, serializers, queueFn) {
+const Factory = function (options, connection, topology, serializers, queueFn) {
   // allows us to optionally provide a mock
-  queueFn = queueFn || require('./amqp/queue');
+  queueFn = queueFn || defaultQueueFn;
 
-  var Fsm = machina.Fsm.extend({
-    name: options.name,
-    uniqueName: options.uniqueName,
-    responseSubscriptions: {},
-    signalSubscription: undefined,
-    subscribed: false,
-    subscriber: undefined,
-    purger: undefined,
-    unsubscribers: [],
-    releasers: [],
+  const machine = fsm({
+    api: {
+      _define: function (queue) {
+        const onError = (err) => {
+          this.failedWith = err;
+          this.next('failed', err);
+        };
+        const onDefined = (defined) => {
+          if (!this.name) {
+            this.name = defined.queue;
+            options.name = defined.queue;
+            queue.messages.changeName(this.name);
+            topology.renameQueue(defined.queue);
+          }
+          this.next('ready');
+        };
+        queue.define()
+          .then(onDefined, onError);
+      },
 
-    _define: function (queue) {
-      var onError = function (err) {
-        this.failedWith = err;
-        this.transition('failed');
-      }.bind(this);
-      var onDefined = function (defined) {
-        if (!this.name) {
-          this.name = defined.queue;
-          options.name = defined.queue;
-          queue.messages.changeName(this.name);
-          topology.renameQueue(defined.queue);
+      _listen: function (queue) {
+        const handlers = [];
+        const emit = (...args) => this.emit(...args);
+
+        const unsubscriber = function () {
+          return queue.unsubscribe();
+        };
+
+        const onPurge = (messageCount) => {
+          log.info(`Purged ${messageCount} queue ${options.name} - ${connection.name}`);
+          this.next('purged', messageCount);
+        };
+
+        const purger = function () {
+          return queue
+            .purge()
+            .then(onPurge)
+            .catch(function (err) {
+              emit('purgeFailed', err);
+            });
+        };
+
+        const onSubscribe = () => {
+          log.info('Subscription to (%s) queue %s - %s started with consumer tag %s',
+            options.noAck ? 'untracked' : 'tracked',
+            options.name,
+            connection.name,
+            queue.channel.tag);
+          this.unsubscribers.push(unsubscriber);
+          this.subscribed = true;
+          this.next('subscribed', {});
+        };
+
+        const subscriber = function (exclusive) {
+          return queue
+            .subscribe(!!exclusive)
+            .then(onSubscribe)
+            .catch(function (err) {
+              emit('subscribeFailed', err);
+            });
+        };
+
+        const releaser = (closed) => {
+          // remove handlers established on queue
+          unhandle(handlers);
+          if (queue && queue.getMessageCount() > 0) {
+            log.warn('!!! Queue %s - %s was released with %d pending messages !!!',
+              options.name, connection.name, queue.getMessageCount());
+          } else if (queue) {
+            log.info('Released queue %s - %s', options.name, connection.name);
+          }
+
+          if (!closed) {
+            queue.release()
+              .then(() => {
+                this.handle('released');
+              });
+          }
+        };
+
+        this.subscriber = subscriber;
+        this.releasers.push(releaser);
+        this.purger = purger;
+
+        handlers.push(queue.channel.on('acquired', () => {
+          // a channel-level protocol error (e.g. broker-forced close from
+          // a consumer ack-timeout precondition_failed) always reaches
+          // amqplib as 'error' *before* 'close' (see amqplib's
+          // Channel#accept ChannelClose case), so the underlying channel
+          // resource recovers via its own acquired/failed retry loop
+          // without ever visiting this queue's own 'closed' state below.
+          // Redeclaring alone leaves the consumer gone for good, so
+          // re-subscribe here too when one was active - mirroring the
+          // same re-subscribe-after-redefine pattern the 'purged' state
+          // already uses (#202)
+          const shouldResubscribe = options.subscribe;
+          this._define(queue);
+          if (shouldResubscribe) {
+            this.once('defined', () => {
+              this.handle('subscribe');
+            });
+          }
+        }));
+        handlers.push(queue.channel.on('released', () => {
+          this.handle('released', queue);
+        }));
+        handlers.push(queue.channel.on('closed', () => {
+          this.handle('closed', queue);
+        }));
+        handlers.push(connection.on('unreachable', (err) => {
+          err = err || new Error('Could not establish a connection to any known nodes.');
+          this.handle('unreachable', queue);
+        }));
+
+        if (options.subscribe) {
+          this.handle('subscribe');
         }
-        this.transition('ready');
-      }.bind(this);
-      queue.define()
-        .then(onDefined, onError);
-    },
+      },
 
-    _listen: function (queue) {
-      var handlers = [];
-      var emit = this.emit.bind(this);
-
-      var unsubscriber = function () {
-        return queue.unsubscribe();
-      };
-
-      var onPurge = function (messageCount) {
-        log.info(`Purged ${messageCount} queue ${options.name} - ${connection.name}`);
-        this.handle('purged', messageCount);
-      }.bind(this);
-
-      var purger = function () {
-        return queue
-          .purge()
-          .then(onPurge)
-          .catch(function (err) {
-            emit('purgeFailed', err);
-          });
-      };
-
-      var onSubscribe = function () {
-        log.info('Subscription to (%s) queue %s - %s started with consumer tag %s',
-          options.noAck ? 'untracked' : 'tracked',
-          options.name,
-          connection.name,
-          queue.channel.tag);
-        this.unsubscribers.push(unsubscriber);
-        this.handle('subscribed');
-      }.bind(this);
-
-      var subscriber = function (exclusive) {
-        return queue
-          .subscribe(!!exclusive)
-          .then(onSubscribe)
-          .catch(function (err) {
-            emit('subscribeFailed', err);
-          });
-      };
-
-      var releaser = function (closed) {
-        // remove handlers established on queue
-        unhandle(handlers);
-        if (queue && queue.getMessageCount() > 0) {
-          log.warn('!!! Queue %s - %s was released with %d pending messages !!!',
-            options.name, connection.name, queue.getMessageCount());
-        } else if (queue) {
-          log.info('Released queue %s - %s', options.name, connection.name);
+      _release: function (closed) {
+        const release = this.releasers.shift();
+        if (release) {
+          release(closed);
+        } else {
+          return Promise.resolve();
         }
+      },
 
-        if (!closed) {
-          queue.release()
-            .then(function () {
-              this.handle('released');
-            }.bind(this));
+      check: function () {
+        const deferred = defer();
+        this.handle('check', deferred);
+        return deferred.promise;
+      },
+
+      purge: function () {
+        return new Promise((resolve, reject) => {
+          const cleanResolve = (result) => {
+            unhandle(_handlers);
+            resolve(result);
+          };
+          const cleanReject = (err) => {
+            unhandle(_handlers);
+            this.next('failed', err);
+            reject(err);
+          };
+          const _handlers = [
+            this.once('purged', cleanResolve),
+            this.once('purgeFailed', cleanReject),
+            this.once('failed', cleanReject)
+          ];
+          this.handle('purge');
+        });
+      },
+
+      reconnect: function () {
+        if (/releas/.test(this.currentState)) {
+          this.next('initializing');
         }
-      }.bind(this);
+        return this.check();
+      },
 
-      this.subscriber = subscriber;
-      this.releasers.push(releaser);
-      this.purger = purger;
+      release: function () {
+        return new Promise((resolve, reject) => {
+          const cleanResolve = () => {
+            unhandle(_handlers);
+            resolve();
+          };
+          const cleanReject = (err) => {
+            unhandle(_handlers);
+            reject(err);
+          };
+          const _handlers = [
+            this.once('released', cleanResolve),
+            this.once('failed', cleanReject),
+            this.once('unreachable', cleanReject),
+            this.once('noqueue', cleanResolve)
+          ];
+          this.handle('release');
+        });
+      },
 
-      handlers.push(queue.channel.on('acquired', function () {
-        this._define(queue);
-      }.bind(this))
-      );
-      handlers.push(queue.channel.on('released', function () {
-        this.handle('released', queue);
-      }.bind(this))
-      );
-      handlers.push(queue.channel.on('closed', function () {
-        this.handle('closed', queue);
-      }.bind(this))
-      );
-      handlers.push(connection.on('unreachable', function (err) {
-        err = err || new Error('Could not establish a connection to any known nodes.');
-        this.handle('unreachable', queue);
-      }.bind(this))
-      );
+      retry: function () {
+        this.next('initializing');
+      },
 
-      if (options.subscribe) {
-        this.handle('subscribe');
+      subscribe: function (exclusive) {
+        options.subscribe = true;
+        options.exclusive = exclusive;
+        return new Promise((resolve, reject) => {
+          const cleanResolve = () => {
+            unhandle(_handlers);
+            resolve();
+          };
+          const cleanReject = (err) => {
+            unhandle(_handlers);
+            this.next('failed', err);
+            reject(err);
+          };
+          const _handlers = [
+            this.once('subscribed', cleanResolve),
+            this.once('subscribeFailed', cleanReject),
+            this.once('failed', cleanReject)
+          ];
+          this.handle('subscribe');
+        });
+      },
+
+      unsubscribe: function () {
+        options.subscribe = false;
+        const unsubscriber = this.unsubscribers.shift();
+        if (unsubscriber) {
+          return unsubscriber();
+        } else {
+          return Promise.reject(new Error('No active subscription presently exists on the queue'));
+        }
       }
     },
-
-    _release: function (closed) {
-      var release = this.releasers.shift();
-      if (release) {
-        release(closed);
-      } else {
-        return Promise.resolve();
-      }
+    init: {
+      default: 'initializing',
+      name: options.name,
+      uniqueName: options.uniqueName,
+      responseSubscriptions: {},
+      signalSubscription: undefined,
+      subscribed: false,
+      subscriber: undefined,
+      purger: undefined,
+      unsubscribers: [],
+      releasers: []
     },
-
-    check: function () {
-      var deferred = defer();
-      this.handle('check', deferred);
-      return deferred.promise;
-    },
-
-    purge: function () {
-      return new Promise(function (resolve, reject) {
-        var _handlers;
-        function cleanResolve (result) {
-          unhandle(_handlers);
-          resolve(result);
-        }
-        function cleanReject (err) {
-          unhandle(_handlers);
-          this.transition('failed');
-          reject(err);
-        }
-        _handlers = [
-          this.once('purged', cleanResolve),
-          this.once('purgeFailed', cleanReject.bind(this)),
-          this.once('failed', cleanReject.bind(this))
-        ];
-        this.handle('purge');
-      }.bind(this));
-    },
-
-    reconnect: function () {
-      if (/releas/.test(this.state)) {
-        this.transition('initializing');
-      }
-      return this.check();
-    },
-
-    release: function () {
-      return new Promise(function (resolve, reject) {
-        var _handlers;
-        function cleanResolve () {
-          unhandle(_handlers);
-          resolve();
-        }
-        function cleanReject (err) {
-          unhandle(_handlers);
-          reject(err);
-        }
-        _handlers = [
-          this.once('released', cleanResolve),
-          this.once('failed', cleanReject),
-          this.once('unreachable', cleanReject),
-          this.once('noqueue', cleanResolve)
-        ];
-        this.handle('release');
-      }.bind(this));
-    },
-
-    retry: function () {
-      this.transition('initializing');
-    },
-
-    subscribe: function (exclusive) {
-      options.subscribe = true;
-      options.exclusive = exclusive;
-      return new Promise(function (resolve, reject) {
-        var _handlers;
-        function cleanResolve () {
-          unhandle(_handlers);
-          resolve();
-        }
-        function cleanReject (err) {
-          unhandle(_handlers);
-          this.transition('failed');
-          reject(err);
-        }
-        _handlers = [
-          this.once('subscribed', cleanResolve),
-          this.once('subscribeFailed', cleanReject.bind(this)),
-          this.once('failed', cleanReject.bind(this))
-        ];
-        this.handle('subscribe');
-      }.bind(this));
-    },
-
-    unsubscribe: function () {
-      options.subscribe = false;
-      var unsubscriber = this.unsubscribers.shift();
-      if (unsubscriber) {
-        return unsubscriber();
-      } else {
-        return Promise.reject(new Error('No active subscription presently exists on the queue'));
-      }
-    },
-
-    initialState: 'initializing',
+    // Note on emit()/state-name coincidence: mfsm's next() automatically
+    // emits the state's own name (with whatever data was passed to next())
+    // on entry, so onEntry hooks that previously did nothing but manually
+    // re-announce their own state name (as monologue.js required) simply
+    // omit that call here and thread the payload through next() instead -
+    // duplicating it would fire the event twice.
+    //
+    // 'subscribed' is a deliberate exception: the FSM used to transition
+    // into a state named 'subscribed' *eagerly*, well before the real
+    // amqp subscription was confirmed, while the *public* 'subscribed'
+    // event was only meant to fire on real completion (via a second,
+    // later dispatch once the underlying subscribe() promise resolved).
+    // Relying on mfsm's auto-emit here would deliver that public event -
+    // and resolve subscribe()'s promise - prematurely. So the eager
+    // mid-flight transition is dropped entirely; only the real completion
+    // (onSubscribe, above) transitions into 'subscribed'.
     states: {
       closed: {
-        _onEnter: function () {
+        onEntry: function () {
           this.subscribed = false;
           this._release(true);
-          this.emit('closed');
+          // reached when the channel closes with no preceding protocol
+          // error - e.g. a connection-level drop cascades to its channels
+          // via a bare close (amqplib's Connection#_closeChannels calls
+          // Channel#toClosed directly, with no 'error' emitted first).
+          // Recover the same way an application-driven check() would
+          // rather than sitting here silently forever (#202)
+          this.next('initializing');
         },
-        check: function () {
-          this.deferUntilTransition('ready');
-          this.transition('initializing');
+        check: function (deferred) {
+          this.deferUntil('ready', 'check', deferred);
+          this.next('initializing');
         },
         purge: function () {
-          this.deferUntilTransition('ready');
+          this.deferUntil('ready', 'purge');
         },
         subscribe: function () {
-          this.deferUntilTransition('ready');
+          this.deferUntil('ready', 'subscribe');
         }
       },
       failed: {
-        _onEnter: function () {
+        onEntry: function () {
           this.subscribed = false;
-          this.emit('failed', this.failedWith);
         },
         check: function (deferred) {
           if (deferred) {
@@ -276,13 +310,13 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
           if (queue) {
             this._removeHandlers();
             queue.release()
-              .then(function () {
+              .then(() => {
                 this.handle('released', queue);
               });
           }
         },
         released: function () {
-          this.transition('released');
+          this.next('released');
         },
         purge: function () {
           this.emit('purgeFailed', this.failedWith);
@@ -292,16 +326,16 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
         }
       },
       initializing: {
-        _onEnter: function () {
+        onEntry: function () {
           queueFn(options, topology, serializers)
             .then(
-              queue => {
+              (queue) => {
                 this.lastQueue = queue;
                 this.handle('acquired', queue);
               },
-              err => {
+              (err) => {
                 this.failedWith = err;
-                this.transition('failed');
+                this.next('failed', err);
               }
             );
         },
@@ -310,89 +344,77 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
           this._define(queue);
           this._listen(queue);
         },
-        check: function () {
-          this.deferUntilTransition('ready');
+        check: function (deferred) {
+          this.deferUntil('ready', 'check', deferred);
         },
         release: function () {
-          this.deferUntilTransition('ready');
+          this.deferUntil('ready', 'release');
         },
-        closed: function () {
-          this.deferUntilTransition('ready');
+        closed: function (queue) {
+          this.deferUntil('ready', 'closed', queue);
         },
         purge: function () {
-          this.deferUntilTransition('ready');
+          this.deferUntil('ready', 'purge');
         },
         subscribe: function () {
-          this.deferUntilTransition('ready');
+          this.deferUntil('ready', 'subscribe');
         }
       },
       ready: {
-        _onEnter: function () {
+        onEntry: function () {
           this.emit('defined');
         },
         check: function (deferred) {
           deferred.resolve();
         },
         closed: function () {
-          this.transition('closed');
+          this.next('closed');
         },
         purge: function () {
           if (this.purger) {
-            this.transition('purging');
+            this.next('purging');
             return this.purger();
           }
         },
         release: function () {
-          this.transition('releasing');
+          this.next('releasing');
           this.handle('release');
         },
         released: function () {
           this._release(true);
-          this.transition('initializing');
+          this.next('initializing');
         },
         subscribe: function () {
           if (this.subscriber) {
-            this.deferAndTransition('subscribing');
+            this.deferUntil('subscribing', 'subscribe');
+            this.next('subscribing');
             return this.subscriber();
           }
         }
       },
       purging: {
         closed: function () {
-          this.transition('closed');
+          this.next('closed');
         },
-        purged: function () {
-          this.deferAndTransition('purged');
+        purged: function (result) {
+          this.next('purged', result);
         },
         release: function () {
-          this.transition('releasing');
+          this.next('releasing');
           this.handle('release');
         },
         released: function () {
           this._release(true);
-          this.transition('initializing');
+          this.next('initializing');
         },
         subscribe: function () {
-          this.deferUntilTransition('subscribed');
+          this.deferUntil('subscribed', 'subscribe');
         }
       },
       purged: {
-        check: function (deferred) {
-          deferred.resolve();
-        },
-        closed: function () {
-          this.transition('closed');
-        },
-        release: function () {
-          this.transition('releasing');
-          this.handle('release');
-        },
-        released: function () {
-          this._release(true);
-          this.transition('initializing');
-        },
-        purged: function (result) {
-          this.emit('purged', result);
+        onEntry: function (result) {
+          // 'purged' is auto-emitted by next('purged', result) at the
+          // call site that transitions here - no explicit emit needed.
           if (this.subscribed && this.subscriber) {
             this.subscribe()
               .then(
@@ -402,11 +424,26 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
                 }
               );
           } else {
-            this.transition('ready');
+            this.next('ready');
           }
         },
+        check: function (deferred) {
+          deferred.resolve();
+        },
+        closed: function () {
+          this.next('closed');
+        },
+        release: function () {
+          this.next('releasing');
+          this.handle('release');
+        },
+        released: function () {
+          this._release(true);
+          this.next('initializing');
+        },
         subscribe: function () {
-          this.deferAndTransition('ready');
+          this.deferUntil('ready', 'subscribe');
+          this.next('ready');
         }
       },
       releasing: {
@@ -414,13 +451,12 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
           this._release(false);
         },
         released: function () {
-          this.transition('released');
+          this.next('released');
         }
       },
       released: {
-        _onEnter: function () {
+        onEntry: function () {
           this.subscribed = false;
-          this.emit('released');
         },
         check: function (deferred) {
           deferred.reject(new Error(format("Cannot establish queue '%s' after intentionally closing its connection", this.name)));
@@ -437,21 +473,18 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
       },
       subscribing: {
         closed: function () {
-          this.transition('closed');
+          this.next('closed');
         },
         purge: function () {
-          this.deferUntilTransition('ready');
+          this.deferUntil('ready', 'purge');
         },
         release: function () {
-          this.transition('releasing');
+          this.next('releasing');
           this.handle('release');
         },
         released: function () {
           this._release(true);
-          this.transition('initializing');
-        },
-        subscribe: function () {
-          this.transition('subscribed');
+          this.next('initializing');
         }
       },
       subscribed: {
@@ -459,23 +492,19 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
           deferred.resolve();
         },
         closed: function () {
-          this.transition('closed');
+          this.next('closed');
         },
         purge: function () {
-          this.deferUntilTransition('ready');
-          this.transition('ready');
+          this.deferUntil('ready', 'purge');
+          this.next('ready');
         },
         release: function () {
-          this.transition('releasing');
+          this.next('releasing');
           this.handle('release');
         },
         released: function () {
           this._release(true);
-          this.transition('initializing');
-        },
-        subscribed: function () {
-          this.subscribed = true;
-          this.emit('subscribed', {});
+          this.next('initializing');
         }
       },
       unreachable: {
@@ -483,18 +512,17 @@ var Factory = function (options, connection, topology, serializers, queueFn) {
           deferred.reject(new Error(format("Cannot establish queue '%s' when no nodes can be reached", this.name)));
         },
         purge: function () {
-          this.emit('purgeFailed', new Error(format("Cannot purge queue '%s' when no nodes can be reached", this.name)));
+          this.emit('purgeFailed', new Error(format("Cannot establish queue '%s' when no nodes can be reached", this.name)));
         },
-        subscribe: function (sub) {
+        subscribe: function () {
           this.emit('subscribeFailed', new Error(format("Cannot subscribe to queue '%s' when no nodes can be reached", this.name)));
         }
       }
     }
   });
 
-  var fsm = new Fsm();
-  connection.addQueue(fsm);
-  return fsm;
+  connection.addQueue(machine);
+  return machine;
 };
 
-module.exports = Factory;
+export default Factory;

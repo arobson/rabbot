@@ -1,9 +1,9 @@
-require('../setup.js');
-var Monad = require('../../src/amqp/iomonad.js');
-var EventEmitter = require('events');
-var util = require('util');
+import '../setup.js';
+import Monad from '../../src/amqp/iomonad.js';
+import EventEmitter from 'node:events';
+import util from 'node:util';
 
-var Resource = function () {
+const Resource = function () {
   this.closed = false;
   EventEmitter.call(this);
 };
@@ -20,13 +20,13 @@ Resource.prototype.close = function () {
 
 describe('IO Monad', function () {
   describe('when resource is acquired successfully', function () {
-    var resource, acquiring, releasedHandle, opResult;
+    let resource, acquiring, releasedHandle, opResult;
     before(function (done) {
-      var factory = function () {
+      const factory = function () {
         return Promise.resolve(new Resource());
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, ['sayHi'], (x) => {
         x.close();
         x.emit('released');
       });
@@ -54,7 +54,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in released state', function () {
-      resource.state.should.equal('released');
+      resource.currentState.should.equal('released');
     });
 
     it('should not retain handle to resource', function () {
@@ -71,15 +71,15 @@ describe('IO Monad', function () {
   });
 
   describe('when resource is unavailable', function () {
-    var resource, error;
-    var acquiring = 0;
-    var acquiringHandle, failedHandle;
+    let resource, error;
+    let acquiring = 0;
+    let acquiringHandle, failedHandle;
     before(function (done) {
-      var factory = function () {
+      const factory = function () {
         return Promise.reject(new Error('because no one likes you'));
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, ['sayHi'], (x) => {
         x.close();
         x.raise('closed', '');
       });
@@ -100,7 +100,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in released state', function () {
-      resource.state.should.equal('released');
+      resource.currentState.should.equal('released');
     });
 
     it('should have retried acquisition', function () {
@@ -122,15 +122,15 @@ describe('IO Monad', function () {
   });
 
   describe('when acquired resource emits an error', function () {
-    var resource, error;
-    var acquiring = 0;
-    var acquiredHandle, acquiringHandle, failedHandle;
+    let resource, error;
+    let acquiring = 0;
+    let acquiredHandle, acquiringHandle, failedHandle;
     before(function (done) {
-      var factory = function () {
+      const factory = function () {
         return Promise.resolve(new Resource());
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, ['sayHi'], (x) => {
         x.close();
         x.emit('released');
       });
@@ -162,7 +162,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in released state', function () {
-      resource.state.should.equal('released');
+      resource.currentState.should.equal('released');
     });
 
     it('should have called resource rejection handler', function () {
@@ -181,11 +181,11 @@ describe('IO Monad', function () {
   });
 
   describe('when acquired resource is closed remotely', function () {
-    var resource, closeReason;
-    var acquiring = 0;
-    var acquiredHandle, acquiringHandle;
+    let resource, closeReason;
+    let acquiring = 0;
+    let acquiredHandle, acquiringHandle;
     before(function (done) {
-      var factory = function () {
+      const factory = function () {
         return new Promise(function (resolve) {
           process.nextTick(function () {
             resolve(new Resource());
@@ -193,7 +193,7 @@ describe('IO Monad', function () {
         });
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, ['sayHi'], (x) => {
         x.close();
       });
 
@@ -224,7 +224,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in closed state', function () {
-      resource.state.should.equal('closed');
+      resource.currentState.should.equal('closed');
     });
 
     it('should not retain handle to resource', function () {
@@ -238,11 +238,11 @@ describe('IO Monad', function () {
   });
 
   describe('when acquired resource is released locally', function () {
-    var resource, closeReason;
-    var acquiring = 0;
-    var acquiredHandle, acquiringHandle;
+    let resource, closeReason;
+    let acquiring = 0;
+    let acquiredHandle, acquiringHandle;
     before(function (done) {
-      var factory = function () {
+      const factory = function () {
         return new Promise(function (resolve) {
           process.nextTick(function () {
             resolve(new Resource());
@@ -250,7 +250,7 @@ describe('IO Monad', function () {
         });
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, ['sayHi'], (x) => {
         x.close();
         x.emit('released');
       });
@@ -278,7 +278,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in released state', function () {
-      resource.state.should.equal('released');
+      resource.currentState.should.equal('released');
     });
 
     it('should not retain handle to resource', function () {
@@ -292,11 +292,11 @@ describe('IO Monad', function () {
   });
 
   describe('when operating against a released resource', function () {
-    var resource;
-    var acquiring = 0;
-    var acquiredHandle, acquiringHandle;
+    let resource;
+    let acquiring = 0;
+    let acquiredHandle, acquiringHandle;
     before(function (done) {
-      var factory = function () {
+      const factory = function () {
         return new Promise(function (resolve) {
           process.nextTick(function () {
             resolve(new Resource());
@@ -304,7 +304,7 @@ describe('IO Monad', function () {
         });
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, ['sayHi'], (x) => {
         x.close();
         x.emit('close', 'closed');
       });
@@ -337,7 +337,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in a released state', function () {
-      resource.state.should.equal('released');
+      resource.currentState.should.equal('released');
     });
 
     it('should not retain handle to resource', function () {
@@ -351,11 +351,11 @@ describe('IO Monad', function () {
   });
 
   describe('when operating against a closed resource', function () {
-    var resource, opResult;
-    var acquiring = 0;
-    var acquiredHandle, acquiringHandle;
+    let resource, opResult;
+    let acquiring = 0;
+    let acquiredHandle, acquiringHandle;
     before(function (done) {
-      var factory = function () {
+      const factory = function () {
         return new Promise(function (resolve) {
           process.nextTick(function () {
             resolve(new Resource());
@@ -363,7 +363,7 @@ describe('IO Monad', function () {
         });
       };
 
-      resource = new Monad({ name: 'test' }, 'resource', factory, Resource, (x) => {
+      resource = new Monad({ name: 'test' }, 'resource', factory, ['sayHi'], (x) => {
         x.close();
         x.emit('close', 'you did this');
       });
@@ -401,7 +401,7 @@ describe('IO Monad', function () {
     });
 
     it('should end in a released state', function () {
-      resource.state.should.equal('released');
+      resource.currentState.should.equal('released');
     });
 
     it('should not retain handle to resource', function () {
@@ -415,19 +415,19 @@ describe('IO Monad', function () {
   });
 
   describe('when custom wait options are defined', function () {
-    var resource, releasedHandle;
-    var options = {
+    let resource, releasedHandle;
+    const options = {
       name: 'test',
       waitMin: 1000,
       waitMax: 30000,
       waitIncrement: 1000
     };
     before(function (done) {
-      var factory = function () {
+      const factory = function () {
         return Promise.resolve(new Resource());
       };
 
-      resource = new Monad(options, 'resource', factory, Resource, (x) => {
+      resource = new Monad(options, 'resource', factory, ['sayHi'], (x) => {
         x.close();
         x.emit('released');
       });

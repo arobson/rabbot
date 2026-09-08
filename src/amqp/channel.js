@@ -1,6 +1,8 @@
-const AmqpChannel = require('amqplib/lib/callback_model').Channel;
-const monad = require('./iomonad.js');
-const log = require('../log')('rabbot.channel');
+import monad from './iomonad.js';
+import createLog from '../log.js';
+import { CHANNEL_METHODS } from '../amqpMethods.js';
+
+const log = createLog('rabbot.channel');
 
 /* log
   * `rabbot.channel`
@@ -22,13 +24,13 @@ function close (name, channel) {
   }
 }
 
-module.exports = {
+export default {
   create: function (connection, name, confirm) {
-    var method = confirm ? 'createConfirmChannel' : 'createChannel';
-    var factory = function () {
-      return connection[ method ]();
+    const method = confirm ? 'createConfirmChannel' : 'createChannel';
+    const factory = function () {
+      return connection[method]();
     };
-    var channel = monad({ name: name }, 'channel', factory, AmqpChannel, close.bind(null, name));
+    const channel = monad({ name }, 'channel', factory, CHANNEL_METHODS, close.bind(null, name));
     return channel;
   }
 };

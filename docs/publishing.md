@@ -121,6 +121,34 @@ rabbit.handle('request', (req) => {
 });
 ```
 
+### Replying Across Languages Or Custom Topologies
+
+By default, rabbot listens for a reply on its own auto-managed reply queue, via the `replyTo` property it sets on the outgoing request. Some responders - often ones written in another language, or otherwise not using rabbot - don't honor `replyTo` and instead publish their reply to an exchange and routing key of their own choosing.
+
+To interoperate with that, pass a `responseQueue` option describing where the reply will actually show up. rabbot declares (once, reused across calls with the same exchange/key) a queue bound to that exchange/key, and treats anything delivered there as a response, matched to the original request by `correlationId`. The responder just needs to echo the request's `messageId` back as the reply's `correlationId` - a standard, easy-to-support convention in any AMQP client library.
+
+Default behavior (rabbot's own reply queue) is unchanged unless `responseQueue` is provided.
+
+```js
+// request side
+rabbit.request('request.ex', {
+    type: 'request',
+    body: id,
+    responseQueue: {
+      exchange: 'responses.ex', // must already be declared
+      key: 'my-service.replies'
+    }
+  })
+  .then(reply => {
+    reply.ack();
+  });
+
+// foreign/non-rabbot responder, replying on its own terms
+channel.publish('responses.ex', 'my-service.replies', payload, {
+  correlationId: requestMessageId
+});
+```
+
 ### Scatter-Gather
 
 In scatter-gather: the recipients don't know how many of them there are and don't have to be aware that they are participating in scatter-gather/race-conditions.

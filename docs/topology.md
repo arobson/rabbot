@@ -37,7 +37,7 @@ This example shows most of the available options described above.
 
 To establish a connection with all settings in place and ready to go call configure:
 ```javascript
-  var rabbit = require( "rabbot" );
+  import rabbit from "rabbot";
 
   rabbit.configure( settings ).done( function() {
     // ready to go!
@@ -58,7 +58,7 @@ Options is a hash that can contain the following:
 | option | type | description | default  |
 |--:|:-:|:--|:-:|
 | **autoDelete** | boolean | delete when consumer count goes to 0 | `false` |
-| **durable** | boolean | survive broker restarts | `false` |
+| **durable** | boolean | survive broker restarts (amqplib itself defaults this to `true` whenever it's left unset - rabbot does not override it) | `true` |
 | **persistent** | boolean | a.k.a. persistent delivery, messages saved to disk | `false` |
 | **alternate** | string |  define an alternate exchange | |
 | **publishTimeout** | 2^32 | timeout in milliseconds for publish calls to this exchange ||
@@ -75,7 +75,7 @@ Options is a hash that can contain the following:
 | option | type | description | default  |
 |--:|:-:|:--|:-:|
 | **autoDelete** | boolean | delete when consumer count goes to 0 | |
-| **durable** | boolean | survive broker restarts | false |
+| **durable** | boolean | survive broker restarts (amqplib itself defaults this to `true` whenever it's left unset - rabbot does not override it) | `true` |
 | **exclusive** | boolean | limits queue to the current connection only (danger) | false |
 | **subscribe** | boolean | auto-start the subscription | false |
 | **limit** | 2^16 |max number of unacked messages allowed for consumer | |

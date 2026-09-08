@@ -1,13 +1,13 @@
-require('../setup');
-const rabbit = require('../../src/index.js');
-const config = require('./configuration');
+import '../setup.js';
+import rabbit from '../../src/index.js';
+import config from './configuration.js';
 
 /*
  Demonstrates how bulk publish API works
  in both formats.
 */
 describe('Bulk Publish', function () {
-  var harness;
+  let harness;
 
   before(function (done) {
     this.timeout(10000);
